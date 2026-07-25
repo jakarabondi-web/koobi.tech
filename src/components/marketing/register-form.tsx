@@ -19,12 +19,13 @@ export function RegisterForm({ defaultRole }: { defaultRole: "TRAINER" | "CLIENT
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-8 text-center">
         <CheckCircle2 className="size-8 text-success" />
-        <p className="text-lg font-semibold">Account created</p>
+        <p className="text-lg font-semibold">Check your email</p>
         <p className="text-sm text-muted-foreground">
-          Verify your email to finish setting up your account, then sign in.
+          We sent a confirmation link to your address. You&apos;ll need to confirm it before you can
+          sign in — the link is valid for 24 hours.
         </p>
-        <Button asChild className="mt-2 w-full">
-          <Link href="/login">Go to sign in</Link>
+        <Button asChild variant="outline" className="mt-2 w-full">
+          <Link href="/login">Back to sign in</Link>
         </Button>
       </div>
     );

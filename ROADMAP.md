@@ -28,14 +28,30 @@ should be updated at the end of each implementation phase.
 
 ## Phase 3 — Trainer platform 🚧 in progress
 
-Done: dashboard shell (sidebar nav, mobile drawer, sign-out), trainer
-dashboard page with real KPI data (active assignments, tasks due, pending
-earnings, quality score, notifications) sourced from Prisma.
+Done: grouped sidebar shell with live badge counts, trainer dashboard with
+real KPIs/feedback/recommendations from Prisma, and the wallet + payout
+request flow.
 
 Not yet built: onboarding wizard, project marketplace + detail pages, task
 workspace (the various task-type renderers), assessments UI, quality
-dashboard, earnings/payments pages, notifications center, support, profile,
-settings.
+dashboard, earnings page, notifications center, support, profile, settings.
+
+## Trust & safety 🚧 in progress
+
+Done (backend + services, UI pending):
+- Email verification is enforced — accounts start `PENDING` and cannot sign
+  in until confirmed; resend flow avoids email enumeration
+- Identity verification: vendor-abstracted provider contract with a Persona
+  implementation, consent recording, attempt limits, duplicate-identity
+  risk flags, manual review path. **Decisions only — no biometric storage**
+- Work location: coarse IP geolocation, VPN/proxy/datacenter detection,
+  hashed IPs, per-project jurisdiction rules, impossible-travel detection
+- Agreement metrics: Krippendorff's alpha and majority agreement, unit
+  tested against hand-computed values
+
+Not yet built: verification UI (start/simulate/status screens), admin
+identity review queue, admin jurisdiction-rule editor, reviewer workspace,
+gold-task seeding, consensus computation job, appeals UI.
 
 ## Phase 4 — Client platform ⏳ not started
 

@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
 import type { GlobalRole } from "@/lib/permissions/roles";
+import { issueEmailVerification } from "@/server/services/email-verification";
 
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -54,18 +55,22 @@ export async function registerUser(_prev: RegisterState, formData: FormData): Pr
     create: { key: role as GlobalRole, name: role },
   });
 
-  await prisma.user.create({
+  // Created PENDING, not ACTIVE — the account cannot sign in until the
+  // email address is confirmed. See issueEmailVerification below.
+  const user = await prisma.user.create({
     data: {
       email: normalizedEmail,
       firstName,
       lastName,
       passwordHash,
-      status: "ACTIVE",
+      status: "PENDING",
       roles: { create: { roleId: roleRow.id } },
       ...(role === "TRAINER" ? { trainerProfile: { create: {} } } : {}),
       consentRecords: { create: { type: "terms_of_service", version: "v1" } },
     },
   });
+
+  await issueEmailVerification(user.id, user.email, user.firstName);
 
   return { status: "success" };
 }

@@ -29,6 +29,7 @@ import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { InteractiveHero } from "@/components/marketing/interactive-hero";
 
 export const metadata: Metadata = {
   title: `${brand.name} — Train better AI with verified human expertise`,
@@ -122,50 +123,9 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Abstract product composition — not a stock photo */}
-          <div className="relative mx-auto w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur">
-            <div className="rounded-xl bg-card p-4 shadow-lg">
-              <div className="flex items-center justify-between">
-                <p className="text-xs font-medium text-muted-foreground">Project · Pairwise comparison</p>
-                <Badge variant="success">Quality 96%</Badge>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="rounded-lg border border-border bg-muted/50 p-3">
-                  <p className="text-[11px] font-medium text-muted-foreground">Response A</p>
-                  <div className="mt-2 space-y-1.5">
-                    <div className="h-1.5 w-full rounded bg-border" />
-                    <div className="h-1.5 w-4/5 rounded bg-border" />
-                    <div className="h-1.5 w-3/5 rounded bg-border" />
-                  </div>
-                </div>
-                <div className="rounded-lg border-2 border-primary bg-accent p-3">
-                  <p className="text-[11px] font-medium text-primary">Response B · Preferred</p>
-                  <div className="mt-2 space-y-1.5">
-                    <div className="h-1.5 w-full rounded bg-primary/30" />
-                    <div className="h-1.5 w-5/6 rounded bg-primary/30" />
-                    <div className="h-1.5 w-2/3 rounded bg-primary/30" />
-                  </div>
-                </div>
-              </div>
-              <div className="mt-4 flex items-center justify-between rounded-lg bg-muted/60 px-3 py-2">
-                <span className="text-[11px] text-muted-foreground">Reviewer agreement</span>
-                <span className="text-[11px] font-semibold text-success">94.2%</span>
-              </div>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="rounded-lg bg-white/5 p-3 text-center">
-                <p className="text-lg font-semibold text-white">12.4k</p>
-                <p className="text-[10px] text-white/60">Tasks / week</p>
-              </div>
-              <div className="rounded-lg bg-white/5 p-3 text-center">
-                <p className="text-lg font-semibold text-white">340</p>
-                <p className="text-[10px] text-white/60">Verified experts</p>
-              </div>
-              <div className="rounded-lg bg-white/5 p-3 text-center">
-                <p className="text-lg font-semibold text-white">98.1%</p>
-                <p className="text-[10px] text-white/60">Acceptance rate</p>
-              </div>
-            </div>
+          {/* Live, playable miniature of the actual task workflow */}
+          <div className="mx-auto w-full max-w-md">
+            <InteractiveHero />
           </div>
         </div>
       </section>

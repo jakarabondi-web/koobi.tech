@@ -35,6 +35,8 @@ model User {
   passwordHash      String?
   passwordResetToken String? @unique
   passwordResetExpiresAt DateTime?
+  emailVerificationToken String? @unique
+  emailVerificationExpiresAt DateTime?
   firstName         String
   lastName          String
   displayName       String?
@@ -73,6 +75,7 @@ model User {
   auditLogs         AuditLog[]
   riskFlags         RiskFlag[]
   consentRecords    ConsentRecord[]
+  locationSignals   LocationSignal[]
   apiKeys           ApiKey[]
   disputesFiled     Dispute[]
 
@@ -365,18 +368,113 @@ enum IdentityStatus {
   FAILED
 }
 
+enum VerificationCheckResult {
+  PASS
+  FAIL
+  UNAVAILABLE
+}
+
+/// Identity verification outcome.
+///
+/// PRIVACY: we deliberately store only the provider's *decision* and an
+/// opaque reference — never biometric templates, face embeddings, or
+/// document images. Those stay inside the vendor's compliance envelope.
+/// Storing them here would pull the platform into BIPA / GDPR Art. 9
+/// obligations it is not built to carry. Do not add image or template
+/// columns to this model. See SECURITY.md.
 model IdentityVerification {
-  id         String         @id @default(uuid())
-  userId     String         @unique
-  status     IdentityStatus @default(NOT_STARTED)
-  provider   String?
+  id           String         @id @default(uuid())
+  userId       String         @unique
+  status       IdentityStatus @default(NOT_STARTED)
+  provider     String?
+  /// Opaque vendor-side verification id, for audit + support lookups.
+  providerRef  String?
   documentType String?
-  verifiedAt DateTime?
-  notes      String?
+  /// ISO country code read from the identity document by the provider.
+  documentCountry String?
+
+  // Individual check outcomes (decisions only).
+  documentAuthentic     VerificationCheckResult?
+  livenessPassed        VerificationCheckResult?
+  faceMatchPassed       VerificationCheckResult?
+  /// 1:N search against already-verified users — catches duplicate accounts.
+  duplicateCheckPassed  VerificationCheckResult?
+  /// Provider's own confidence in the 1:1 selfie↔document match.
+  faceMatchScore        Float?
+
+  /// Set when a human reviewed an inconclusive automated result.
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  attempts     Int            @default(0)
+  submittedAt  DateTime?
+  verifiedAt   DateTime?
+  expiresAt    DateTime?
+  notes        String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([status])
   @@map("identity_verifications")
+}
+
+// ---------------------------------------------------------------------------
+// Work location & jurisdiction
+// ---------------------------------------------------------------------------
+
+enum LocationSignalSource {
+  IP_GEOLOCATION
+  DOCUMENT_COUNTRY
+  DECLARED_COUNTRY
+  TAX_RESIDENCY
+}
+
+/// A point-in-time observation of where a user appears to be working from.
+///
+/// PRIVACY: this is coarse (country/region/city from IP), not GPS tracking.
+/// It exists to enforce per-project jurisdiction rules and detect account
+/// sharing — not to monitor individuals. Retention is bounded; see
+/// SECURITY.md before extending precision.
+model LocationSignal {
+  id          String               @id @default(uuid())
+  userId      String
+  source      LocationSignalSource
+  countryCode String?
+  region      String?
+  city        String?
+  /// Truncated/hashed at write time — never store a full raw client IP.
+  ipHash      String?
+  isVpn       Boolean              @default(false)
+  isProxy     Boolean              @default(false)
+  isDatacenter Boolean             @default(false)
+  observedAt  DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, observedAt])
+  @@map("location_signals")
+}
+
+enum JurisdictionRuleMode {
+  ALLOW
+  BLOCK
+}
+
+/// Project-level geofence: "workers on this project must be in X".
+/// Enforced per project rather than by tracking people continuously.
+model ProjectJurisdictionRule {
+  id           String               @id @default(uuid())
+  projectId    String
+  mode         JurisdictionRuleMode @default(ALLOW)
+  countryCode  String
+  /// Why this restriction exists (data residency, language, contract term).
+  reason       String?
+  blockVpn     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, countryCode])
+  @@map("project_jurisdiction_rules")
 }
 
 model Application {
@@ -545,6 +643,7 @@ model Project {
   rubrics       ReviewRubric[]
   goldTasks     GoldTask[]
   datasets      Dataset[]
+  jurisdictionRules ProjectJurisdictionRule[]
 
   @@index([organizationId])
   @@index([status])
@@ -663,6 +762,7 @@ model Task {
   assignments TaskAssignment[]
   submissions TaskSubmission[]
   goldTask    GoldTask?
+  consensus   ConsensusResult?
 
   @@index([projectId, status])
   @@map("tasks")
@@ -720,6 +820,7 @@ model GoldTask {
 
   task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  results GoldTaskResult[]
 
   @@map("gold_tasks")
 }
@@ -808,6 +909,88 @@ model QualitySnapshot {
   trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
 
   @@map("quality_snapshots")
+}
+
+/// Outcome of a hidden gold-standard task. Gold tasks are seeded invisibly
+/// into a trainer's queue at a configured rate — this is the single most
+/// reliable quality signal, because the trainer cannot tell it apart from
+/// real work.
+model GoldTaskResult {
+  id           String   @id @default(uuid())
+  goldTaskId   String
+  userId       String
+  submissionId String?
+  passed       Boolean
+  score        Float?
+  evaluatedAt  DateTime @default(now())
+
+  goldTask GoldTask @relation(fields: [goldTaskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, evaluatedAt])
+  @@map("gold_task_results")
+}
+
+/// Agreement across trainers who independently completed the same task
+/// (overlap/consensus review). Krippendorff's alpha is stored because it
+/// tolerates multiple raters and missing ratings, unlike Cohen's kappa.
+model ConsensusResult {
+  id                 String   @id @default(uuid())
+  taskId             String   @unique
+  raterCount         Int
+  krippendorffAlpha  Float?
+  /// Fraction of raters agreeing with the majority label.
+  majorityAgreement  Float?
+  /// True when agreement fell below the project threshold and a lead
+  /// reviewer must adjudicate.
+  requiresAdjudication Boolean @default(false)
+  computedAt         DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("consensus_results")
+}
+
+/// Tracks how closely a reviewer agrees with lead-reviewer adjudications.
+/// Reviewers drift too — calibrating them is as important as calibrating
+/// trainers, and is a common blind spot in review pipelines.
+model ReviewerCalibration {
+  id                 String   @id @default(uuid())
+  reviewerId         String
+  periodStart        DateTime
+  periodEnd          DateTime
+  reviewsCompleted   Int      @default(0)
+  /// Agreement between this reviewer's decisions and lead adjudications.
+  leadAgreementRate  Float?
+  goldPassRate       Float?
+  avgReviewSeconds   Int?
+
+  @@index([reviewerId, periodEnd])
+  @@map("reviewer_calibrations")
+}
+
+/// A trainer's appeal against a rejection or quality decision.
+model QualityAppeal {
+  id           String       @id @default(uuid())
+  userId       String
+  submissionId String?
+  reviewId     String?
+  reason       String
+  status       AppealStatus @default(OPEN)
+  decision     String?
+  decidedBy    String?
+  decidedAt    DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([status])
+  @@map("quality_appeals")
+}
+
+enum AppealStatus {
+  OPEN
+  UNDER_REVIEW
+  UPHELD
+  OVERTURNED
+  WITHDRAWN
 }
 
 // ---------------------------------------------------------------------------

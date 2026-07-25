@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -12,6 +12,19 @@ const credentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+/**
+ * Auth.js only forwards a `code` to the client when it's declared as a class
+ * property on a CredentialsSignin subclass — a code passed to the constructor
+ * sets the message instead and is masked as the generic "credentials".
+ */
+class EmailUnverifiedError extends CredentialsSignin {
+  code = "email_unverified";
+}
+
+class AccountInactiveError extends CredentialsSignin {
+  code = "account_inactive";
+}
 
 const LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_MINUTES = 15;
@@ -56,7 +69,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        if (user.status !== "ACTIVE") return null;
+        // PENDING means the email address has never been confirmed;
+        // SUSPENDED/DEACTIVATED are enforcement states. None may sign in.
+        if (user.status !== "ACTIVE") {
+          throw user.status === "PENDING" ? new EmailUnverifiedError() : new AccountInactiveError();
+        }
+        if (!user.emailVerifiedAt) {
+          throw new EmailUnverifiedError();
+        }
 
         await prisma.user.update({
           where: { id: user.id },
