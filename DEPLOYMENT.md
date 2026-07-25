@@ -12,14 +12,15 @@ The app cannot build without one — the build applies migrations. Any managed
 Postgres works. **Neon** is the smoothest on Vercel (Storage tab → Create
 Database → Neon), but Supabase, Railway, or RDS are all fine.
 
-You need **two** connection strings from the provider:
-
 | Env var | Which string | Why |
 | --- | --- | --- |
 | `DATABASE_URL` | the **pooled** one (Neon `-pooler`, Supabase port `6543`) | Every serverless invocation can open its own connection. Without a pooler you exhaust the connection limit long before anything else. |
-| `DIRECT_URL` | the **direct/unpooled** one | Migrations run DDL in a session a transaction-mode pooler can't carry. |
+| `DIRECT_URL` | the **direct/unpooled** one — *optional* | Migrations take a session-level advisory lock that a transaction-mode pooler cannot hold. |
 
-Off-serverless (a container, a VM) both can be the same string.
+`DIRECT_URL` is optional: if it's unset the build falls back to
+`DATABASE_URL` and prints a warning. That's correct for any database without
+a pooler. **Set it if you're on Neon, Supabase, or anything else fronted by
+PgBouncer** — otherwise migrations can hang or fail on the advisory lock.
 
 ### 2. Import the repo
 
@@ -33,9 +34,12 @@ Required — the deploy fails or misbehaves without these:
 
 ```
 DATABASE_URL      = <pooled connection string>
-DIRECT_URL        = <direct connection string>
 AUTH_SECRET       = <32-byte random value>   # openssl rand -base64 32
 ```
+
+Add `DIRECT_URL = <direct connection string>` too if your provider pools
+connections (Neon, Supabase). The Vercel/Neon integration creates this value
+already — look for a variable with `UNPOOLED` or `NON_POOLING` in its name.
 
 Strongly recommended once you know the URL:
 
