@@ -59,7 +59,7 @@ model User {
   memberships       OrganizationMember[]
   trainerProfile    TrainerProfile?
   identityVerification IdentityVerification?
-  applications      Application[]
+  application       Application?
   assessmentAttempts AssessmentAttempt[]
   projectApplications ProjectApplication[]
   taskAssignments   TaskAssignment[]
@@ -477,20 +477,30 @@ model ProjectJurisdictionRule {
   @@map("project_jurisdiction_rules")
 }
 
+/// A trainer's application to join the network. Gates access to paid work:
+/// until status is APPROVED, the trainer can see their dashboard but no
+/// assignments. See `canAccessAssignments` in lib/permissions/gating.ts.
 model Application {
   id          String             @id @default(uuid())
-  userId      String
+  userId      String             @unique
   status      ApplicationStatus  @default(DRAFT)
   resumeUrl   String?
+  /// Primary domain the applicant is applying to work in — selects which
+  /// qualification assessment they're given.
+  domain      String?
   submittedAt DateTime?
   decidedAt   DateTime?
   decidedBy   String?
+  /// Shown to the applicant when more information is requested or the
+  /// application is declined.
+  reviewerMessage String?
   notes       String?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([status])
   @@map("applications")
 }
 

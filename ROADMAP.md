@@ -26,19 +26,28 @@ should be updated at the end of each implementation phase.
   to real server actions and the Postgres-backed `User` model
 - 403 page for cross-surface access attempts
 
-## Phase 3 — Trainer platform 🚧 in progress
+## Phase 3 — Trainer platform ✅
 
-Done: grouped sidebar shell with live badge counts, trainer dashboard with
-real KPIs/feedback/recommendations from Prisma, and the wallet + payout
-request flow.
+All 17 trainer routes are built and reachable — no dead nav links:
+application/onboarding, dashboard, project marketplace + detail, my
+projects, task list, gold-task results, pairwise task workspace,
+assessments + attempt runner, quality, earnings, wallet/payments, tax
+summary, notifications, profile, settings, help center, tickets, and
+identity verification.
 
-Not yet built: onboarding wizard, project marketplace + detail pages, task
-workspace (the various task-type renderers), assessments UI, quality
-dashboard, earnings page, notifications center, support, profile, settings.
+Task workspace covers pairwise comparison with rubric scoring, confidence,
+flags, timing, and localStorage draft recovery. Other task-type renderers
+(ranking, prompt writing, code review, …) are not built yet.
 
-## Trust & safety 🚧 in progress
+## Trust & safety ✅ (verified end to end)
 
-Done (backend + services, UI pending):
+The applicant journey is gated and verified in a browser against Postgres:
+sign up → email confirm → application → qualification assessment →
+identity verification → **"application under review"** → admin decision →
+approval email → marketplace unlocks. Assignments stay blocked at every
+step until approved.
+
+Done:
 - Email verification is enforced — accounts start `PENDING` and cannot sign
   in until confirmed; resend flow avoids email enumeration
 - Identity verification: vendor-abstracted provider contract with a Persona
@@ -49,9 +58,16 @@ Done (backend + services, UI pending):
 - Agreement metrics: Krippendorff's alpha and majority agreement, unit
   tested against hand-computed values
 
-Not yet built: verification UI (start/simulate/status screens), admin
-identity review queue, admin jurisdiction-rule editor, reviewer workspace,
-gold-task seeding, consensus computation job, appeals UI.
+- Approval gate (`lib/permissions/gating.ts`) — single source of truth for
+  whether a trainer may access paid work, enforced server-side
+- Assessment engine with timing, attempt limits, cooldowns, auto-grading,
+  and human grading for written answers (correct answers never leave the
+  server)
+- Decision emails for submitted / approved / more-info / waitlisted /
+  declined
+
+Not yet built: admin jurisdiction-rule editor, reviewer workspace,
+automatic gold-task seeding, consensus computation job, appeals UI.
 
 ## Phase 4 — Client platform ⏳ not started
 
@@ -59,7 +75,18 @@ Dashboard, project creation wizard, project overview/tasks/quality/exports,
 team management, billing. `ClientProfile`/`Organization` models exist;
 onboarding UI does not yet.
 
-## Phase 5 — Admin platform ⏳ not started
+## Phase 5 — Admin platform 🚧 mostly built
+
+All 18 admin routes are built: dashboard, trainers list + detail,
+applications review, clients, projects, tasks, review queue, quality
+(with live Krippendorff's alpha), assessments + written-answer grading,
+payouts, invoices, disputes, support, fraud, compliance, audit logs,
+users & roles, and settings.
+
+Not yet built: project creation/editing from the admin side, task import,
+reviewer assignment, and the reviewer workspace itself.
+
+## Phase 5b — Original "not started" scope ⏳
 
 Operations dashboard, trainer applications/detail, client list, project
 operations, task/quality review, payments, disputes, support, fraud alerts.

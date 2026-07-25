@@ -72,11 +72,128 @@ async function upsertUser(params: {
   return user;
 }
 
+async function ensureAssessments() {
+  // --- Qualification assessments (industry practice test after signup) ---
+  await prisma.assessment.upsert({
+    where: { id: "seed-assessment-software" },
+    update: {},
+    create: {
+      id: "seed-assessment-software",
+      title: "Software engineering evaluation qualification",
+      domain: "Software engineering",
+      description:
+        "Checks that you can judge technical answers on accuracy and usefulness rather than length or tone.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt:
+              "A model answers \u201cHow do I stop SQL injection?\u201d with \u201cEscape single quotes in user input.\u201d How should you rate it?",
+            options: [
+              "Correct and complete",
+              "Partially correct \u2014 escaping helps but parameterised queries are the actual fix",
+              "Completely wrong",
+              "Cannot be judged without more context",
+            ],
+            correctAnswer: "Partially correct \u2014 escaping helps but parameterised queries are the actual fix",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt:
+              "Response A is three paragraphs and confident. Response B is two sentences, correct, and directly answers the question. Which is better?",
+            options: [
+              "A \u2014 more thorough",
+              "B \u2014 correctness and directness beat length",
+              "A \u2014 users prefer detail",
+              "They are equal",
+            ],
+            correctAnswer: "B \u2014 correctness and directness beat length",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt:
+              "A model invents a plausible-sounding library function that does not exist. What is the most accurate label?",
+            options: ["Style issue", "Hallucination", "Instruction-following failure", "Safety violation"],
+            correctAnswer: "Hallucination",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "A model is asked to review code containing a race condition and misses it, but suggests useful style improvements. Write the feedback you would give, and explain how you would score it.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: "seed-assessment-general" },
+    update: {},
+    create: {
+      id: "seed-assessment-general",
+      title: "General evaluation qualification",
+      domain: "General assistant",
+      description:
+        "Core rubric reasoning: factual accuracy, calibration, safety, and instruction following.",
+      timeLimitMins: 25,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt:
+              "A model gives a confident medical diagnosis from a one-line symptom description. What is the main problem?",
+            options: [
+              "Tone is too formal",
+              "Overconfidence \u2014 it is not calibrated to the evidence available",
+              "The answer is too short",
+              "Nothing, it is helpful",
+            ],
+            correctAnswer: "Overconfidence \u2014 it is not calibrated to the evidence available",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user asks for a summary in exactly three bullets. The model writes five excellent bullets. How do you score instruction following?",
+            options: ["Full marks \u2014 quality is high", "Low \u2014 it did not follow the explicit constraint", "Ignore it", "Full marks if the content is correct"],
+            correctAnswer: "Low \u2014 it did not follow the explicit constraint",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe a case where the more helpful-sounding response is the worse response, and explain how you would justify that in a review.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+}
+
 async function main() {
   console.log("Seeding Trainora AI demo data…");
 
   await ensureRoles();
   await ensureSkillsAndLanguages();
+
+  await ensureAssessments();
 
   // --- Demo accounts (development only) ---
   const trainer = await upsertUser({
@@ -191,6 +308,77 @@ async function main() {
       containsSensitiveContent: false,
       startDate: new Date(),
       applicationDeadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // Demo trainer is fully approved so the gated surfaces are explorable.
+  await prisma.application.upsert({
+    where: { userId: trainer.id },
+    update: {},
+    create: {
+      userId: trainer.id,
+      domain: "Software engineering",
+      status: "APPROVED",
+      submittedAt: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000),
+      decidedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+    },
+  });
+  await prisma.identityVerification.upsert({
+    where: { userId: trainer.id },
+    update: {},
+    create: {
+      userId: trainer.id,
+      status: "VERIFIED",
+      provider: "PERSONA",
+      providerRef: "seed_verified_trainer",
+      documentType: "PASSPORT",
+      documentCountry: "US",
+      documentAuthentic: "PASS",
+      livenessPassed: "PASS",
+      faceMatchPassed: "PASS",
+      duplicateCheckPassed: "PASS",
+      faceMatchScore: 0.96,
+      verifiedAt: new Date(Date.now() - 9 * 24 * 60 * 60 * 1000),
+    },
+  });
+  await prisma.assessmentAttempt.create({
+    data: {
+      userId: trainer.id,
+      assessmentId: "seed-assessment-software",
+      status: "PASSED",
+      score: 0.92,
+      startedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+      submittedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
+    },
+  });
+
+  // A second applicant sitting in the review queue, so the admin screen
+  // has something real to act on.
+  const applicant = await upsertUser({
+    email: "applicant@trainora.demo",
+    firstName: "Tomas",
+    lastName: "Ferreira",
+    role: "TRAINER",
+  });
+  await prisma.trainerProfile.upsert({
+    where: { userId: applicant.id },
+    update: {},
+    create: {
+      userId: applicant.id,
+      headline: "Computational linguist, 6 years in multilingual NLP evaluation",
+      country: "Portugal",
+      availableHoursPerWeek: 15,
+      onboardingStep: 6,
+    },
+  });
+  await prisma.application.upsert({
+    where: { userId: applicant.id },
+    update: {},
+    create: {
+      userId: applicant.id,
+      domain: "Linguistics",
+      status: "SUBMITTED",
+      submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     },
   });
 
@@ -315,6 +503,7 @@ async function main() {
       },
     },
   });
+
 
   console.log("Seed complete.");
   console.log("Demo accounts (password: %s):", DEMO_PASSWORD);

@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/badge-status";
 import { WeeklyTaskChart, type WeeklyTaskPoint } from "@/components/charts/weekly-task-chart";
+import { GateBanner } from "@/components/trainer/gate-banner";
+import { getTrainerGate } from "@/server/services/trainer-gate";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -44,6 +46,8 @@ export default async function TrainerDashboardPage() {
   if (!session?.user) redirect("/login");
 
   const userId = session.user.id;
+
+  const gate = await getTrainerGate(userId);
 
   const [
     profile,
@@ -102,7 +106,9 @@ export default async function TrainerDashboardPage() {
         }
       />
 
-      {profileCompletion < 100 ? (
+      <GateBanner gate={gate} />
+
+      {gate.canAccessAssignments && profileCompletion < 100 ? (
         <Card>
           <CardContent className="flex flex-col gap-3 pt-5 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-2">
