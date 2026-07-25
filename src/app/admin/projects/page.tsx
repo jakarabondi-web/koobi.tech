@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Briefcase } from "lucide-react";
+import { Briefcase, Upload } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
@@ -10,6 +10,8 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 export const metadata: Metadata = { title: "Projects" };
 const usd = (c: number | null) => (c === null ? "—" : `$${(c / 100).toFixed(2)}`);
@@ -42,7 +44,8 @@ export default async function AdminProjectsPage() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Project</TableHead><TableHead>Client</TableHead><TableHead>Type</TableHead>
-                <TableHead>Pay/task</TableHead><TableHead>Tasks</TableHead><TableHead>Trainers</TableHead><TableHead>Status</TableHead>
+                <TableHead>Pay/task</TableHead><TableHead>Tasks</TableHead><TableHead>Trainers</TableHead>
+                <TableHead>Status</TableHead><TableHead className="text-right">Tasks</TableHead>
               </TableRow></TableHeader>
               <TableBody>
                 {projects.map((p) => (
@@ -54,6 +57,13 @@ export default async function AdminProjectsPage() {
                     <TableCell className="tabular-nums">{p._count.tasks}</TableCell>
                     <TableCell className="tabular-nums">{p._count.assignments}</TableCell>
                     <TableCell><StatusBadge status={p.status} /></TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/admin/projects/${p.id}/import`}>
+                          <Upload className="size-4" /> Import
+                        </Link>
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

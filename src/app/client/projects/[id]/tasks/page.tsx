@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, ListChecks } from "lucide-react";
+import { ArrowLeft, ListChecks, Upload } from "lucide-react";
 
 import { prisma } from "@/lib/db/prisma";
 import { loadClientProject } from "@/server/services/client-project";
@@ -31,14 +31,23 @@ export default async function ProjectTasksPage({ params }: { params: Promise<{ i
       <Button variant="ghost" size="sm" asChild>
         <Link href="/client/projects"><ArrowLeft className="size-4" /> All projects</Link>
       </Button>
-      <PageHeader title={project.name} description="Task-level delivery detail." />
+      <PageHeader
+        title={project.name}
+        description="Task-level delivery detail."
+        actions={
+          <Button variant="outline" asChild>
+            <Link href={`/client/projects/${id}/import`}><Upload className="size-4" /> Import tasks</Link>
+          </Button>
+        }
+      />
       <ProjectTabs projectId={id} />
 
       <Card>
         <CardContent className="pt-6 pb-6">
           {tasks.length === 0 ? (
             <EmptyState icon={ListChecks} title="No tasks yet"
-              description="Tasks appear here once data is imported into this project." />
+              description="Import a JSONL or CSV file to add work to this project."
+              action={<Button size="sm" asChild><Link href={`/client/projects/${id}/import`}>Import tasks</Link></Button>} />
           ) : (
             <Table>
               <TableHeader><TableRow>

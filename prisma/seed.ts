@@ -7,6 +7,14 @@ const prisma = new PrismaClient();
 
 const DEMO_PASSWORD = "Trainora!Demo2026";
 
+// Fixed UUIDs rather than readable slugs: every id in production is a UUID,
+// and seed data that doesn't match that shape hides bugs in id validation.
+const SEED_IDS = {
+  projectPairwise: "11111111-1111-4111-8111-111111111111",
+  assessmentSoftware: "22222222-2222-4222-8222-222222222222",
+  assessmentGeneral: "33333333-3333-4333-8333-333333333333",
+} as const;
+
 async function ensureRoles() {
   for (const key of GLOBAL_ROLES) {
     await prisma.role.upsert({
@@ -75,10 +83,10 @@ async function upsertUser(params: {
 async function ensureAssessments() {
   // --- Qualification assessments (industry practice test after signup) ---
   await prisma.assessment.upsert({
-    where: { id: "seed-assessment-software" },
+    where: { id: SEED_IDS.assessmentSoftware },
     update: {},
     create: {
-      id: "seed-assessment-software",
+      id: SEED_IDS.assessmentSoftware,
       title: "Software engineering evaluation qualification",
       domain: "Software engineering",
       description:
@@ -139,10 +147,10 @@ async function ensureAssessments() {
   });
 
   await prisma.assessment.upsert({
-    where: { id: "seed-assessment-general" },
+    where: { id: SEED_IDS.assessmentGeneral },
     update: {},
     create: {
-      id: "seed-assessment-general",
+      id: SEED_IDS.assessmentGeneral,
       title: "General evaluation qualification",
       domain: "General assistant",
       description:
@@ -288,10 +296,10 @@ async function main() {
 
   // --- Demo project ---
   const project = await prisma.project.upsert({
-    where: { id: "seed-project-pairwise-comparison" },
+    where: { id: SEED_IDS.projectPairwise },
     update: {},
     create: {
-      id: "seed-project-pairwise-comparison",
+      id: SEED_IDS.projectPairwise,
       organizationId: org.id,
       name: "Assistant response preference ranking — v4",
       description: "Pairwise comparison of assistant responses across helpfulness, safety, and tone.",
@@ -344,7 +352,7 @@ async function main() {
   await prisma.assessmentAttempt.create({
     data: {
       userId: trainer.id,
-      assessmentId: "seed-assessment-software",
+      assessmentId: SEED_IDS.assessmentSoftware,
       status: "PASSED",
       score: 0.92,
       startedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),

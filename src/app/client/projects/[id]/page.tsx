@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock, Users, Gauge } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, Users, Gauge, Upload } from "lucide-react";
 
 import { prisma } from "@/lib/db/prisma";
 import { requireTenant, requireProjectInTenant, TenantError } from "@/server/services/tenant";
@@ -83,6 +83,11 @@ export default async function ClientProjectPage({ params }: { params: Promise<{ 
         actions={
           <div className="flex items-center gap-2">
             <StatusBadge status={project.status} />
+            <Button size="sm" variant="outline" asChild>
+              <Link href={`/client/projects/${project.id}/import`}>
+                <Upload className="size-4" /> Import tasks
+              </Link>
+            </Button>
             <ProjectStatusActions projectId={project.id} status={project.status} />
           </div>
         }
@@ -124,8 +129,14 @@ export default async function ClientProjectPage({ params }: { params: Promise<{ 
           <CardContent className="pb-6">
             {recentTasks.length === 0 ? (
               <EmptyState
+                icon={Upload}
                 title="No tasks yet"
-                description="Tasks appear here once you upload data or our team imports it for you."
+                description="Import a JSONL or CSV file to add work to this project."
+                action={
+                  <Button size="sm" asChild>
+                    <Link href={`/client/projects/${project.id}/import`}>Import tasks</Link>
+                  </Button>
+                }
               />
             ) : (
               <ul className="divide-y divide-border">

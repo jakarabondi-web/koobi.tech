@@ -86,8 +86,33 @@ Client-facing quality reporting computes Krippendorff's alpha per project
 and explains how to read it, including flagging that low agreement usually
 indicates an ambiguous rubric rather than poor trainers.
 
-Not yet built: task import/upload, rubric editing from the client side, and
-SSO.
+Task import is built — see below. Not yet built: rubric editing from the
+client side, and SSO.
+
+## Task import ✅
+
+JSONL and CSV import at `/client/projects/[id]/import`, with the same
+importer available to operations staff at `/admin/projects/[id]/import`.
+
+Preview-then-commit: nothing is written until the client confirms a screen
+showing exactly what will land, which rows fail and why (with line numbers),
+and a preview of what trainers will actually see. The file is re-validated
+on commit rather than trusting the previewed result, since the content
+round-trips through the client between the two calls.
+
+Rows are validated against the field shape the project's task type
+requires, so a pairwise file can't be imported into a fact-checking project.
+`external_ref` makes re-imports idempotent — re-running a file adds only
+genuinely new rows. Gold tasks can be seeded inline with `is_gold` +
+`expected_answer`; a gold row without either is rejected rather than
+silently downgraded to a normal task.
+
+Internal ops staff can import on a client's behalf without being an
+organization member. That carve-out is narrow and recorded distinctly in
+the audit log (`project.tasks_imported_by_staff`), so a third-party write
+into a client's project is never indistinguishable from the client's own.
+
+Parser behaviour is covered by 26 unit tests.
 
 ## Reviewer workspace ✅
 
