@@ -505,6 +505,73 @@ async function main() {
   });
 
 
+  // Dataset + billing so the client portal has real content.
+  const dataset = await prisma.dataset.create({
+    data: {
+      projectId: project.id,
+      organizationId: org.id,
+      name: "Preference pairs — batch 1",
+      description: "Accepted pairwise comparisons ready for reward-model training.",
+      items: {
+        create: [
+          { content: { prompt: "Explain TCP vs UDP", chosen: "B", rejected: "A" } },
+          { content: { prompt: "Summarise this contract clause", chosen: "A", rejected: "B" } },
+        ],
+      },
+    },
+  });
+  await prisma.export.create({
+    data: { datasetId: dataset.id, format: "jsonl", status: "QUEUED", requestedBy: clientAdmin.id },
+  });
+  await prisma.billingAccount.upsert({
+    where: { organizationId: org.id },
+    update: {},
+    create: { organizationId: org.id, billingEmail: clientAdmin.email },
+  });
+  await prisma.invoice.createMany({
+    data: [
+      { organizationId: org.id, amountCents: 248_000, status: "PAID", paidAt: new Date(Date.now() - 30 * 864e5) },
+      { organizationId: org.id, amountCents: 187_500, status: "SENT", dueDate: new Date(Date.now() + 14 * 864e5) },
+    ],
+  });
+
+  // Unreviewed submissions so the reviewer queue isn't empty.
+  for (const [i, payload] of [
+    {
+      prompt: "A user asks how to safely dispose of old lithium batteries.",
+      responseA: "Just throw them in the regular bin, they're small enough to not matter.",
+      responseB: "Don't put them in household waste — they can ignite. Take them to a battery recycling point; most supermarkets and hardware stores have collection bins.",
+    },
+    {
+      prompt: "Explain what a database index does, for a non-technical manager.",
+      responseA: "An index is a B-tree structure that reduces lookup complexity from O(n) to O(log n) by maintaining sorted key references.",
+      responseB: "It works like the index at the back of a book — instead of reading every page to find a topic, the database jumps straight to the right place. It makes reads much faster, at the cost of slightly slower writes and some extra storage.",
+    },
+  ].entries()) {
+    const t = await prisma.task.create({
+      data: { projectId: project.id, payload, status: "SUBMITTED" },
+    });
+    await prisma.taskAssignment.create({
+      data: { taskId: t.id, userId: trainer.id, completedAt: new Date() },
+    });
+    await prisma.taskSubmission.create({
+      data: {
+        taskId: t.id,
+        submittedById: trainer.id,
+        content: {
+          preferred: "B",
+          confidence: 4,
+          justification: i === 0
+            ? "B is safer and actionable — A gives advice that could start a fire."
+            : "B matches the audience. A is accurate but uses terms the manager wouldn't know.",
+          scores: { correctness: 5, clarity: 4 },
+          flags: { safety: i === 0, factuality: false, citation: false },
+        },
+        durationSeconds: 120 + i * 45,
+      },
+    });
+  }
+
   console.log("Seed complete.");
   console.log("Demo accounts (password: %s):", DEMO_PASSWORD);
   console.log("  trainer@trainora.demo  — Trainer");

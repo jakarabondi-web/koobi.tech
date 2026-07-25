@@ -16,11 +16,17 @@ import {
   Bell,
   LifeBuoy,
   MessageCircleQuestion,
+  ClipboardCheck,
 } from "lucide-react";
 
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
 
-function buildNavSections(counts: { tasksDue: number; unreadNotifications: number }): NavSection[] {
+function buildNavSections(counts: {
+  tasksDue: number;
+  unreadNotifications: number;
+  reviewQueue: number;
+  isReviewer: boolean;
+}): NavSection[] {
   return [
     {
       label: "Dashboard",
@@ -40,6 +46,21 @@ function buildNavSections(counts: { tasksDue: number; unreadNotifications: numbe
         { href: "/trainer/tasks/gold", label: "Gold tasks", icon: Medal },
       ],
     },
+    ...(counts.isReviewer
+      ? [
+          {
+            label: "Reviewing",
+            items: [
+              {
+                href: "/trainer/review",
+                label: "Review queue",
+                icon: ClipboardCheck,
+                badge: counts.reviewQueue || undefined,
+              },
+            ],
+          },
+        ]
+      : []),
     {
       label: "Assessments",
       items: [{ href: "/trainer/assessments", label: "My assessments", icon: GraduationCap }],
@@ -76,21 +97,25 @@ export function TrainerShell({
   userEmail,
   tasksDue = 0,
   unreadNotifications = 0,
+  reviewQueue = 0,
+  isReviewer = false,
   children,
 }: {
   userName: string;
   userEmail: string;
   tasksDue?: number;
   unreadNotifications?: number;
+  reviewQueue?: number;
+  isReviewer?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <DashboardShell
-      navSections={buildNavSections({ tasksDue, unreadNotifications })}
+      navSections={buildNavSections({ tasksDue, unreadNotifications, reviewQueue, isReviewer })}
       surfaceLabel="Trainer portal"
       userName={userName}
       userEmail={userEmail}
-      userRoleLabel="Trainer"
+      userRoleLabel={isReviewer ? "Reviewer" : "Trainer"}
       unreadNotifications={unreadNotifications}
       notificationsHref="/trainer/notifications"
     >

@@ -69,11 +69,42 @@ Done:
 Not yet built: admin jurisdiction-rule editor, reviewer workspace,
 automatic gold-task seeding, consensus computation job, appeals UI.
 
-## Phase 4 — Client platform ⏳ not started
+## Phase 4 — Client platform ✅
 
-Dashboard, project creation wizard, project overview/tasks/quality/exports,
-team management, billing. `ClientProfile`/`Organization` models exist;
-onboarding UI does not yet.
+All 15 client routes are built: organization onboarding, dashboard, project
+list, six-step creation wizard (with templates), project overview plus
+tasks/quality/workforce tabs, datasets, exports, team management with
+invitations, billing, invoices, API & webhooks, security, and settings.
+
+**Tenant isolation** is enforced through `server/services/tenant.ts` — every
+client query resolves the organization from `OrganizationMember`, never from
+a role check or a caller-supplied id. A project belonging to another
+organization 404s identically to one that doesn't exist, so existence
+can't be probed. Covered by unit tests in `src/tests/tenant-isolation.test.ts`.
+
+Client-facing quality reporting computes Krippendorff's alpha per project
+and explains how to read it, including flagging that low agreement usually
+indicates an ambiguous rubric rather than poor trainers.
+
+Not yet built: task import/upload, rubric editing from the client side, and
+SSO.
+
+## Reviewer workspace ✅
+
+Blind review workspace at `/trainer/review`, gated on the `task.review`
+permission so a plain trainer can't reach it. Reviewers see the prompt,
+both responses, the trainer's preference and justification — but never the
+trainer's identity.
+
+Approve / request revision / reject / escalate, with rubric scores, error
+categories, and a confidence rating. Anything other than an approval
+requires written feedback, since the trainer reads it. Approving is what
+creates the trainer's earning, so that happens in the same transaction as
+the decision. Gold-task outcomes are recorded either way as calibration
+signal, and reviewers see their own peer-agreement alpha.
+
+Not yet built: lead-reviewer adjudication queue for escalations, and
+automatic gold-task seeding into live queues.
 
 ## Phase 5 — Admin platform 🚧 mostly built
 
@@ -85,11 +116,6 @@ users & roles, and settings.
 
 Not yet built: project creation/editing from the admin side, task import,
 reviewer assignment, and the reviewer workspace itself.
-
-## Phase 5b — Original "not started" scope ⏳
-
-Operations dashboard, trainer applications/detail, client list, project
-operations, task/quality review, payments, disputes, support, fraud alerts.
 
 ## Phase 6 — Enterprise & integrations ⏳ not started
 
