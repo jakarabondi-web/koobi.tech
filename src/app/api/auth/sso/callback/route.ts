@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db/prisma";
-import { clientSecretFor, discoverOidc, domainOfEmail } from "@/lib/auth/sso";
+import { clientSecretFor, discoverOidc, domainOfEmail, verifyIdToken } from "@/lib/auth/sso";
 
 /**
  * GET /api/auth/sso/callback — exchanges the authorization code.
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
   const jar = await cookies();
 
   const clear = (res: NextResponse) => {
-    for (const name of ["sso_state", "sso_verifier", "sso_org"]) {
+    for (const name of ["sso_state", "sso_verifier", "sso_nonce", "sso_org"]) {
       res.cookies.set(name, "", { path: "/api/auth/sso", maxAge: 0 });
     }
     return res;
@@ -38,9 +38,12 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const expectedState = jar.get("sso_state")?.value;
   const verifier = jar.get("sso_verifier")?.value;
+  const nonce = jar.get("sso_nonce")?.value;
   const orgId = jar.get("sso_org")?.value;
 
-  if (!code || !state || !expectedState || !verifier || !orgId) return fail("sso_expired");
+  if (!code || !state || !expectedState || !verifier || !nonce || !orgId) {
+    return fail("sso_expired");
+  }
   if (state !== expectedState) return fail("sso_state_mismatch");
 
   const org = await prisma.organization.findUnique({
@@ -78,11 +81,32 @@ export async function GET(request: Request) {
     return fail("sso_token_exchange_failed");
   }
 
-  const email = await emailFromToken(tokenBody, discovery.userinfo_endpoint);
-  if (!email) return fail("sso_no_email");
+  // An id_token is mandatory. Falling back to the userinfo endpoint when one
+  // is missing would mean accepting an identity we never verified a signature
+  // for, so an IdP that doesn't return one is a configuration error, not a
+  // case to work around.
+  if (!tokenBody.id_token) return fail("sso_no_id_token");
+  if (!discovery.jwks_uri) return fail("sso_no_jwks");
+
+  const verified = await verifyIdToken({
+    idToken: tokenBody.id_token,
+    jwksUri: discovery.jwks_uri,
+    issuer: discovery.issuer,
+    clientId: org.ssoClientId,
+    nonce,
+  });
+  if ("error" in verified) return fail("sso_token_invalid");
+
+  // An IdP that explicitly says an address is unverified must not be used to
+  // sign someone in — that claim is how account-takeover-by-unverified-email
+  // works. A provider that omits the claim entirely is trusted for its own
+  // domain, which the check below still enforces.
+  if (verified.emailVerified === false) return fail("sso_email_unverified");
 
   // The IdP is authoritative for its own domain and nothing else.
-  if (domainOfEmail(email) !== org.ssoDomain) return fail("sso_domain_mismatch");
+  if (domainOfEmail(verified.email) !== org.ssoDomain) return fail("sso_domain_mismatch");
+
+  const email = verified.email;
 
   const user = await prisma.user.findUnique({
     where: { email: email.toLowerCase() },
@@ -125,45 +149,4 @@ export async function GET(request: Request) {
       new URL(`/login/sso?ticket=${encodeURIComponent(ticket)}`, url.origin)
     )
   );
-}
-
-/** Reads the email claim from the id_token, falling back to userinfo. */
-async function emailFromToken(
-  token: { id_token?: string; access_token?: string },
-  userinfoEndpoint?: string
-): Promise<string | null> {
-  if (token.id_token) {
-    const claims = decodeJwtPayload(token.id_token);
-    // NOTE: the signature is not verified here. Before this flow is used for
-    // real, verify it against the issuer's JWKS — an unverified id_token is
-    // only as trustworthy as the TLS connection it arrived on.
-    if (claims && typeof claims.email === "string") return claims.email;
-  }
-
-  if (userinfoEndpoint && token.access_token) {
-    try {
-      const res = await fetch(userinfoEndpoint, {
-        headers: { authorization: `Bearer ${token.access_token}`, accept: "application/json" },
-        signal: AbortSignal.timeout(8000),
-      });
-      if (res.ok) {
-        const body = (await res.json()) as { email?: unknown };
-        if (typeof body.email === "string") return body.email;
-      }
-    } catch {
-      return null;
-    }
-  }
-
-  return null;
-}
-
-function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
-  const parts = jwt.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    return JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
-  } catch {
-    return null;
-  }
 }

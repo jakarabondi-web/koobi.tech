@@ -4,9 +4,11 @@ import {
   apiError,
   apiOk,
   authenticateApiRequest,
+  enumFilter,
   isFailure,
   pagination,
   projectForKey,
+  REVIEW_DECISIONS,
 } from "@/server/services/api-auth";
 
 /**
@@ -27,12 +29,10 @@ export async function GET(request: Request) {
   if (!project) return apiError(404, "not_found", "Project not found.");
 
   const { limit, offset } = pagination(url);
-  const decision = url.searchParams.get("decision");
   const since = url.searchParams.get("since");
 
-  if (decision && !["APPROVED", "REJECTED", "REVISION_REQUESTED", "ESCALATED"].includes(decision)) {
-    return apiError(400, "invalid_parameter", "decision must be one of APPROVED, REJECTED, REVISION_REQUESTED, ESCALATED.");
-  }
+  const decision = enumFilter(url.searchParams.get("decision"), REVIEW_DECISIONS, "decision");
+  if (isFailure(decision)) return decision.response;
 
   let submittedAfter: Date | undefined;
   if (since) {
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
 
   const where = {
     task: { projectId: project.id },
-    ...(decision ? { reviews: { some: { decision: decision as never } } } : {}),
+    ...(decision.value ? { reviews: { some: { decision: decision.value } } } : {}),
     ...(submittedAfter ? { submittedAt: { gt: submittedAfter } } : {}),
   };
 

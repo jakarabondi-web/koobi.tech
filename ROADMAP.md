@@ -159,9 +159,9 @@ ownership is proved by a DNS TXT record rather than asserted, public email
 domains are refused outright, and the client secret lives in the environment
 rather than the database. Enforcement blocks password sign-in for a verified
 domain. Session handoff from the callback route uses a single-use
-`SsoTicket`. Two gaps are documented in `SECURITY.md`: the `id_token`
-signature is not yet checked against the issuer's JWKS, and there is no
-just-in-time provisioning.
+`SsoTicket`. The returned `id_token` is verified against the issuer's JWKS
+with `iss`, `aud`, `nonce`, and expiry all checked. No just-in-time
+provisioning, by design — see `SECURITY.md`.
 
 **Not built:** webhook dispatch, export processing workers, SAML/SCIM,
 API rate limiting, real payment-provider integrations beyond the
@@ -171,9 +171,10 @@ Stripe Connect and M-Pesa paths already in place, object storage.
 
 - Playwright E2E suite — flows are currently verified by driving a real
   browser against Postgres during development, but those runs aren't
-  committed as regression tests. Vitest unit tests do exist: 97 covering
+  committed as regression tests. Vitest unit tests do exist: 123 covering
   agreement metrics, tenant isolation, the import parser, rubrics, API-key
-  handling, and SSO domain/PKCE logic.
+  handling, request validation, SSO domain/PKCE logic, and `id_token`
+  signature verification.
 - Rate limiting, field-level encryption, signed download URLs (tracked in
   `SECURITY.md`)
 - Repository layer (`server/repositories`) for shared/testable query logic

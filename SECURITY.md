@@ -96,6 +96,9 @@ Keys authenticate the versioned client API (`/api/v1/*`, see `API.md`).
 - Scope (`READ` / `READ + WRITE`), revocation, and expiry are all enforced
   server-side per request. Revoked, expired, and nonexistent keys produce an
   identical `401`, so a caller cannot probe which one it holds.
+- Request bodies are capped at 2 MB, measured on bytes actually read rather
+  than on `content-length` — that header is caller-supplied and simply absent
+  on a chunked request, so a header check alone was skippable.
 - The organization is resolved from the key. A caller-supplied
   `organizationId` is ignored — verified by driving both tenants' keys
   against each other's projects, datasets, and submissions.
@@ -122,11 +125,30 @@ environment as `SSO_CLIENT_SECRET_<ORG_SLUG>`. A secret in a row is a secret
 in every backup, replica, and support query. The UI reports only whether one
 is present, never its value, and the form does not accept one.
 
-**The flow.** Authorization code + PKCE (S256), with `state` bound to an
-HttpOnly, SameSite=Lax cookie. The issuer URL is validated as `https` before
-its discovery document is fetched, since a tenant-supplied URL is an SSRF
-vector. On return, the email the IdP asserts must sit under the
-organization's *verified* domain — an IdP is authoritative for its own
+**The flow.** Authorization code + PKCE (S256), with `state` and `nonce`
+each bound to an HttpOnly, SameSite=Lax cookie. The issuer URL is validated
+as `https` before its discovery document is fetched, since a tenant-supplied
+URL is an SSRF vector.
+
+**The returned `id_token` is fully verified** (`verifyIdToken` in
+`src/lib/auth/sso.ts`) before any identity is believed:
+
+- signature against the issuer's published JWKS, so an unsigned or forged
+  token is refused — without this an `id_token` is just a base64 string the
+  browser handed us
+- `iss` matches the discovered issuer
+- `aud` matches our client id, so another relying party of the same IdP
+  cannot replay its token at us
+- `nonce` matches the cookie for this attempt, which is what stops a
+  previously captured token being replayed
+- `exp`/`iat`, with 60s clock tolerance
+
+There is no fallback to the userinfo endpoint when an `id_token` is absent:
+that would mean accepting an identity whose signature we never checked.
+
+An explicit `email_verified: false` is refused. A provider that omits the
+claim is trusted for its own domain — and the email must still sit under the
+organization's *verified* domain, because an IdP is authoritative for its own
 domain and nothing else.
 
 **Session handoff.** A route handler cannot mint an Auth.js session, so the
@@ -143,14 +165,13 @@ remember.
 
 ### SSO gaps
 
-- **The `id_token` signature is not verified against the issuer's JWKS.**
-  The email claim is currently trusted on the strength of the TLS connection
-  to the token endpoint. This must be fixed before the flow is used against
-  a real IdP; it is marked in `src/app/api/auth/sso/callback/route.ts`.
 - **No just-in-time provisioning.** An account must already exist and be
-  invited. Creating users straight from an IdP assertion would admit
-  everyone in the tenant's directory.
+  invited. This is a deliberate choice, not a missing feature: creating users
+  straight from an IdP assertion would admit everyone in the tenant's
+  directory.
 - **No SAML**, no SCIM directory sync, no IdP-initiated sign-in.
+- **No refresh-token handling or single logout.** Signing out of the IdP does
+  not end a Trainora session; the 8-hour session lifetime bounds it.
 
 ## Explicitly mocked (do not mistake for production-ready)
 

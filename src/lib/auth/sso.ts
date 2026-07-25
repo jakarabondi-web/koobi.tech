@@ -1,6 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { resolveTxt } from "node:dns/promises";
 
+import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
+
 /**
  * Enterprise SSO via OIDC.
  *
@@ -106,6 +108,7 @@ export type OidcDiscovery = {
   authorization_endpoint: string;
   token_endpoint: string;
   userinfo_endpoint?: string;
+  jwks_uri?: string;
   issuer: string;
 };
 
@@ -149,6 +152,7 @@ export async function discoverOidc(issuerUrl: string): Promise<OidcDiscovery | {
       authorization_endpoint: body.authorization_endpoint,
       token_endpoint: body.token_endpoint,
       userinfo_endpoint: body.userinfo_endpoint,
+      jwks_uri: body.jwks_uri,
       issuer: body.issuer,
     };
   } catch {
@@ -177,4 +181,80 @@ export function createPkcePair() {
 
 export function createState(): string {
   return randomBytes(16).toString("base64url");
+}
+
+export function createNonce(): string {
+  return randomBytes(16).toString("base64url");
+}
+
+/**
+ * JWKS caching.
+ *
+ * `createRemoteJWKSet` caches keys and re-fetches on an unknown `kid`, which
+ * is what handles an IdP rotating its signing key. Keeping one instance per
+ * JWKS URL preserves that cache; building a new one per sign-in would refetch
+ * the key set every time and turn the IdP into a hard dependency of every
+ * request.
+ */
+const jwksCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function jwksFor(uri: string) {
+  let set = jwksCache.get(uri);
+  if (!set) {
+    set = createRemoteJWKSet(new URL(uri), { timeoutDuration: 8000 });
+    jwksCache.set(uri, set);
+  }
+  return set;
+}
+
+export type VerifiedIdToken = { email: string; emailVerified: boolean | null; subject: string };
+
+/**
+ * Verifies an id_token's signature and claims.
+ *
+ * The whole security of the SSO flow rests here. Without signature
+ * verification an id_token is just a base64 string the browser handed us —
+ * anyone able to reach the callback could mint claims for any address. The
+ * checks below are the ones that make the token mean something:
+ *
+ *   - signature against the issuer's published JWKS
+ *   - `iss` matches the issuer we discovered, so a token minted by a
+ *     different provider is not accepted
+ *   - `aud` matches our client id, so a token issued for another relying
+ *     party of the same IdP can't be replayed at us
+ *   - `nonce` matches the one we generated for this attempt, which is what
+ *     stops a previously captured token being replayed
+ *   - `exp`/`iat` via jose's default clock handling
+ */
+export async function verifyIdToken(params: {
+  idToken: string;
+  jwksUri: string;
+  issuer: string;
+  clientId: string;
+  nonce: string;
+}): Promise<VerifiedIdToken | { error: string }> {
+  let payload: JWTPayload;
+  try {
+    ({ payload } = await jwtVerify(params.idToken, jwksFor(params.jwksUri), {
+      issuer: params.issuer,
+      audience: params.clientId,
+      clockTolerance: 60,
+    }));
+  } catch (err) {
+    return { error: `id_token verification failed: ${(err as Error).message}` };
+  }
+
+  if (payload.nonce !== params.nonce) {
+    return { error: "id_token nonce did not match this sign-in attempt." };
+  }
+
+  const email = typeof payload.email === "string" ? payload.email : null;
+  if (!email) return { error: "id_token contained no email claim." };
+  if (typeof payload.sub !== "string") return { error: "id_token contained no subject." };
+
+  return {
+    email,
+    emailVerified: typeof payload.email_verified === "boolean" ? payload.email_verified : null,
+    subject: payload.sub,
+  };
 }

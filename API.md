@@ -57,7 +57,10 @@ the API in `server/services/api-auth.ts`.
   `limit` defaults to 50 and is capped at 200.
 - Errors are `{ error: { code, message, ...context } }`. `code` is stable
   and machine-readable; `message` is for a human reading logs.
-- Bodies are capped at 2 MB.
+- Bodies are capped at 2 MB, enforced on bytes actually read — omitting
+  `content-length` does not skip the check.
+- An unknown value for an enum filter (`status`, `decision`) returns
+  `400 invalid_parameter` naming the accepted values, not a 500.
 - A project or dataset belonging to another organization returns the same
   `404 not_found` as one that doesn't exist — distinguishing them would let
   a key enumerate other tenants' ids.

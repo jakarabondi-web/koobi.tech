@@ -8,10 +8,12 @@ import {
   apiError,
   apiOk,
   authenticateApiRequest,
+  enumFilter,
   isFailure,
   pagination,
   projectForKey,
   readJson,
+  TASK_STATUSES,
 } from "@/server/services/api-auth";
 
 /** GET /api/v1/tasks?project_id=… — list tasks and their status. */
@@ -29,12 +31,14 @@ export async function GET(request: Request) {
   if (!project) return apiError(404, "not_found", "Project not found.");
 
   const { limit, offset } = pagination(url);
-  const status = url.searchParams.get("status");
   const externalRef = url.searchParams.get("external_ref");
+
+  const status = enumFilter(url.searchParams.get("status"), TASK_STATUSES, "status");
+  if (isFailure(status)) return status.response;
 
   const where = {
     projectId: project.id,
-    ...(status ? { status: status.toUpperCase() as never } : {}),
+    ...(status.value ? { status: status.value } : {}),
     ...(externalRef ? { externalRef } : {}),
   };
 

@@ -6,9 +6,11 @@ import {
   apiError,
   apiOk,
   authenticateApiRequest,
+  enumFilter,
   isFailure,
   logApiAction,
   pagination,
+  PROJECT_STATUSES,
   readJson,
 } from "@/server/services/api-auth";
 
@@ -19,11 +21,13 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const { limit, offset } = pagination(url);
-  const status = url.searchParams.get("status");
+
+  const status = enumFilter(url.searchParams.get("status"), PROJECT_STATUSES, "status");
+  if (isFailure(status)) return status.response;
 
   const where = {
     organizationId: ctx.organizationId,
-    ...(status ? { status: status.toUpperCase() as never } : {}),
+    ...(status.value ? { status: status.value } : {}),
   };
 
   const [rows, total] = await Promise.all([

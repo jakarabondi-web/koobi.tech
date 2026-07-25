@@ -95,15 +95,16 @@ export async function saveSsoConfig(_prev: SsoState, formData: FormData): Promis
       ssoProviderName: parsed.data.providerName || null,
       // A new domain is unverified until its own DNS record is found, and
       // enforcement drops with it — otherwise switching domains would lock
-      // everyone out.
+      // everyone out. A first-time save needs a token too.
       ...(domainChanged
         ? {
             ssoDomainVerifiedAt: null,
             ssoDomainToken: generateDomainToken(),
             ssoEnforced: false,
           }
-        : {}),
-      ...(current.ssoDomainToken ? {} : { ssoDomainToken: generateDomainToken() }),
+        : current.ssoDomainToken
+          ? {}
+          : { ssoDomainToken: generateDomainToken() }),
     },
   });
 
@@ -127,8 +128,13 @@ export async function saveSsoConfig(_prev: SsoState, formData: FormData): Promis
   };
 }
 
-/** Performs the DNS lookup and marks the domain verified when it matches. */
-export async function verifySsoDomain(_prev: SsoState, _formData: FormData): Promise<SsoState> {
+/**
+ * Performs the DNS lookup and marks the domain verified when it matches.
+ *
+ * Takes no form fields — the domain and token come from the database, so
+ * neither can be substituted by whoever submits the form.
+ */
+export async function verifySsoDomain(): Promise<SsoState> {
   let tenant;
   try {
     tenant = await adminTenant();

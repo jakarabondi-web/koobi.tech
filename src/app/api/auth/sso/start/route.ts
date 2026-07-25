@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/prisma";
 import {
   clientSecretFor,
+  createNonce,
   createPkcePair,
   createState,
   discoverOidc,
@@ -45,6 +46,7 @@ export async function GET(request: Request) {
 
   const { verifier, challenge } = createPkcePair();
   const state = createState();
+  const nonce = createNonce();
 
   const authorize = new URL(discovery.authorization_endpoint);
   authorize.searchParams.set("response_type", "code");
@@ -54,6 +56,9 @@ export async function GET(request: Request) {
   authorize.searchParams.set("state", state);
   authorize.searchParams.set("code_challenge", challenge);
   authorize.searchParams.set("code_challenge_method", "S256");
+  // Binds the id_token to this attempt; the callback rejects a token whose
+  // nonce doesn't match, which is what stops a captured token being replayed.
+  authorize.searchParams.set("nonce", nonce);
   // Hints the IdP toward the right account without asserting it.
   authorize.searchParams.set("login_hint", email);
 
@@ -67,6 +72,7 @@ export async function GET(request: Request) {
   };
   jar.set("sso_state", state, common);
   jar.set("sso_verifier", verifier, common);
+  jar.set("sso_nonce", nonce, common);
   jar.set("sso_org", org.id, common);
 
   return NextResponse.redirect(authorize);
