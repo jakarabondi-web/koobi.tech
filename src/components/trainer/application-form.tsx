@@ -1,0 +1,113 @@
+"use client";
+
+import { useActionState } from "react";
+import { CheckCircle2 } from "lucide-react";
+
+import { submitApplication, type ActionState } from "@/server/actions/applications";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+const initialState: ActionState = { status: "idle" };
+
+export const DOMAINS = [
+  "Software engineering",
+  "Mathematics",
+  "Medicine",
+  "Law",
+  "Finance",
+  "Science",
+  "Engineering",
+  "Linguistics",
+  "Education",
+  "Writing",
+  "Research",
+] as const;
+
+export function ApplicationForm({
+  defaults,
+}: {
+  defaults: { domain?: string; headline?: string; country?: string; hoursPerWeek?: number };
+}) {
+  const [state, formAction, pending] = useActionState(submitApplication, initialState);
+
+  if (state.status === "success") {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-10 text-center">
+        <CheckCircle2 className="size-8 text-success" />
+        <p className="text-lg font-semibold">Application submitted</p>
+        <p className="max-w-md text-sm text-muted-foreground">
+          Your application is under consideration. Our team reviews every application individually
+          and will get back to you shortly — we&apos;ve emailed you a confirmation.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <form action={formAction} className="space-y-5 rounded-xl border border-border bg-card p-6">
+      <div className="space-y-1.5">
+        <Label htmlFor="domain">Primary area of expertise</Label>
+        <select
+          id="domain"
+          name="domain"
+          defaultValue={defaults.domain ?? ""}
+          required
+          className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+        >
+          <option value="" disabled>
+            Select a domain
+          </option>
+          {DOMAINS.map((d) => (
+            <option key={d} value={d}>
+              {d}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-muted-foreground">
+          This determines which qualification assessment you&apos;ll take.
+        </p>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="headline">Your background</Label>
+        <Textarea
+          id="headline"
+          name="headline"
+          rows={4}
+          required
+          defaultValue={defaults.headline ?? ""}
+          placeholder="e.g. Senior backend engineer, 8 years in distributed systems. MSc Computer Science."
+        />
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="country">Country of residence</Label>
+          <Input id="country" name="country" required defaultValue={defaults.country ?? ""} />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="hoursPerWeek">Available hours per week</Label>
+          <Input
+            id="hoursPerWeek"
+            name="hoursPerWeek"
+            type="number"
+            min={1}
+            max={60}
+            required
+            defaultValue={defaults.hoursPerWeek ?? 10}
+          />
+        </div>
+      </div>
+
+      {state.status === "error" && state.message ? (
+        <p className="text-sm text-destructive">{state.message}</p>
+      ) : null}
+
+      <Button type="submit" variant="violet" disabled={pending}>
+        {pending ? "Submitting…" : "Submit application"}
+      </Button>
+    </form>
+  );
+}

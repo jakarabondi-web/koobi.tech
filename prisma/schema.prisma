@@ -1,0 +1,1516 @@
+// Trainora AI — core database schema
+// See DATABASE.md for entity-relationship documentation.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  /// Pooled connection. On serverless (Vercel) every invocation can open its
+  /// own connection, which exhausts a Postgres connection limit long before
+  /// it exhausts anything else — so this must point at a pooler (PgBouncer,
+  /// Neon's pooled host, Supabase's :6543) in any deployed environment.
+  url      = env("DATABASE_URL")
+  /// Direct, unpooled connection. Migrations run DDL in a session that a
+  /// transaction-mode pooler cannot carry, so they need the direct host.
+  /// Locally both point at the same server, which is fine.
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Identity, auth & RBAC
+// ---------------------------------------------------------------------------
+
+enum GlobalRole {
+  TRAINER
+  EXPERT
+  REVIEWER
+  LEAD_REVIEWER
+  CLIENT_MEMBER
+  CLIENT_ADMIN
+  OPERATIONS_MANAGER
+  QUALITY_MANAGER
+  FINANCE_MANAGER
+  SUPPORT_AGENT
+  SUPER_ADMIN
+}
+
+model User {
+  id                String    @id @default(uuid())
+  email             String    @unique
+  emailVerifiedAt   DateTime?
+  passwordHash      String?
+  passwordResetToken String? @unique
+  passwordResetExpiresAt DateTime?
+  emailVerificationToken String? @unique
+  emailVerificationExpiresAt DateTime?
+  firstName         String
+  lastName          String
+  displayName       String?
+  avatarUrl         String?
+  timezone          String?
+  locale            String    @default("en")
+  status            UserStatus @default(ACTIVE)
+  twoFactorEnabled  Boolean   @default(false)
+  lastLoginAt       DateTime?
+  lastLoginIp       String?
+  failedLoginCount  Int       @default(0)
+  lockedUntil       DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  accounts          Account[]
+  sessions          Session[]
+  ssoTickets        SsoTicket[]
+  roles             UserRole[]
+  memberships       OrganizationMember[]
+  trainerProfile    TrainerProfile?
+  identityVerification IdentityVerification?
+  application       Application?
+  assessmentAttempts AssessmentAttempt[]
+  projectApplications ProjectApplication[]
+  taskAssignments   TaskAssignment[]
+  submissions       TaskSubmission[]        @relation("SubmittedBy")
+  reviewsGiven      Review[]                 @relation("ReviewedBy")
+  earnings          Earning[]
+  paymentAccounts   PaymentAccount[]
+  payoutRequests    PayoutRequest[]
+  supportTickets    SupportTicket[]          @relation("TicketRequester")
+  assignedTickets   SupportTicket[]          @relation("TicketAssignee")
+  supportMessages   SupportMessage[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  riskFlags         RiskFlag[]
+  consentRecords    ConsentRecord[]
+  locationSignals   LocationSignal[]
+  apiKeys           ApiKey[]
+  disputesFiled     Dispute[]
+
+  @@index([status])
+  @@map("users")
+}
+
+enum UserStatus {
+  ACTIVE
+  PENDING
+  SUSPENDED
+  DEACTIVATED
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  key         GlobalRole   @unique
+  name        String
+  description String?
+  permissions Permission[]  @relation("RolePermissions")
+  userRoles   UserRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String @id @default(uuid())
+  key         String @unique
+  description String?
+  roles       Role[] @relation("RolePermissions")
+
+  @@map("permissions")
+}
+
+model UserRole {
+  id        String   @id @default(uuid())
+  userId    String
+  roleId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_roles")
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  provider          String
+  providerAccountId String
+  refreshToken      String?
+  accessToken       String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+/// A single-use handoff from a completed SSO callback to the session layer.
+///
+/// The OIDC callback runs in a route handler, which cannot mint an Auth.js
+/// session directly. Rather than trusting a user id carried in a URL, the
+/// callback records a ticket here and the sign-in provider consumes it —
+/// once, within a minute, and never again.
+model SsoTicket {
+  id             String   @id @default(uuid())
+  token          String   @unique
+  userId         String
+  organizationId String
+  issuer         String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sso_tickets")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model ConsentRecord {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  version   String
+  acceptedAt DateTime @default(now())
+  ipAddress String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("consent_records")
+}
+
+// ---------------------------------------------------------------------------
+// Organizations (client tenants) & multi-tenancy
+// ---------------------------------------------------------------------------
+
+enum OrganizationStatus {
+  TRIAL
+  PENDING_APPROVAL
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+model Organization {
+  id           String             @id @default(uuid())
+  name         String
+  slug         String             @unique
+  website      String?
+  industry     String?
+  useCase      String?
+  status       OrganizationStatus @default(TRIAL)
+  securityTier String?
+  /// Email domain that routes to this organization's SSO, e.g. "acme.com".
+  /// Verified before enforcement so a tenant can't claim a domain it does
+  /// not control.
+  ssoDomain         String?  @unique
+  ssoDomainVerifiedAt DateTime?
+  /// Random value the tenant publishes as a DNS TXT record on the domain.
+  /// Verification is a real DNS lookup, so a tenant cannot claim a domain
+  /// it does not control.
+  ssoDomainToken    String?
+  /// Display name for the button on the sign-in page, e.g. "Okta".
+  ssoProviderName   String?
+  /// OIDC discovery URL and client id. The client secret is never stored
+  /// here in plaintext — see SECURITY.md.
+  ssoIssuerUrl      String?
+  ssoClientId       String?
+  ssoEnforced       Boolean  @default(false)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  members       OrganizationMember[]
+  clientProfile ClientProfile?
+  projects      Project[]
+  billingAccount BillingAccount?
+  invoices      Invoice[]
+  datasets      Dataset[]
+  apiKeys       ApiKey[]
+  webhooks      Webhook[]
+  auditLogs     AuditLog[]
+
+  @@map("organizations")
+}
+
+enum OrgMemberRole {
+  MEMBER
+  ADMIN
+  BILLING_OWNER
+}
+
+model OrganizationMember {
+  id             String        @id @default(uuid())
+  organizationId String
+  userId         String
+  role           OrgMemberRole @default(MEMBER)
+  invitedAt      DateTime      @default(now())
+  joinedAt       DateTime?
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+model ClientProfile {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  contactName    String
+  contactTitle   String?
+  companySize    String?
+  estimatedVolume String?
+  onboardingStep Int      @default(0)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("client_profiles")
+}
+
+// ---------------------------------------------------------------------------
+// Trainer profile & qualification
+// ---------------------------------------------------------------------------
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  ADDITIONAL_INFO_REQUIRED
+  APPROVED
+  REJECTED
+  WAITLISTED
+  SUSPENDED
+}
+
+model TrainerProfile {
+  id                 String   @id @default(uuid())
+  userId             String   @unique
+  headline            String?
+  bio                 String?
+  country             String?
+  city                String?
+  availableHoursPerWeek Int?
+  qualityScore        Float?  @default(0)
+  reliabilityScore     Float?  @default(0)
+  onboardingStep       Int     @default(0)
+  sensitiveContentOptIn Boolean @default(false)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  education      Education[]
+  employment     Employment[]
+  skills         UserSkill[]
+  languages      UserLanguage[]
+  paymentAccounts PaymentAccount[]
+  qualityMetrics QualityMetric[]
+  qualitySnapshots QualitySnapshot[]
+
+  @@map("trainer_profiles")
+}
+
+model Education {
+  id         String  @id @default(uuid())
+  trainerId  String
+  institution String
+  degree      String?
+  field       String?
+  startYear   Int?
+  endYear     Int?
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("education")
+}
+
+model Employment {
+  id          String    @id @default(uuid())
+  trainerId   String
+  company     String
+  title       String
+  startDate   DateTime?
+  endDate     DateTime?
+  description String?
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("employment")
+}
+
+model Skill {
+  id       String      @id @default(uuid())
+  name     String      @unique
+  category String?
+  users    UserSkill[]
+
+  @@map("skills")
+}
+
+model UserSkill {
+  id        String @id @default(uuid())
+  trainerId String
+  skillId   String
+  level     Int    @default(1)
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  skill   Skill          @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, skillId])
+  @@map("user_skills")
+}
+
+model Language {
+  id    String         @id @default(uuid())
+  code  String         @unique
+  name  String
+  users UserLanguage[]
+
+  @@map("languages")
+}
+
+enum LanguageProficiency {
+  BASIC
+  CONVERSATIONAL
+  FLUENT
+  NATIVE
+}
+
+model UserLanguage {
+  id          String              @id @default(uuid())
+  trainerId   String
+  languageId  String
+  proficiency LanguageProficiency
+
+  trainer  TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+  language Language       @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@unique([trainerId, languageId])
+  @@map("user_languages")
+}
+
+enum IdentityStatus {
+  NOT_STARTED
+  PENDING
+  VERIFIED
+  FAILED
+}
+
+enum VerificationCheckResult {
+  PASS
+  FAIL
+  UNAVAILABLE
+}
+
+/// Identity verification outcome.
+///
+/// PRIVACY: we deliberately store only the provider's *decision* and an
+/// opaque reference — never biometric templates, face embeddings, or
+/// document images. Those stay inside the vendor's compliance envelope.
+/// Storing them here would pull the platform into BIPA / GDPR Art. 9
+/// obligations it is not built to carry. Do not add image or template
+/// columns to this model. See SECURITY.md.
+model IdentityVerification {
+  id           String         @id @default(uuid())
+  userId       String         @unique
+  status       IdentityStatus @default(NOT_STARTED)
+  provider     String?
+  /// Opaque vendor-side verification id, for audit + support lookups.
+  providerRef  String?
+  documentType String?
+  /// ISO country code read from the identity document by the provider.
+  documentCountry String?
+
+  // Individual check outcomes (decisions only).
+  documentAuthentic     VerificationCheckResult?
+  livenessPassed        VerificationCheckResult?
+  faceMatchPassed       VerificationCheckResult?
+  /// 1:N search against already-verified users — catches duplicate accounts.
+  duplicateCheckPassed  VerificationCheckResult?
+  /// Provider's own confidence in the 1:1 selfie↔document match.
+  faceMatchScore        Float?
+
+  /// Set when a human reviewed an inconclusive automated result.
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  attempts     Int            @default(0)
+  submittedAt  DateTime?
+  verifiedAt   DateTime?
+  expiresAt    DateTime?
+  notes        String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("identity_verifications")
+}
+
+// ---------------------------------------------------------------------------
+// Work location & jurisdiction
+// ---------------------------------------------------------------------------
+
+enum LocationSignalSource {
+  IP_GEOLOCATION
+  DOCUMENT_COUNTRY
+  DECLARED_COUNTRY
+  TAX_RESIDENCY
+}
+
+/// A point-in-time observation of where a user appears to be working from.
+///
+/// PRIVACY: this is coarse (country/region/city from IP), not GPS tracking.
+/// It exists to enforce per-project jurisdiction rules and detect account
+/// sharing — not to monitor individuals. Retention is bounded; see
+/// SECURITY.md before extending precision.
+model LocationSignal {
+  id          String               @id @default(uuid())
+  userId      String
+  source      LocationSignalSource
+  countryCode String?
+  region      String?
+  city        String?
+  /// Truncated/hashed at write time — never store a full raw client IP.
+  ipHash      String?
+  isVpn       Boolean              @default(false)
+  isProxy     Boolean              @default(false)
+  isDatacenter Boolean             @default(false)
+  observedAt  DateTime             @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, observedAt])
+  @@map("location_signals")
+}
+
+enum JurisdictionRuleMode {
+  ALLOW
+  BLOCK
+}
+
+/// Project-level geofence: "workers on this project must be in X".
+/// Enforced per project rather than by tracking people continuously.
+model ProjectJurisdictionRule {
+  id           String               @id @default(uuid())
+  projectId    String
+  mode         JurisdictionRuleMode @default(ALLOW)
+  countryCode  String
+  /// Why this restriction exists (data residency, language, contract term).
+  reason       String?
+  blockVpn     Boolean              @default(true)
+  createdAt    DateTime             @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, countryCode])
+  @@map("project_jurisdiction_rules")
+}
+
+/// A trainer's application to join the network. Gates access to paid work:
+/// until status is APPROVED, the trainer can see their dashboard but no
+/// assignments. See `canAccessAssignments` in lib/permissions/gating.ts.
+model Application {
+  id          String             @id @default(uuid())
+  userId      String             @unique
+  status      ApplicationStatus  @default(DRAFT)
+  resumeUrl   String?
+  /// Primary domain the applicant is applying to work in — selects which
+  /// qualification assessment they're given.
+  domain      String?
+  submittedAt DateTime?
+  decidedAt   DateTime?
+  decidedBy   String?
+  /// Shown to the applicant when more information is requested or the
+  /// application is declined.
+  reviewerMessage String?
+  notes       String?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("applications")
+}
+
+// ---------------------------------------------------------------------------
+// Assessments
+// ---------------------------------------------------------------------------
+
+enum AssessmentAttemptStatus {
+  AVAILABLE
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  PASSED
+  FAILED
+  EXPIRED
+}
+
+model Assessment {
+  id            String   @id @default(uuid())
+  title         String
+  domain        String
+  description   String?
+  timeLimitMins Int?
+  passThreshold Float    @default(0.8)
+  maxAttempts   Int      @default(2)
+  cooldownHours Int      @default(72)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+
+  questions AssessmentQuestion[]
+  attempts  AssessmentAttempt[]
+
+  @@map("assessments")
+}
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  WRITTEN_RESPONSE
+  RANKING
+  CODE
+}
+
+model AssessmentQuestion {
+  id           String       @id @default(uuid())
+  assessmentId String
+  type         QuestionType
+  prompt       String
+  options      Json?
+  correctAnswer Json?
+  points       Int          @default(1)
+  order        Int          @default(0)
+
+  assessment Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  responses  AssessmentResponse[]
+
+  @@map("assessment_questions")
+}
+
+model AssessmentAttempt {
+  id           String                   @id @default(uuid())
+  assessmentId String
+  userId       String
+  status       AssessmentAttemptStatus  @default(AVAILABLE)
+  score        Float?
+  startedAt    DateTime?
+  submittedAt  DateTime?
+  expiresAt    DateTime?
+
+  assessment Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  responses  AssessmentResponse[]
+
+  @@index([userId])
+  @@map("assessment_attempts")
+}
+
+model AssessmentResponse {
+  id         String  @id @default(uuid())
+  attemptId  String
+  questionId String
+  answer     Json
+  isCorrect  Boolean?
+  pointsAwarded Float?
+
+  attempt  AssessmentAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question AssessmentQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([attemptId, questionId])
+  @@map("assessment_responses")
+}
+
+// ---------------------------------------------------------------------------
+// Projects, tasks & marketplace
+// ---------------------------------------------------------------------------
+
+enum ProjectStatus {
+  DRAFT
+  PENDING_SETUP
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum TaskType {
+  SINGLE_RESPONSE_EVALUATION
+  PAIRWISE_COMPARISON
+  MULTI_RESPONSE_RANKING
+  PROMPT_WRITING
+  IDEAL_RESPONSE_WRITING
+  RUBRIC_SCORING
+  FACT_CHECKING
+  CITATION_VERIFICATION
+  SAFETY_CLASSIFICATION
+  POLICY_CLASSIFICATION
+  HALLUCINATION_DETECTION
+  CODE_REVIEW
+  CODE_OUTPUT_EVALUATION
+  MULTI_TURN_EVALUATION
+}
+
+model Project {
+  id               String        @id @default(uuid())
+  organizationId   String
+  name             String
+  description      String?
+  domain           String
+  taskType         TaskType
+  status           ProjectStatus @default(DRAFT)
+  payPerTaskCents  Int?
+  estimatedHoursPerWeek Int?
+  languages        String[]      @default([])
+  positionsAvailable Int         @default(0)
+  budgetCents      Int?
+  qualityThreshold Float         @default(0.85)
+  /// Fraction of a trainer's queue seeded with hidden gold tasks. 0.05-0.10
+  /// is the usual range — high enough to calibrate, low enough not to waste
+  /// paid capacity on work that is never delivered.
+  goldTaskRate     Float         @default(0.07)
+  /// How many trainers independently complete the same task, for consensus.
+  /// 1 disables overlap.
+  consensusOverlap Int           @default(1)
+  securityLevel    String        @default("standard")
+  containsSensitiveContent Boolean @default(false)
+  startDate        DateTime?
+  applicationDeadline DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  organization  Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members       ProjectMember[]
+  qualifications ProjectQualification[]
+  applications  ProjectApplication[]
+  assignments   ProjectAssignment[]
+  taskTemplates TaskTemplate[]
+  tasks         Task[]
+  rubrics       ReviewRubric[]
+  goldTasks     GoldTask[]
+  datasets      Dataset[]
+  jurisdictionRules ProjectJurisdictionRule[]
+
+  @@index([organizationId])
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      String   @default("viewer")
+  addedAt   DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+model ProjectQualification {
+  id          String  @id @default(uuid())
+  projectId   String
+  description String
+  required    Boolean @default(true)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("project_qualifications")
+}
+
+enum ProjectApplicationStatus {
+  APPLIED
+  MATCHED
+  REJECTED
+  WITHDRAWN
+}
+
+model ProjectApplication {
+  id        String                    @id @default(uuid())
+  projectId String
+  userId    String
+  status    ProjectApplicationStatus  @default(APPLIED)
+  matchScore Float?
+  appliedAt DateTime                  @default(now())
+  decidedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_applications")
+}
+
+enum AssignmentStatus {
+  ACTIVE
+  PAUSED
+  REMOVED
+  COMPLETED
+}
+
+model ProjectAssignment {
+  id        String            @id @default(uuid())
+  projectId String
+  userId    String
+  status    AssignmentStatus  @default(ACTIVE)
+  assignedAt DateTime         @default(now())
+  removedAt DateTime?
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@map("project_assignments")
+}
+
+model TaskTemplate {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  taskType  TaskType
+  schema    Json
+  instructions String?
+  createdAt DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@map("task_templates")
+}
+
+enum TaskStatus {
+  UNASSIGNED
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  UNDER_REVIEW
+  REVISION_REQUESTED
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+model Task {
+  id           String     @id @default(uuid())
+  projectId    String
+  templateId   String?
+  externalRef  String?
+  payload      Json
+  status       TaskStatus @default(UNASSIGNED)
+  isGold       Boolean    @default(false)
+  priority     Int        @default(0)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  template    TaskTemplate?    @relation(fields: [templateId], references: [id])
+  assignments TaskAssignment[]
+  submissions TaskSubmission[]
+  goldTask    GoldTask?
+  consensus   ConsensusResult?
+
+  @@index([projectId, status])
+  @@map("tasks")
+}
+
+model TaskAssignment {
+  id         String   @id @default(uuid())
+  taskId     String
+  userId     String
+  assignedAt DateTime @default(now())
+  dueAt      DateTime?
+  completedAt DateTime?
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+  @@map("task_assignments")
+}
+
+model TaskSubmission {
+  id          String   @id @default(uuid())
+  taskId      String
+  submittedById String
+  content     Json
+  durationSeconds Int?
+  version     Int      @default(1)
+  submittedAt DateTime @default(now())
+
+  task        Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  submittedBy User              @relation("SubmittedBy", fields: [submittedById], references: [id])
+  versions    SubmissionVersion[]
+  reviews     Review[]
+  adjudication Adjudication?
+
+  @@index([taskId])
+  @@map("task_submissions")
+}
+
+model SubmissionVersion {
+  id           String   @id @default(uuid())
+  submissionId String
+  content      Json
+  createdAt    DateTime @default(now())
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@map("submission_versions")
+}
+
+model GoldTask {
+  id             String @id @default(uuid())
+  taskId         String @unique
+  projectId      String
+  expectedAnswer Json
+
+  task    Task    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  results GoldTaskResult[]
+
+  @@map("gold_tasks")
+}
+
+// ---------------------------------------------------------------------------
+// Review & quality
+// ---------------------------------------------------------------------------
+
+enum ReviewDecision {
+  APPROVED
+  REVISION_REQUESTED
+  REJECTED
+  ESCALATED
+}
+
+/// A project's scoring rubric.
+///
+/// Rubrics are versioned rather than edited in place: scores already
+/// recorded were given against a specific wording, and silently changing
+/// that wording would make historical scores incomparable. Editing creates
+/// a new version and deactivates the old one.
+model ReviewRubric {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  /// Array of { key, label, description, weight } — see lib/tasks/rubric.ts.
+  criteria  Json
+  version   Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdBy String?
+  createdAt DateTime @default(now())
+
+  project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scores  ReviewScore[]
+
+  @@index([projectId, isActive])
+  @@map("review_rubrics")
+}
+
+enum AdjudicationStatus {
+  PENDING
+  RESOLVED
+}
+
+/// A lead reviewer's final call on a submission that reviewers disagreed on
+/// or that a reviewer escalated.
+///
+/// Adjudication is the top of the quality chain — nothing above it is
+/// automated, per the platform rule that serious decisions need a person.
+model Adjudication {
+  id            String             @id @default(uuid())
+  submissionId  String             @unique
+  /// Why this reached adjudication: "escalated" or "consensus_disagreement".
+  reason        String
+  status        AdjudicationStatus @default(PENDING)
+  /// The lead reviewer's binding decision, overriding earlier reviews.
+  finalDecision ReviewDecision?
+  notes         String?
+  adjudicatedBy String?
+  adjudicatedAt DateTime?
+  createdAt     DateTime           @default(now())
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("adjudications")
+}
+
+model Review {
+  id            String         @id @default(uuid())
+  submissionId  String
+  reviewerId    String
+  decision      ReviewDecision
+  feedback      String?
+  severity      String?
+  confidence    Float?
+  createdAt     DateTime       @default(now())
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  reviewer   User           @relation("ReviewedBy", fields: [reviewerId], references: [id])
+  scores     ReviewScore[]
+
+  @@index([submissionId])
+  @@map("reviews")
+}
+
+model ReviewScore {
+  id       String  @id @default(uuid())
+  reviewId String
+  rubricId String?
+  category String
+  score    Float
+
+  review Review        @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  rubric ReviewRubric? @relation(fields: [rubricId], references: [id])
+
+  @@map("review_scores")
+}
+
+model QualityMetric {
+  id        String   @id @default(uuid())
+  trainerId String
+  category  String
+  score     Float
+  recordedAt DateTime @default(now())
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("quality_metrics")
+}
+
+model QualitySnapshot {
+  id                String   @id @default(uuid())
+  trainerId         String
+  overallScore       Float
+  accuracy            Float?
+  reviewerAgreement   Float?
+  instructionFollowing Float?
+  completionReliability Float?
+  revisionRate         Float?
+  rejectionRate         Float?
+  avgTaskDurationSecs   Int?
+  periodStart           DateTime
+  periodEnd             DateTime
+
+  trainer TrainerProfile @relation(fields: [trainerId], references: [id], onDelete: Cascade)
+
+  @@map("quality_snapshots")
+}
+
+/// Outcome of a hidden gold-standard task. Gold tasks are seeded invisibly
+/// into a trainer's queue at a configured rate — this is the single most
+/// reliable quality signal, because the trainer cannot tell it apart from
+/// real work.
+model GoldTaskResult {
+  id           String   @id @default(uuid())
+  goldTaskId   String
+  userId       String
+  submissionId String?
+  passed       Boolean
+  score        Float?
+  evaluatedAt  DateTime @default(now())
+
+  goldTask GoldTask @relation(fields: [goldTaskId], references: [id], onDelete: Cascade)
+
+  @@index([userId, evaluatedAt])
+  @@map("gold_task_results")
+}
+
+/// Agreement across trainers who independently completed the same task
+/// (overlap/consensus review). Krippendorff's alpha is stored because it
+/// tolerates multiple raters and missing ratings, unlike Cohen's kappa.
+model ConsensusResult {
+  id                 String   @id @default(uuid())
+  taskId             String   @unique
+  raterCount         Int
+  krippendorffAlpha  Float?
+  /// Fraction of raters agreeing with the majority label.
+  majorityAgreement  Float?
+  /// True when agreement fell below the project threshold and a lead
+  /// reviewer must adjudicate.
+  requiresAdjudication Boolean @default(false)
+  computedAt         DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@map("consensus_results")
+}
+
+/// Tracks how closely a reviewer agrees with lead-reviewer adjudications.
+/// Reviewers drift too — calibrating them is as important as calibrating
+/// trainers, and is a common blind spot in review pipelines.
+model ReviewerCalibration {
+  id                 String   @id @default(uuid())
+  reviewerId         String
+  periodStart        DateTime
+  periodEnd          DateTime
+  reviewsCompleted   Int      @default(0)
+  /// Agreement between this reviewer's decisions and lead adjudications.
+  leadAgreementRate  Float?
+  goldPassRate       Float?
+  avgReviewSeconds   Int?
+
+  @@index([reviewerId, periodEnd])
+  @@map("reviewer_calibrations")
+}
+
+/// A trainer's appeal against a rejection or quality decision.
+model QualityAppeal {
+  id           String       @id @default(uuid())
+  userId       String
+  submissionId String?
+  reviewId     String?
+  reason       String
+  status       AppealStatus @default(OPEN)
+  decision     String?
+  decidedBy    String?
+  decidedAt    DateTime?
+  createdAt    DateTime     @default(now())
+
+  @@index([status])
+  @@map("quality_appeals")
+}
+
+enum AppealStatus {
+  OPEN
+  UNDER_REVIEW
+  UPHELD
+  OVERTURNED
+  WITHDRAWN
+}
+
+// ---------------------------------------------------------------------------
+// Datasets & exports
+// ---------------------------------------------------------------------------
+
+model Dataset {
+  id             String   @id @default(uuid())
+  projectId      String
+  organizationId String
+  name           String
+  description    String?
+  createdAt      DateTime @default(now())
+
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  items        DatasetItem[]
+  exports      Export[]
+
+  @@map("datasets")
+}
+
+model DatasetItem {
+  id        String @id @default(uuid())
+  datasetId String
+  content   Json
+  addedAt   DateTime @default(now())
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@map("dataset_items")
+}
+
+enum ExportStatus {
+  QUEUED
+  PROCESSING
+  READY
+  FAILED
+}
+
+model Export {
+  id        String       @id @default(uuid())
+  datasetId String
+  format    String       @default("jsonl")
+  status    ExportStatus @default(QUEUED)
+  fileUrl   String?
+  requestedBy String
+  createdAt DateTime     @default(now())
+  completedAt DateTime?
+
+  dataset Dataset @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+
+  @@map("exports")
+}
+
+// ---------------------------------------------------------------------------
+// Payments & billing
+// ---------------------------------------------------------------------------
+
+enum PaymentAccountProvider {
+  STRIPE_CONNECT
+  WISE
+  PAYPAL
+  MPESA
+}
+
+model PaymentAccount {
+  id            String                 @id @default(uuid())
+  userId        String
+  trainerId     String?
+  provider      PaymentAccountProvider
+  externalId    String?
+  mpesaPhoneNumber String?
+  isDefault     Boolean                @default(false)
+  verifiedAt    DateTime?
+  createdAt     DateTime               @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trainer TrainerProfile? @relation(fields: [trainerId], references: [id])
+  earnings Earning[]
+  payoutRequests PayoutRequest[]
+
+  @@map("payment_accounts")
+}
+
+enum EarningStatus {
+  PENDING_REVIEW
+  APPROVED
+  SCHEDULED
+  PROCESSING
+  PAID
+  FAILED
+  DISPUTED
+  REVERSED
+}
+
+model Earning {
+  id             String        @id @default(uuid())
+  userId         String
+  projectId      String?
+  taskCount      Int           @default(0)
+  baseCents      Int           @default(0)
+  bonusCents     Int           @default(0)
+  adjustmentCents Int          @default(0)
+  status         EarningStatus @default(PENDING_REVIEW)
+  paymentAccountId String?
+  payoutRequestId  String?
+  expectedPaymentDate DateTime?
+  createdAt      DateTime      @default(now())
+
+  user    User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  account PaymentAccount? @relation(fields: [paymentAccountId], references: [id])
+  payoutRequest PayoutRequest? @relation(fields: [payoutRequestId], references: [id])
+  payments Payment[]
+
+  @@map("earnings")
+}
+
+enum PaymentStatus {
+  SCHEDULED
+  PROCESSING
+  PAID
+  FAILED
+  REVERSED
+}
+
+model Payment {
+  id         String        @id @default(uuid())
+  earningId  String
+  amountCents Int
+  status     PaymentStatus @default(SCHEDULED)
+  paidAt     DateTime?
+
+  earning Earning @relation(fields: [earningId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+enum PayoutProvider {
+  STRIPE_CONNECT
+  MPESA
+}
+
+enum PayoutRequestStatus {
+  REQUESTED
+  APPROVED
+  PROCESSING
+  PAID
+  REJECTED
+  FAILED
+}
+
+/// A trainer-initiated request to cash out their wallet balance (approved,
+/// unpaid earnings) via a chosen provider. Reviewed and executed by Finance.
+model PayoutRequest {
+  id                String               @id @default(uuid())
+  userId            String
+  paymentAccountId  String
+  provider          PayoutProvider
+  amountCents       Int
+  status            PayoutRequestStatus  @default(REQUESTED)
+  providerReference String?
+  failureReason     String?
+  requestedAt       DateTime             @default(now())
+  processedAt       DateTime?
+  processedBy       String?
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentAccount PaymentAccount  @relation(fields: [paymentAccountId], references: [id])
+  earnings       Earning[]
+
+  @@index([userId, status])
+  @@map("payout_requests")
+}
+
+model BillingAccount {
+  id             String   @id @default(uuid())
+  organizationId String   @unique
+  stripeCustomerId String?
+  billingEmail   String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("billing_accounts")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  VOID
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  organizationId String
+  amountCents    Int
+  status         InvoiceStatus @default(DRAFT)
+  dueDate        DateTime?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("invoices")
+}
+
+// ---------------------------------------------------------------------------
+// Disputes, support, notifications
+// ---------------------------------------------------------------------------
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED_APPROVED
+  RESOLVED_DENIED
+  APPEALED
+}
+
+model Dispute {
+  id          String        @id @default(uuid())
+  userId      String
+  projectId   String?
+  taskIds     String[]      @default([])
+  amountCents Int?
+  reason      String
+  status      DisputeStatus @default(OPEN)
+  decision    String?
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("disputes")
+}
+
+enum TicketCategory {
+  ACCOUNT
+  ASSESSMENT
+  PROJECT_ACCESS
+  TASK_ISSUE
+  QUALITY_APPEAL
+  PAYMENT
+  TECHNICAL_ISSUE
+  SAFETY_CONCERN
+  DATA_PRIVACY
+  OTHER
+}
+
+enum TicketStatus {
+  OPEN
+  ASSIGNED
+  WAITING_FOR_TRAINER
+  WAITING_FOR_CLIENT
+  ESCALATED
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id          String         @id @default(uuid())
+  requesterId String
+  assigneeId  String?
+  category    TicketCategory
+  subject     String
+  status      TicketStatus   @default(OPEN)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  requester User             @relation("TicketRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  assignee  User?            @relation("TicketAssignee", fields: [assigneeId], references: [id])
+  messages  SupportMessage[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id        String   @id @default(uuid())
+  ticketId  String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ---------------------------------------------------------------------------
+// Compliance, audit & risk
+// ---------------------------------------------------------------------------
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  actorId        String?
+  organizationId String?
+  action         String
+  entityType     String
+  entityId       String?
+  metadata       Json?
+  ipAddress      String?
+  createdAt      DateTime @default(now())
+
+  actor        User?         @relation(fields: [actorId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+
+  @@index([entityType, entityId])
+  @@map("audit_logs")
+}
+
+enum RiskFlagStatus {
+  OPEN
+  REVIEWED
+  DISMISSED
+  ACTION_TAKEN
+}
+
+model RiskFlag {
+  id        String         @id @default(uuid())
+  userId    String
+  signal    String
+  severity  String
+  status    RiskFlagStatus @default(OPEN)
+  details   Json?
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("risk_flags")
+}
+
+model FileAsset {
+  id         String   @id @default(uuid())
+  ownerId    String?
+  bucket     String
+  key        String
+  contentType String?
+  sizeBytes  Int?
+  createdAt  DateTime @default(now())
+
+  @@map("file_assets")
+}
+
+enum ApiKeyScope {
+  READ
+  WRITE
+}
+
+model ApiKey {
+  id             String   @id @default(uuid())
+  organizationId String?
+  userId         String?
+  name           String
+  /// SHA-256 of the secret. The plaintext key is shown once at creation and
+  /// never stored — there is no way to recover it, only to revoke and reissue.
+  hashedKey      String   @unique
+  /// Non-secret leading segment (e.g. "tra_live_9f3a") so a key can be
+  /// identified in the UI and in logs without revealing it.
+  prefix         String   @default("")
+  /// READ alone cannot mutate. Scope is checked per route, server-side.
+  scopes         ApiKeyScope[] @default([READ])
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("api_keys")
+}
+
+model Webhook {
+  id             String   @id @default(uuid())
+  organizationId String
+  url            String
+  secret         String
+  events         String[]
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  deliveries   WebhookDelivery[]
+
+  @@map("webhooks")
+}
+
+model WebhookDelivery {
+  id         String   @id @default(uuid())
+  webhookId  String
+  event      String
+  payload    Json
+  statusCode Int?
+  success    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+}
