@@ -7,6 +7,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { sendEmail } from "@/lib/email/client";
 import { brand } from "@/config/brand";
+import { appUrl } from "@/lib/app-url";
 
 const RESET_TOKEN_TTL_MINUTES = 30;
 
@@ -34,7 +35,7 @@ export async function requestPasswordReset(
       },
     });
 
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
+    const resetUrl = `${appUrl()}/reset-password?token=${token}`;
     await sendEmail({
       to: user.email,
       subject: `Reset your ${brand.name} password`,

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import { prisma } from "@/lib/db/prisma";
 import { sendEmail } from "@/lib/email/client";
 import { brand } from "@/config/brand";
+import { appUrl } from "@/lib/app-url";
 
 const TOKEN_TTL_HOURS = 24;
 
@@ -17,7 +18,7 @@ export async function issueEmailVerification(userId: string, email: string, firs
     },
   });
 
-  const url = `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/verify-email?token=${token}`;
+  const url = `${appUrl()}/verify-email?token=${token}`;
 
   await sendEmail({
     to: email,

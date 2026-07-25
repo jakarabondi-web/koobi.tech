@@ -1,4 +1,5 @@
 import type { PayoutProvider, PayoutRequestInput, PayoutResult } from "./types";
+import { appUrl } from "@/lib/app-url";
 
 /**
  * M-Pesa payouts via Safaricom's Daraja B2C API.
@@ -71,7 +72,7 @@ export const mpesaProvider: PayoutProvider = {
     }
 
     const token = await fetchAccessToken(creds.consumerKey, creds.consumerSecret);
-    const callbackBase = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    const callbackBase = appUrl();
 
     // Daraja B2C amounts are in whole KES, not cents.
     const res = await fetch(`${DARAJA_BASE}/mpesa/b2c/v1/paymentrequest`, {

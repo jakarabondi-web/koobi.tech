@@ -9,6 +9,7 @@ import { auth } from "@/lib/auth";
 import { requireTenant, TenantError } from "@/server/services/tenant";
 import { sendEmail } from "@/lib/email/client";
 import { brand } from "@/config/brand";
+import { appUrl } from "@/lib/app-url";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string };
 
@@ -50,7 +51,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
       to: email,
       subject: `You've been invited to ${tenant.organizationName} on ${brand.name}`,
       html: `<p>${session.user.name} invited you to join <strong>${tenant.organizationName}</strong> on ${brand.name}.</p>
-             <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/register?role=client">Create your account</a> with this email address to accept.</p>`,
+             <p><a href="${appUrl()}/register?role=client">Create your account</a> with this email address to accept.</p>`,
     });
     return { status: "success", message: "Invitation sent." };
   }
@@ -94,7 +95,7 @@ export async function inviteMember(_prev: ActionState, formData: FormData): Prom
     to: email,
     subject: `You've been added to ${tenant.organizationName} on ${brand.name}`,
     html: `<p>${session.user.name} added you to <strong>${tenant.organizationName}</strong>.</p>
-           <p><a href="${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/client/dashboard">Open the client portal</a></p>`,
+           <p><a href="${appUrl()}/client/dashboard">Open the client portal</a></p>`,
   });
 
   revalidatePath("/client/team");

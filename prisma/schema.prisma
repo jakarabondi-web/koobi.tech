@@ -7,7 +7,15 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  /// Pooled connection. On serverless (Vercel) every invocation can open its
+  /// own connection, which exhausts a Postgres connection limit long before
+  /// it exhausts anything else — so this must point at a pooler (PgBouncer,
+  /// Neon's pooled host, Supabase's :6543) in any deployed environment.
   url      = env("DATABASE_URL")
+  /// Direct, unpooled connection. Migrations run DDL in a session that a
+  /// transaction-mode pooler cannot carry, so they need the direct host.
+  /// Locally both point at the same server, which is fine.
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------------------------------------------------------------------------

@@ -1,4 +1,5 @@
 import { brand } from "@/config/brand";
+import { appUrl } from "@/lib/app-url";
 
 function shell(body: string) {
   return `<div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;max-width:520px;margin:0 auto;color:#14161f;line-height:1.55">
@@ -9,8 +10,6 @@ function shell(body: string) {
   </p>
 </div>`;
 }
-
-const appUrl = () => process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
 
 export function applicationSubmittedEmail(firstName: string) {
   return {

@@ -6,6 +6,7 @@ import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { startVerification, syncVerificationDecision, VerificationError } from "@/server/services/identity-verification";
 import { clientIpFromHeaders } from "@/lib/security/geolocation";
+import { appUrl } from "@/lib/app-url";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string; redirectUrl?: string };
 
@@ -20,7 +21,7 @@ export async function beginVerification(): Promise<ActionState> {
     const s = await startVerification({
       userId: session.user.id,
       email: session.user.email!,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/trainer/verification`,
+      returnUrl: `${appUrl()}/trainer/verification`,
       consentVersion: "v1",
       ipAddress: ip,
     });
