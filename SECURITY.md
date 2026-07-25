@@ -23,6 +23,9 @@ legal/compliance sign-off.
   always reports success so it can't be used to enumerate registered emails.
 - **Consent logging** — `ConsentRecord` written on registration, and again
   (separately) before any biometric identity verification begins.
+- **Multi-tenant isolation** — client data is scoped to `Organization`; see
+  `PERMISSIONS.md` for the enforcement point.
+- **Input validation** — Zod schemas on every server action/form boundary.
 
 ## Biometric identity verification — privacy boundary
 
@@ -76,9 +79,6 @@ Continuous location monitoring of remote knowledge workers would likely fail
 GDPR's necessity and proportionality tests, and catches little that the
 signals above miss. Raising precision is a decision that needs legal review,
 not just a code change.
-- **Multi-tenant isolation** — client data is scoped to `Organization`; see
-  `PERMISSIONS.md` for the enforcement point.
-- **Input validation** — Zod schemas on every server action/form boundary.
 
 ## Explicitly mocked (do not mistake for production-ready)
 
