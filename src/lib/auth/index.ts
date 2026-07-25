@@ -26,6 +26,11 @@ class AccountInactiveError extends CredentialsSignin {
   code = "account_inactive";
 }
 
+/** The account's domain is bound to an organization that requires SSO. */
+class SsoRequiredError extends CredentialsSignin {
+  code = "sso_required";
+}
+
 const LOCKOUT_THRESHOLD = 5;
 const LOCKOUT_MINUTES = 15;
 
@@ -51,6 +56,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (user.lockedUntil && user.lockedUntil > new Date()) {
           return null;
+        }
+
+        // If the account's email domain belongs to an organization that
+        // enforces SSO, the password path is closed — otherwise enforcement
+        // would be advisory, and a former employee whose IdP account was
+        // deprovisioned could still sign in with a password they remember.
+        // Checked before the password is compared: the answer doesn't depend
+        // on it.
+        const domain = user.email.split("@")[1]?.toLowerCase();
+        if (domain) {
+          const ssoOrg = await prisma.organization.findFirst({
+            where: {
+              ssoDomain: domain,
+              ssoEnforced: true,
+              ssoDomainVerifiedAt: { not: null },
+            },
+            select: { id: true },
+          });
+          if (ssoOrg) throw new SsoRequiredError();
         }
 
         const valid = await bcrypt.compare(password, user.passwordHash);
@@ -91,6 +115,49 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: `${user.firstName} ${user.lastName}`,
           image: user.avatarUrl ?? undefined,
           roles,
+        };
+      },
+    }),
+
+    /**
+     * Consumes the single-use ticket left by a completed OIDC callback.
+     *
+     * This provider trusts the ticket and nothing else: no password, no
+     * email, no user id from the request. The ticket is deleted-on-use
+     * inside a conditional update, so two tabs racing the same ticket can
+     * only produce one session.
+     */
+    Credentials({
+      id: "sso-ticket",
+      name: "Single sign-on",
+      credentials: { ticket: { label: "Ticket", type: "text" } },
+      async authorize(raw) {
+        const ticket = typeof raw?.ticket === "string" ? raw.ticket : null;
+        if (!ticket) return null;
+
+        const claimed = await prisma.ssoTicket.updateMany({
+          where: { token: ticket, consumedAt: null, expiresAt: { gt: new Date() } },
+          data: { consumedAt: new Date() },
+        });
+        if (claimed.count !== 1) return null;
+
+        const row = await prisma.ssoTicket.findUnique({
+          where: { token: ticket },
+          include: { user: { include: { roles: { include: { role: true } } } } },
+        });
+        if (!row || row.user.status !== "ACTIVE") return null;
+
+        await prisma.user.update({
+          where: { id: row.userId },
+          data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
+        });
+
+        return {
+          id: row.user.id,
+          email: row.user.email,
+          name: `${row.user.firstName} ${row.user.lastName}`,
+          image: row.user.avatarUrl ?? undefined,
+          roles: row.user.roles.map((r) => r.role.key) as GlobalRole[],
         };
       },
     }),

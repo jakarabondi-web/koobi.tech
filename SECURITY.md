@@ -80,14 +80,86 @@ GDPR's necessity and proportionality tests, and catches little that the
 signals above miss. Raising precision is a decision that needs legal review,
 not just a code change.
 
+## API keys
+
+Keys authenticate the versioned client API (`/api/v1/*`, see `API.md`).
+
+- **Hashed at rest with SHA-256, not bcrypt.** That is deliberate and only
+  correct because the secret is a 32-byte value we generate ourselves: there
+  is no dictionary to attack, so bcrypt's slow-hash property buys nothing
+  while costing a KDF round on every request. `src/lib/api/keys.ts` carries
+  the same warning. Never reuse that module for passwords.
+- The plaintext is returned exactly once, in the response that creates it,
+  and is never stored or re-rendered.
+- The non-secret `prefix` is what appears in the UI and in audit metadata.
+  A full key never reaches a log line.
+- Scope (`READ` / `READ + WRITE`), revocation, and expiry are all enforced
+  server-side per request. Revoked, expired, and nonexistent keys produce an
+  identical `401`, so a caller cannot probe which one it holds.
+- The organization is resolved from the key. A caller-supplied
+  `organizationId` is ignored — verified by driving both tenants' keys
+  against each other's projects, datasets, and submissions.
+- Issuance and revocation require organization-admin membership, are capped
+  at 10 active keys per organization, and are written to the audit log.
+
+## Single sign-on (OIDC)
+
+Configured per organization in the client portal under Security.
+
+**Domain ownership is proved, not asserted.** Binding an email domain to an
+organization decides who gets signed into which tenant, so a tenant that
+could simply claim a domain would be able to capture other people's
+sign-ins. Two controls:
+
+- Shared consumer domains (`gmail.com`, `outlook.com`, …) are rejected
+  outright and can never be bound to a tenant.
+- Every other domain requires a `trainora-domain-verification=<token>` TXT
+  record, checked with a real DNS lookup (`src/lib/auth/sso.ts`). Changing
+  the domain resets verification and drops enforcement.
+
+**The client secret is never stored in the database.** It is read from the
+environment as `SSO_CLIENT_SECRET_<ORG_SLUG>`. A secret in a row is a secret
+in every backup, replica, and support query. The UI reports only whether one
+is present, never its value, and the form does not accept one.
+
+**The flow.** Authorization code + PKCE (S256), with `state` bound to an
+HttpOnly, SameSite=Lax cookie. The issuer URL is validated as `https` before
+its discovery document is fetched, since a tenant-supplied URL is an SSRF
+vector. On return, the email the IdP asserts must sit under the
+organization's *verified* domain — an IdP is authoritative for its own
+domain and nothing else.
+
+**Session handoff.** A route handler cannot mint an Auth.js session, so the
+callback records a single-use `SsoTicket` (60-second expiry) and the
+`sso-ticket` provider consumes it inside a conditional update, so two tabs
+racing the same ticket produce at most one session. A user id in a redirect
+URL would have been forgeable; a ticket is not.
+
+**Enforcement.** With `ssoEnforced` on a verified domain, password sign-in
+is refused for every account on that domain — checked before the password is
+compared, since the answer doesn't depend on it. Advisory enforcement would
+leave a deprovisioned employee able to sign in with a password they
+remember.
+
+### SSO gaps
+
+- **The `id_token` signature is not verified against the issuer's JWKS.**
+  The email claim is currently trusted on the strength of the TLS connection
+  to the token endpoint. This must be fixed before the flow is used against
+  a real IdP; it is marked in `src/app/api/auth/sso/callback/route.ts`.
+- **No just-in-time provisioning.** An account must already exist and be
+  invited. Creating users straight from an IdP assertion would admit
+  everyone in the tenant's directory.
+- **No SAML**, no SCIM directory sync, no IdP-initiated sign-in.
+
 ## Explicitly mocked (do not mistake for production-ready)
 
 - **Email** (`lib/email/client.ts`) — logs to console and returns
   `{ mocked: true }` when `RESEND_API_KEY` is unset. Real sending requires a
   configured Resend key.
-- **File storage, payments (Stripe/Stripe Connect/Wise/PayPal), Redis/queue
-  jobs, SSO** — abstraction points exist in `.env.example` and the planned
-  `lib/storage` / `lib/payments` modules but are not yet implemented.
+- **File storage, Redis/queue jobs** — abstraction points exist in
+  `.env.example` but are not yet implemented. In particular no worker
+  processes dataset exports, so an export stays `QUEUED` forever.
 - **Two-factor authentication** — `User.twoFactorEnabled` exists as a schema
   field; no TOTP/enrollment flow is built yet.
 - **Identity verification** (`src/lib/identity/persona.ts`) — simulates
@@ -103,7 +175,8 @@ not just a code change.
   endpoints (custom mutating routes should add explicit protection as they're
   built).
 - Rate limiting (`RATE_LIMIT_ENABLED` env var is a placeholder — no limiter is
-  wired in yet).
+  wired in yet). This matters most for `/api/v1/*`, where keys are currently
+  unthrottled.
 - Field-level encryption for sensitive PII beyond password hashing
   (`FIELD_ENCRYPTION_KEY` is reserved in `.env.example`).
 - Signed/expiring download URLs for `FileAsset`.

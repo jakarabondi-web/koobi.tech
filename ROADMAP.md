@@ -86,8 +86,8 @@ Client-facing quality reporting computes Krippendorff's alpha per project
 and explains how to read it, including flagging that low agreement usually
 indicates an ambiguous rubric rather than poor trainers.
 
-Task import is built — see below. Not yet built: rubric editing from the
-client side, and SSO.
+Task import, client-side rubric editing, API keys, and SSO are all built —
+see below.
 
 ## Task import ✅
 
@@ -142,15 +142,38 @@ users & roles, and settings.
 Not yet built: project creation/editing from the admin side, task import,
 reviewer assignment, and the reviewer workspace itself.
 
-## Phase 6 — Enterprise & integrations ⏳ not started
+## Phase 6 — Enterprise & integrations 🔶 partial
 
-API keys, webhooks, SSO architecture, advanced exports, full audit-log
-coverage, real payment-provider integrations, object storage integration.
+**Built: the versioned client API.** `/api/v1/projects`, `/tasks`,
+`/submissions`, and `/exports`, authenticated by organization-scoped API
+keys hashed with SHA-256 and issued once from the client portal. Scope
+(read / read+write), expiry, and revocation are enforced per request, and
+the organization is resolved from the key — a caller-supplied
+`organizationId` is ignored. Task ingest reuses the upload screen's parser,
+so the API and UI can't drift into accepting different data, and is
+idempotent on `external_ref`. Full contract in `API.md`.
+
+**Built: enterprise SSO over OIDC.** Per-organization issuer configuration,
+authorization code + PKCE, and `state` bound to an HttpOnly cookie. Domain
+ownership is proved by a DNS TXT record rather than asserted, public email
+domains are refused outright, and the client secret lives in the environment
+rather than the database. Enforcement blocks password sign-in for a verified
+domain. Session handoff from the callback route uses a single-use
+`SsoTicket`. Two gaps are documented in `SECURITY.md`: the `id_token`
+signature is not yet checked against the issuer's JWKS, and there is no
+just-in-time provisioning.
+
+**Not built:** webhook dispatch, export processing workers, SAML/SCIM,
+API rate limiting, real payment-provider integrations beyond the
+Stripe Connect and M-Pesa paths already in place, object storage.
 
 ## Cross-cutting, not yet done
 
-- Automated test suite (Vitest unit tests, Playwright E2E) — infrastructure
-  installed, no tests committed yet
+- Playwright E2E suite — flows are currently verified by driving a real
+  browser against Postgres during development, but those runs aren't
+  committed as regression tests. Vitest unit tests do exist: 97 covering
+  agreement metrics, tenant isolation, the import parser, rubrics, API-key
+  handling, and SSO domain/PKCE logic.
 - Rate limiting, field-level encryption, signed download URLs (tracked in
   `SECURITY.md`)
 - Repository layer (`server/repositories`) for shared/testable query logic

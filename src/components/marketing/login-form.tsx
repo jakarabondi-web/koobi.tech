@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [needsVerification, setNeedsVerification] = useState(false);
+  const [needsSso, setNeedsSso] = useState(false);
   const [resent, setResent] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -23,6 +24,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
     setPending(true);
     setError(null);
     setNeedsVerification(false);
+    setNeedsSso(false);
     setResent(false);
 
     const res = await signIn("credentials", {
@@ -40,13 +42,27 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
         setError("Confirm your email address before signing in.");
       } else if (res.code === "account_inactive") {
         setError("This account isn't active. Contact support if you think that's wrong.");
+      } else if (res.code === "sso_required") {
+        setNeedsSso(true);
+        setError("Your organization requires single sign-on.");
       } else {
         setError("Invalid email or password.");
       }
       return;
     }
 
-    router.push(callbackUrl || "/trainer/dashboard");
+    // Send people to the portal their roles actually grant. Assuming the
+    // trainer dashboard meant a client admin's first act after signing in
+    // was to hit a 403.
+    const session = await getSession();
+    const home =
+      session?.user?.surface === "admin"
+        ? "/admin/dashboard"
+        : session?.user?.surface === "client"
+          ? "/client/dashboard"
+          : "/trainer/dashboard";
+
+    router.push(callbackUrl || home);
     router.refresh();
   }
 
@@ -82,6 +98,14 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
         />
       </div>
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {needsSso ? (
+        <a
+          href={`/api/auth/sso/start?email=${encodeURIComponent(email)}`}
+          className="flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Continue with single sign-on
+        </a>
+      ) : null}
       {needsVerification ? (
         resent ? (
           <p className="text-sm text-success">

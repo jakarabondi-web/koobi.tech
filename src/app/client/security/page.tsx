@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { Lock, FileClock, Building2, ShieldCheck, EyeOff, Globe } from "lucide-react";
 
 import { prisma } from "@/lib/db/prisma";
+import { clientSecretFor } from "@/lib/auth/sso";
 import { requireTenant } from "@/server/services/tenant";
+import { SsoSettings } from "@/components/client/sso-settings";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -23,7 +26,7 @@ const CONTROLS = [
 export default async function ClientSecurityPage() {
   const tenant = await requireTenant();
 
-  const [auditLogs, rules] = await Promise.all([
+  const [auditLogs, rules, org, headerList] = await Promise.all([
     prisma.auditLog.findMany({
       where: { organizationId: tenant.organizationId },
       include: { actor: true },
@@ -34,7 +37,25 @@ export default async function ClientSecurityPage() {
       where: { project: { organizationId: tenant.organizationId } },
       include: { project: true },
     }),
+    prisma.organization.findUniqueOrThrow({
+      where: { id: tenant.organizationId },
+      select: {
+        slug: true,
+        ssoDomain: true,
+        ssoDomainVerifiedAt: true,
+        ssoDomainToken: true,
+        ssoIssuerUrl: true,
+        ssoClientId: true,
+        ssoProviderName: true,
+        ssoEnforced: true,
+      },
+    }),
+    headers(),
   ]);
+
+  const secretEnvVar = `SSO_CLIENT_SECRET_${org.slug.toUpperCase().replace(/[^A-Z0-9]/g, "_")}`;
+  const host = headerList.get("host") ?? "localhost:3000";
+  const proto = headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
 
   return (
     <div className="space-y-6">
@@ -74,6 +95,34 @@ export default async function ClientSecurityPage() {
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Single sign-on</CardTitle>
+          <CardDescription>
+            Connect your identity provider over OIDC so your team signs in with their existing
+            corporate account.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <SsoSettings
+            canManage={tenant.isOrgAdmin}
+            redirectUri={`${proto}://${host}/api/auth/sso/callback`}
+            config={{
+              domain: org.ssoDomain,
+              verifiedAt: org.ssoDomainVerifiedAt?.toISOString() ?? null,
+              token: org.ssoDomainToken,
+              issuerUrl: org.ssoIssuerUrl,
+              clientId: org.ssoClientId,
+              providerName: org.ssoProviderName,
+              enforced: org.ssoEnforced,
+              // Only whether it exists crosses to the browser, never its value.
+              secretConfigured: clientSecretFor(org.slug) !== null,
+              secretEnvVar,
+            }}
+          />
         </CardContent>
       </Card>
 

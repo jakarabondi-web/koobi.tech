@@ -93,15 +93,37 @@ export function splitCsvLine(line: string): string[] {
   return out;
 }
 
+/** `responseA` -> `response_a`, so a row can use either convention. */
+function snakeCase(field: string): string {
+  return field.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+}
+
+/**
+ * Reads a required field under either naming convention.
+ *
+ * The reserved keys (external_ref, is_gold, expected_answer) have always
+ * accepted both; required fields accepting only camelCase meant a file that
+ * spelled `response_a` failed with "missing responseA", which reads like a
+ * bug in the client's data rather than a naming mismatch.
+ */
+function readField(row: RawRow, field: string): unknown {
+  const direct = row[field];
+  if (direct !== undefined) return direct;
+  return row[snakeCase(field)];
+}
+
 function normalizeRow(row: RawRow, taskType: TaskType, line: number): ParsedTask | RowError {
   const required = requiredFieldsFor(taskType);
 
   const missing = required.filter((f) => {
-    const v = row[f];
+    const v = readField(row, f);
     return v === undefined || v === null || String(v).trim() === "";
   });
   if (missing.length > 0) {
-    return { line, message: `Missing required field${missing.length > 1 ? "s" : ""}: ${missing.join(", ")}` };
+    const named = missing
+      .map((f) => (snakeCase(f) === f ? f : `${f} (or ${snakeCase(f)})`))
+      .join(", ");
+    return { line, message: `Missing required field${missing.length > 1 ? "s" : ""}: ${named}` };
   }
 
   // Reserved keys are lifted out; everything else becomes task payload so
@@ -127,10 +149,22 @@ function normalizeRow(row: RawRow, taskType: TaskType, line: number): ParsedTask
     return { line, message: "Gold rows require an external_ref so the expected answer can be linked" };
   }
 
+  // Required fields are written into the payload under their canonical
+  // camelCase name whichever spelling arrived, so the task workspace has one
+  // shape to render rather than two.
+  const payload: RawRow = { ...rest };
+  for (const field of required) {
+    const snake = snakeCase(field);
+    if (snake !== field && snake in payload) {
+      payload[field] = payload[snake];
+      delete payload[snake];
+    }
+  }
+
   return {
     line,
     externalRef: ref ? String(ref).trim() : null,
-    payload: rest,
+    payload,
     isGold: gold,
     expectedAnswer: answer ? String(answer) : null,
   };

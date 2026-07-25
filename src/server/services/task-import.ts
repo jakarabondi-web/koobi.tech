@@ -1,7 +1,19 @@
 import { prisma } from "@/lib/db/prisma";
 import { parseImport, type ParsedTask, type RowError } from "@/lib/tasks/import-parser";
 
-export class ImportError extends Error {}
+export class ImportError extends Error {
+  /**
+   * Per-row failures, when there are any. A caller that only gets "every row
+   * failed validation" has no way to fix its file — the API returns these so
+   * the client can see which line broke and why.
+   */
+  readonly rowErrors: RowError[];
+
+  constructor(message: string, rowErrors: RowError[] = []) {
+    super(message);
+    this.rowErrors = rowErrors;
+  }
+}
 
 export type ImportPreview = {
   projectId: string;
@@ -69,6 +81,12 @@ export type ImportResult = {
   created: number;
   goldCreated: number;
   skipped: number;
+  /**
+   * Rows that were rejected while the rest of the batch was written. Valid
+   * rows are not held hostage to invalid ones, but the caller is told exactly
+   * what didn't land rather than left to infer it from a count.
+   */
+  rowErrors: RowError[];
 };
 
 /**
@@ -82,17 +100,20 @@ export async function commitImport(params: {
   projectId: string;
   content: string;
   format: "jsonl" | "csv";
+  /** A user id, or an API key id when `viaApiKey` is set. */
   actorId: string;
   organizationId?: string;
   /** True when internal staff imported into a client's project. */
   onBehalfOfClient?: boolean;
+  /** True when the caller is an API key rather than a signed-in user. */
+  viaApiKey?: boolean;
 }): Promise<ImportResult> {
   const project = await prisma.project.findUnique({ where: { id: params.projectId } });
   if (!project) throw new ImportError("Project not found.");
 
   const parsed = parseImport(params.content, params.format, project.taskType);
   if (parsed.tasks.length === 0) {
-    throw new ImportError("Nothing to import — every row failed validation.");
+    throw new ImportError("Nothing to import — every row failed validation.", parsed.errors);
   }
 
   const refs = parsed.tasks.map((t) => t.externalRef).filter((r): r is string => r !== null);
@@ -108,7 +129,7 @@ export async function commitImport(params: {
   const skipped = parsed.tasks.length - toCreate.length;
 
   if (toCreate.length === 0) {
-    return { created: 0, goldCreated: 0, skipped };
+    return { created: 0, goldCreated: 0, skipped, rowErrors: parsed.errors };
   }
 
   // One transaction so a failure part-way through doesn't leave a project
@@ -152,16 +173,25 @@ export async function commitImport(params: {
 
   await prisma.auditLog.create({
     data: {
-      actorId: params.actorId,
+      // actorId is a foreign key to User, so an API-key import records the
+      // key in metadata instead of pointing at a user that doesn't exist.
+      actorId: params.viaApiKey ? null : params.actorId,
       organizationId: params.organizationId,
-      action: params.onBehalfOfClient
-        ? "project.tasks_imported_by_staff"
-        : "project.tasks_imported",
+      action: params.viaApiKey
+        ? "project.tasks_imported_via_api"
+        : params.onBehalfOfClient
+          ? "project.tasks_imported_by_staff"
+          : "project.tasks_imported",
       entityType: "Project",
       entityId: params.projectId,
-      metadata: { created: toCreate.length, gold: goldCreated, skipped },
+      metadata: {
+        created: toCreate.length,
+        gold: goldCreated,
+        skipped,
+        ...(params.viaApiKey ? { viaApiKey: params.actorId } : {}),
+      },
     },
   });
 
-  return { created: toCreate.length, goldCreated, skipped };
+  return { created: toCreate.length, goldCreated, skipped, rowErrors: parsed.errors };
 }

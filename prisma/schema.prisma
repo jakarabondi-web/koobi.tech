@@ -55,6 +55,7 @@ model User {
 
   accounts          Account[]
   sessions          Session[]
+  ssoTickets        SsoTicket[]
   roles             UserRole[]
   memberships       OrganizationMember[]
   trainerProfile    TrainerProfile?
@@ -141,6 +142,27 @@ model Account {
   @@map("accounts")
 }
 
+/// A single-use handoff from a completed SSO callback to the session layer.
+///
+/// The OIDC callback runs in a route handler, which cannot mint an Auth.js
+/// session directly. Rather than trusting a user id carried in a URL, the
+/// callback records a ticket here and the sign-in provider consumes it —
+/// once, within a minute, and never again.
+model SsoTicket {
+  id             String   @id @default(uuid())
+  token          String   @unique
+  userId         String
+  organizationId String
+  issuer         String?
+  expiresAt      DateTime
+  consumedAt     DateTime?
+  createdAt      DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sso_tickets")
+}
+
 model Session {
   id           String   @id @default(uuid())
   sessionToken String   @unique
@@ -194,6 +216,12 @@ model Organization {
   /// not control.
   ssoDomain         String?  @unique
   ssoDomainVerifiedAt DateTime?
+  /// Random value the tenant publishes as a DNS TXT record on the domain.
+  /// Verification is a real DNS lookup, so a tenant cannot claim a domain
+  /// it does not control.
+  ssoDomainToken    String?
+  /// Display name for the button on the sign-in page, e.g. "Okta".
+  ssoProviderName   String?
   /// OIDC discovery URL and client id. The client secret is never stored
   /// here in plaintext — see SECURITY.md.
   ssoIssuerUrl      String?
@@ -1421,14 +1449,27 @@ model FileAsset {
   @@map("file_assets")
 }
 
+enum ApiKeyScope {
+  READ
+  WRITE
+}
+
 model ApiKey {
   id             String   @id @default(uuid())
   organizationId String?
   userId         String?
   name           String
+  /// SHA-256 of the secret. The plaintext key is shown once at creation and
+  /// never stored — there is no way to recover it, only to revoke and reissue.
   hashedKey      String   @unique
+  /// Non-secret leading segment (e.g. "tra_live_9f3a") so a key can be
+  /// identified in the UI and in logs without revealing it.
+  prefix         String   @default("")
+  /// READ alone cannot mutate. Scope is checked per route, server-side.
+  scopes         ApiKeyScope[] @default([READ])
   lastUsedAt     DateTime?
   revokedAt      DateTime?
+  expiresAt      DateTime?
   createdAt      DateTime @default(now())
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)

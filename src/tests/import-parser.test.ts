@@ -221,3 +221,42 @@ describe("sampleFor", () => {
     expect(parseCsv(csv, "PAIRWISE_COMPARISON").errors).toHaveLength(0);
   });
 });
+
+describe("field naming conventions", () => {
+  it("accepts required fields in snake_case as well as camelCase", () => {
+    const snake = parseJsonl(
+      JSON.stringify({ prompt: "p", response_a: "A", response_b: "B" }),
+      "PAIRWISE_COMPARISON"
+    );
+    expect(snake.errors).toEqual([]);
+    expect(snake.tasks).toHaveLength(1);
+  });
+
+  it("normalises snake_case payload keys to the canonical camelCase name", () => {
+    const result = parseJsonl(
+      JSON.stringify({ prompt: "p", response_a: "A", response_b: "B" }),
+      "PAIRWISE_COMPARISON"
+    );
+    // The workspace renders payload.responseA — one shape regardless of how
+    // the client spelled it on the way in.
+    expect(result.tasks[0].payload).toEqual({ prompt: "p", responseA: "A", responseB: "B" });
+  });
+
+  it("keeps camelCase rows exactly as they were", () => {
+    const result = parseJsonl(
+      JSON.stringify({ prompt: "p", responseA: "A", responseB: "B" }),
+      "PAIRWISE_COMPARISON"
+    );
+    expect(result.tasks[0].payload).toEqual({ prompt: "p", responseA: "A", responseB: "B" });
+  });
+
+  it("names both spellings when a required field is missing", () => {
+    const result = parseJsonl(JSON.stringify({ prompt: "p" }), "PAIRWISE_COMPARISON");
+    expect(result.errors[0].message).toContain("responseA (or response_a)");
+  });
+
+  it("does not invent an alias for a single-word field", () => {
+    const result = parseJsonl(JSON.stringify({}), "FACT_CHECKING");
+    expect(result.errors[0].message).toBe("Missing required field: claim");
+  });
+});
