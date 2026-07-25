@@ -10,6 +10,8 @@ import { cn } from "@/lib/utils/cn";
 import { brand } from "@/config/brand";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { NeuralMesh } from "@/components/shared/neural-mesh";
+import { AmbientGrid } from "@/components/shared/ambient-grid";
 
 export type NavItem = {
   href: string;
@@ -53,8 +55,12 @@ export function DashboardShell({
     .toUpperCase();
 
   const sidebar = (
-    <div className="flex h-full flex-col bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center gap-2 px-5">
+    <div className="relative flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
+      {/* Ambient mesh — strongest toward the base of the nav, dissolving
+          upward so the brand mark and links stay fully legible. */}
+      <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} />
+
+      <div className="relative z-10 flex h-16 items-center gap-2 px-5">
         <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
           <Sparkles className="size-4" />
         </span>
@@ -63,7 +69,7 @@ export function DashboardShell({
           <p className="text-[11px] text-sidebar-foreground/60">{surfaceLabel}</p>
         </div>
       </div>
-      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-3">
+      <nav className="relative z-10 flex-1 space-y-4 overflow-y-auto px-3 py-3">
         {navSections.map((section) => (
           <div key={section.label}>
             <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
@@ -98,7 +104,7 @@ export function DashboardShell({
           </div>
         ))}
       </nav>
-      <div className="border-t border-sidebar-border p-3">
+      <div className="relative z-10 border-t border-sidebar-border p-3">
         <div className="flex items-center gap-2 rounded-md px-2 py-2">
           <Avatar className="size-8">
             <AvatarFallback className="bg-sidebar-accent text-sidebar-accent-foreground">{initials}</AvatarFallback>
@@ -167,7 +173,10 @@ export function DashboardShell({
             </Button>
           </div>
         </header>
-        <main className="flex-1 overflow-x-hidden bg-surface p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="relative flex-1 overflow-x-hidden bg-surface">
+          <AmbientGrid />
+          <div className="relative z-10 p-4 sm:p-6 lg:p-8">{children}</div>
+        </main>
       </div>
     </div>
   );

@@ -30,6 +30,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InteractiveHero } from "@/components/marketing/interactive-hero";
+import { NeuralMesh } from "@/components/shared/neural-mesh";
 
 export const metadata: Metadata = {
   title: `${brand.name} — Train better AI with verified human expertise`,
@@ -98,7 +99,10 @@ export default function HomePage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-navy via-navy to-background">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_-10%,color-mix(in_oklch,var(--accent-violet)_35%,transparent),transparent_55%),radial-gradient(circle_at_85%_10%,color-mix(in_oklch,var(--accent-cyan)_25%,transparent),transparent_50%)]" />
+        {/* Live neural mesh — the network of experts feeding a model, made
+            literal. Sits under a soft wash so headline contrast holds. */}
+        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_55%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
             <Badge variant="outline" className="border-white/20 bg-white/5 text-white/80">

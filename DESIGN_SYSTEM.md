@@ -13,12 +13,38 @@ in `:root` (light) and overridden in `.dark`, then mapped into Tailwind's
 `@theme inline` block so they're usable as `bg-primary`, `text-accent-violet`,
 etc. This is the single place to re-skin the palette.
 
-Core palette: deep navy (`--navy`), indigo primary (`--primary`), electric
-violet accent (`--accent-violet`), cyan secondary accent (`--accent-cyan`),
-soft blue-gray surfaces (`--surface`), white cards, plus semantic
-`success`/`warning`/`destructive`/`info`. Both light and dark themes are
-implemented via `next-themes` (`class` strategy); toggle by adding
-`data-theme`/`.dark` on `<html>`.
+Core palette is **Slate**: a cool, deliberately low-chroma family running
+from deep charcoal-blue (`--navy`, used for the sidebar) through muted steel
+blue (`--primary`, `--accent-violet`, `--accent-cyan`) over near-white
+surfaces. The chrome stays quiet on purpose — the ambient mesh supplies the
+colour interest, so the UI itself doesn't compete with the data.
+
+Semantic colours (`success`/`warning`/`destructive`) keep real hue and are
+deliberately *not* desaturated to match the brand: they carry meaning, not
+identity. Both light and dark themes are implemented via `next-themes`
+(`class` strategy).
+
+## Ambient backgrounds
+
+Two canvas components give the product a consistent techy identity without
+turning dashboards into decoration:
+
+- `NeuralMesh` (`components/shared/neural-mesh.tsx`) — depth-shaded particle
+  network. Each node carries a `z` depth driving hue (steel → slate blue),
+  size, and brightness, so it reads dimensionally instead of as one flat
+  colour. `fade="up"` dissolves it toward the top of a container, which is
+  how the sidebar keeps its brand mark and links legible.
+- `AmbientGrid` (`components/shared/ambient-grid.tsx`) — very low-contrast
+  blueprint grid with a slow vertical scan, sitting behind dashboard content.
+
+Where they're used: the marketing hero runs a full mesh; every dashboard
+(trainer, client, admin) runs a mesh in the sidebar and the grid behind
+content, via `DashboardShell`.
+
+Both honour `prefers-reduced-motion` (static frame, no animation loop) and
+stop rendering entirely while the tab is hidden, so an idle background tab
+costs nothing. Content sits at `z-10` above them; the canvases are
+`aria-hidden` and `pointer-events-none`.
 
 Radius, chart colors (`--chart-1..5`), and sidebar-specific tokens
 (`--sidebar*`, used by the dashboard shell) are also defined here.
