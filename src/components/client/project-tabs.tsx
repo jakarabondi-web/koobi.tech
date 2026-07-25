@@ -11,6 +11,7 @@ export function ProjectTabs({ projectId }: { projectId: string }) {
   const tabs = [
     { href: base, label: "Overview" },
     { href: `${base}/tasks`, label: "Tasks" },
+    { href: `${base}/rubric`, label: "Rubric" },
     { href: `${base}/quality`, label: "Quality" },
     { href: `${base}/workforce`, label: "Workforce" },
   ];

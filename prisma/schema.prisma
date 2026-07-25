@@ -189,6 +189,16 @@ model Organization {
   useCase      String?
   status       OrganizationStatus @default(TRIAL)
   securityTier String?
+  /// Email domain that routes to this organization's SSO, e.g. "acme.com".
+  /// Verified before enforcement so a tenant can't claim a domain it does
+  /// not control.
+  ssoDomain         String?  @unique
+  ssoDomainVerifiedAt DateTime?
+  /// OIDC discovery URL and client id. The client secret is never stored
+  /// here in plaintext — see SECURITY.md.
+  ssoIssuerUrl      String?
+  ssoClientId       String?
+  ssoEnforced       Boolean  @default(false)
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
@@ -636,6 +646,13 @@ model Project {
   positionsAvailable Int         @default(0)
   budgetCents      Int?
   qualityThreshold Float         @default(0.85)
+  /// Fraction of a trainer's queue seeded with hidden gold tasks. 0.05-0.10
+  /// is the usual range — high enough to calibrate, low enough not to waste
+  /// paid capacity on work that is never delivered.
+  goldTaskRate     Float         @default(0.07)
+  /// How many trainers independently complete the same task, for consensus.
+  /// 1 disables overlap.
+  consensusOverlap Int           @default(1)
   securityLevel    String        @default("standard")
   containsSensitiveContent Boolean @default(false)
   startDate        DateTime?
@@ -806,6 +823,7 @@ model TaskSubmission {
   submittedBy User              @relation("SubmittedBy", fields: [submittedById], references: [id])
   versions    SubmissionVersion[]
   reviews     Review[]
+  adjudication Adjudication?
 
   @@index([taskId])
   @@map("task_submissions")
@@ -846,17 +864,57 @@ enum ReviewDecision {
   ESCALATED
 }
 
+/// A project's scoring rubric.
+///
+/// Rubrics are versioned rather than edited in place: scores already
+/// recorded were given against a specific wording, and silently changing
+/// that wording would make historical scores incomparable. Editing creates
+/// a new version and deactivates the old one.
 model ReviewRubric {
   id        String   @id @default(uuid())
   projectId String
   name      String
+  /// Array of { key, label, description, weight } — see lib/tasks/rubric.ts.
   criteria  Json
+  version   Int      @default(1)
+  isActive  Boolean  @default(true)
+  createdBy String?
   createdAt DateTime @default(now())
 
   project Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   scores  ReviewScore[]
 
+  @@index([projectId, isActive])
   @@map("review_rubrics")
+}
+
+enum AdjudicationStatus {
+  PENDING
+  RESOLVED
+}
+
+/// A lead reviewer's final call on a submission that reviewers disagreed on
+/// or that a reviewer escalated.
+///
+/// Adjudication is the top of the quality chain — nothing above it is
+/// automated, per the platform rule that serious decisions need a person.
+model Adjudication {
+  id            String             @id @default(uuid())
+  submissionId  String             @unique
+  /// Why this reached adjudication: "escalated" or "consensus_disagreement".
+  reason        String
+  status        AdjudicationStatus @default(PENDING)
+  /// The lead reviewer's binding decision, overriding earlier reviews.
+  finalDecision ReviewDecision?
+  notes         String?
+  adjudicatedBy String?
+  adjudicatedAt DateTime?
+  createdAt     DateTime           @default(now())
+
+  submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("adjudications")
 }
 
 model Review {

@@ -17,6 +17,7 @@ import {
   LifeBuoy,
   MessageCircleQuestion,
   ClipboardCheck,
+  Scale,
 } from "lucide-react";
 
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
@@ -25,7 +26,9 @@ function buildNavSections(counts: {
   tasksDue: number;
   unreadNotifications: number;
   reviewQueue: number;
+  adjudicationQueue: number;
   isReviewer: boolean;
+  isLeadReviewer: boolean;
 }): NavSection[] {
   return [
     {
@@ -57,6 +60,16 @@ function buildNavSections(counts: {
                 icon: ClipboardCheck,
                 badge: counts.reviewQueue || undefined,
               },
+              ...(counts.isLeadReviewer
+                ? [
+                    {
+                      href: "/trainer/adjudication",
+                      label: "Adjudication",
+                      icon: Scale,
+                      badge: counts.adjudicationQueue || undefined,
+                    },
+                  ]
+                : []),
             ],
           },
         ]
@@ -98,7 +111,9 @@ export function TrainerShell({
   tasksDue = 0,
   unreadNotifications = 0,
   reviewQueue = 0,
+  adjudicationQueue = 0,
   isReviewer = false,
+  isLeadReviewer = false,
   children,
 }: {
   userName: string;
@@ -106,16 +121,20 @@ export function TrainerShell({
   tasksDue?: number;
   unreadNotifications?: number;
   reviewQueue?: number;
+  adjudicationQueue?: number;
   isReviewer?: boolean;
+  isLeadReviewer?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <DashboardShell
-      navSections={buildNavSections({ tasksDue, unreadNotifications, reviewQueue, isReviewer })}
+      navSections={buildNavSections({
+        tasksDue, unreadNotifications, reviewQueue, adjudicationQueue, isReviewer, isLeadReviewer,
+      })}
       surfaceLabel="Trainer portal"
       userName={userName}
       userEmail={userEmail}
-      userRoleLabel={isReviewer ? "Reviewer" : "Trainer"}
+      userRoleLabel={isLeadReviewer ? "Lead reviewer" : isReviewer ? "Reviewer" : "Trainer"}
       unreadNotifications={unreadNotifications}
       notificationsHref="/trainer/notifications"
     >

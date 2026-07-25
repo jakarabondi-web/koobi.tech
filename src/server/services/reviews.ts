@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
+import { openAdjudication } from "@/server/services/adjudication";
 
 export class ReviewError extends Error {}
 
@@ -162,6 +163,23 @@ export async function submitReview(params: {
       },
     });
   });
+
+  // Escalation goes straight to a lead reviewer. Disagreement between
+  // reviewers is detected here too, so a conflict never sits unnoticed.
+  if (params.decision === "ESCALATED") {
+    await openAdjudication({ submissionId: params.submissionId, reason: "escalated" });
+  } else {
+    const all = await prisma.review.findMany({
+      where: { submissionId: params.submissionId },
+      select: { decision: true },
+    });
+    if (all.length > 1 && new Set(all.map((r) => r.decision)).size > 1) {
+      await openAdjudication({
+        submissionId: params.submissionId,
+        reason: "consensus_disagreement",
+      });
+    }
+  }
 
   return { taskStatus: nextTaskStatus };
 }

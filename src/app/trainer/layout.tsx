@@ -7,9 +7,11 @@ export default async function TrainerLayout({ children }: { children: React.Reac
   const session = await auth();
   const userId = session?.user?.id;
 
-  const reviewer = hasReviewerRole(session?.user?.roles ?? []);
+  const roles = session?.user?.roles ?? [];
+  const reviewer = hasReviewerRole(roles);
+  const leadReviewer = roles.includes("LEAD_REVIEWER") || roles.includes("QUALITY_MANAGER");
 
-  const [tasksDue, unreadNotifications, reviewQueue] = userId
+  const [tasksDue, unreadNotifications, reviewQueue, adjudicationQueue] = userId
     ? await Promise.all([
         prisma.taskAssignment.count({ where: { userId, completedAt: null } }),
         prisma.notification.count({ where: { userId, readAt: null } }),
@@ -18,8 +20,11 @@ export default async function TrainerLayout({ children }: { children: React.Reac
               where: { reviews: { none: {} }, submittedById: { not: userId } },
             })
           : Promise.resolve(0),
+        leadReviewer
+          ? prisma.adjudication.count({ where: { status: "PENDING" } })
+          : Promise.resolve(0),
       ])
-    : [0, 0, 0];
+    : [0, 0, 0, 0];
 
   return (
     <TrainerShell
@@ -28,7 +33,9 @@ export default async function TrainerLayout({ children }: { children: React.Reac
       tasksDue={tasksDue}
       unreadNotifications={unreadNotifications}
       reviewQueue={reviewQueue}
+      adjudicationQueue={adjudicationQueue}
       isReviewer={reviewer}
+      isLeadReviewer={leadReviewer}
     >
       {children}
     </TrainerShell>
