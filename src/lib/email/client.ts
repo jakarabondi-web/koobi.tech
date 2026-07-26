@@ -37,7 +37,13 @@ export async function sendEmail(input: SendEmailInput): Promise<{ mocked: boolea
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: process.env.EMAIL_FROM ?? "Trainora AI <notifications@trainora.ai>",
+      // Resend only accepts a from-address on a domain you have verified with
+      // it. The old default was a domain nobody here owns, so every send
+      // failed with a key that was otherwise fine. Resend's shared sender
+      // works without any DNS setup — but it only delivers to the address
+      // that owns the Resend account, so it's for proving the wiring, not for
+      // real users. Set EMAIL_FROM to your own verified domain for that.
+      from: process.env.EMAIL_FROM ?? "onboarding@resend.dev",
       to: input.to,
       subject: input.subject,
       html: input.html,

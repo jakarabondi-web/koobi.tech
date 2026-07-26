@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/db/prisma";
 import { databaseUrlSource } from "@/lib/db/connection-url";
+import { isEmailConfigured } from "@/lib/email/client";
 
 /**
  * GET /api/health — what is actually deployed and whether it can reach data.
@@ -44,6 +45,10 @@ export async function GET() {
       migrated,
       databaseUrlFrom: databaseUrlSource() ?? null,
       authSecretSet: Boolean(process.env.AUTH_SECRET),
+      // Unset means sign-up shows the confirmation link on screen instead of
+      // sending it — see SECURITY.md. Worth being able to check at a glance.
+      emailConfigured: isEmailConfigured(),
+      emailFrom: process.env.EMAIL_FROM ?? "onboarding@resend.dev (default)",
       seedEndpointEnabled: Boolean(
         process.env.SEED_SECRET && process.env.SEED_SECRET.length >= 16
       ),
