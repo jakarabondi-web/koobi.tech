@@ -57,3 +57,10 @@ export function isClientAdmin(roles: GlobalRole[]): boolean {
 export function isSuperAdmin(roles: GlobalRole[]): boolean {
   return roles.includes("SUPER_ADMIN");
 }
+
+/** Where a signed-in person lands when nothing more specific applies. */
+export function dashboardPathForSurface(surface: AppSurface | null): string {
+  if (surface === "admin") return "/admin/dashboard";
+  if (surface === "client") return "/client/dashboard";
+  return "/trainer/dashboard";
+}

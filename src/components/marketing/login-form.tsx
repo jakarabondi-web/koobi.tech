@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { resendVerificationEmail } from "@/server/actions/resend-verification";
+import { dashboardPathForSurface } from "@/lib/permissions/roles";
 
 export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
   const router = useRouter();
@@ -62,12 +63,7 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
     // trainer dashboard meant a client admin's first act after signing in
     // was to hit a 403.
     const session = await getSession();
-    const home =
-      session?.user?.surface === "admin"
-        ? "/admin/dashboard"
-        : session?.user?.surface === "client"
-          ? "/client/dashboard"
-          : "/trainer/dashboard";
+    const home = dashboardPathForSurface(session?.user?.surface ?? null);
 
     router.push(callbackUrl || home);
     router.refresh();

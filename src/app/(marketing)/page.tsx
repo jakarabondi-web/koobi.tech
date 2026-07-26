@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
@@ -26,6 +27,8 @@ import {
 } from "lucide-react";
 
 import { brand } from "@/config/brand";
+import { auth } from "@/lib/auth";
+import { dashboardPathForSurface } from "@/lib/permissions/roles";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,7 +100,16 @@ const TRAINER_BENEFITS = [
 
 const SAMPLE_CLIENTS = ["Northwind Labs", "Meridian AI", "Solace Systems", "Anchorpoint", "Vantage Models", "Cobalt Research"];
 
-export default function HomePage() {
+export default async function HomePage() {
+  // OAuth and SSO sign-ins land here (they redirect to "/"), and this
+  // marketing page has no way to show a signed-in state — so a successful
+  // sign-in would otherwise look identical to never having signed in at
+  // all. Send anyone with a session straight to their dashboard instead.
+  const session = await auth();
+  if (session?.user) {
+    redirect(dashboardPathForSurface(session.user.surface));
+  }
+
   return (
     <>
       {/* Hero */}
