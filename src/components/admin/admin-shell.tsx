@@ -2,6 +2,7 @@
 
 import {
   LayoutDashboard,
+  TrendingUp,
   Users,
   UserPlus,
   Building2,
@@ -27,7 +28,10 @@ function buildNavSections(counts: { pendingApplications: number; payoutQueue: nu
   return [
     {
       label: "Overview",
-      items: [{ href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+      items: [
+        { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { href: "/admin/analytics", label: "Analytics", icon: TrendingUp },
+      ],
     },
     {
       label: "People",
