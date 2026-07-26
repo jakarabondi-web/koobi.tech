@@ -10,6 +10,11 @@ export type ResendState = { status: "idle" | "sent" };
 /**
  * Always reports success so this endpoint can't be used to enumerate which
  * email addresses have accounts.
+ *
+ * Note what this deliberately does NOT do: return the verification link when
+ * email is unconfigured, the way sign-up does. Sign-up shows it to whoever
+ * just created the account; this endpoint accepts *any* address, so handing
+ * back a link would let anyone activate someone else's pending account.
  */
 export async function resendVerificationEmail(
   _prev: ResendState,

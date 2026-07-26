@@ -20,17 +20,39 @@ export async function issueEmailVerification(userId: string, email: string, firs
 
   const url = `${appUrl()}/verify-email?token=${token}`;
 
-  await sendEmail({
-    to: email,
-    subject: `Confirm your ${brand.name} email address`,
-    html:
-      `<p>Hi ${firstName},</p>` +
-      `<p>Confirm your email address to activate your ${brand.name} account. ` +
-      `This link expires in ${TOKEN_TTL_HOURS} hours.</p>` +
-      `<p><a href="${url}">${url}</a></p>`,
-  });
+  let mocked = false;
+  let delivered = false;
 
-  return token;
+  try {
+    ({ mocked } = await sendEmail({
+      to: email,
+      subject: `Confirm your ${brand.name} email address`,
+      html:
+        `<p>Hi ${firstName},</p>` +
+        `<p>Confirm your email address to activate your ${brand.name} account. ` +
+        `This link expires in ${TOKEN_TTL_HOURS} hours.</p>` +
+        `<p><a href="${url}">${url}</a></p>`,
+    }));
+    delivered = !mocked;
+  } catch (err) {
+    // A provider outage or a bad API key must not take down registration —
+    // the account already exists at this point, so throwing would leave
+    // someone with an account and a stack trace. They can use "resend"
+    // instead.
+    console.error("[email] verification send failed:", err);
+  }
+
+  return {
+    token,
+    delivered,
+    // Returned only when this deployment cannot send email at all, so the
+    // caller can show the link rather than point someone at an inbox that
+    // will never receive anything. Deliberately null once email works — the
+    // inbox is then the proof of address ownership, and showing the link
+    // would bypass it. Also null on a send failure, because that is a
+    // transient fault on a deployment where email *is* configured.
+    url: mocked ? url : null,
+  };
 }
 
 export type VerifyResult = "verified" | "already_verified" | "invalid" | "expired";

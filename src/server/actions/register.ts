@@ -17,6 +17,14 @@ const registerSchema = z.object({
 
 export type RegisterState = {
   status: "idle" | "success" | "error";
+  /**
+   * Present only when this deployment cannot send email. Lets the sign-up
+   * screen show the confirmation link instead of pointing someone at an inbox
+   * that will never receive anything.
+   */
+  verificationUrl?: string;
+  /** Email is configured but the send failed — the account still exists. */
+  emailSendFailed?: boolean;
   errors?: Partial<Record<keyof z.infer<typeof registerSchema>, string>>;
   formError?: string;
 };
@@ -70,7 +78,11 @@ export async function registerUser(_prev: RegisterState, formData: FormData): Pr
     },
   });
 
-  await issueEmailVerification(user.id, user.email, user.firstName);
+  const { url, delivered } = await issueEmailVerification(user.id, user.email, user.firstName);
 
-  return { status: "success" };
+  return {
+    status: "success",
+    ...(url ? { verificationUrl: url } : {}),
+    ...(!delivered && !url ? { emailSendFailed: true } : {}),
+  };
 }

@@ -10,6 +10,16 @@ type SendEmailInput = {
   html: string;
 };
 
+/**
+ * Whether outbound email can actually be delivered.
+ *
+ * Callers use this to avoid telling someone "check your inbox" when nothing
+ * was sent — a message that turns a working sign-up into a dead end.
+ */
+export function isEmailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY);
+}
+
 export async function sendEmail(input: SendEmailInput): Promise<{ mocked: boolean }> {
   const apiKey = process.env.RESEND_API_KEY;
 

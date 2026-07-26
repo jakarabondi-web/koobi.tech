@@ -178,6 +178,18 @@ remember.
 - **Email** (`lib/email/client.ts`) — logs to console and returns
   `{ mocked: true }` when `RESEND_API_KEY` is unset. Real sending requires a
   configured Resend key.
+
+  When email is unconfigured, sign-up shows the confirmation link on screen
+  instead of claiming to have sent one. That is a deliberate trade for demo
+  deployments: it means **email ownership is not proven** — someone can sign
+  up with an address they don't control and activate it themselves. Set
+  `RESEND_API_KEY` before real users, and the link stops being shown.
+
+  Two related paths deliberately do *not* reveal it: the resend endpoint,
+  which accepts any address and would otherwise let anyone activate someone
+  else's pending account, and password reset, where it would be outright
+  account takeover. A send *failure* on a configured deployment also keeps
+  the link hidden — that's a transient fault, not an unconfigured host.
 - **File storage, Redis/queue jobs** — abstraction points exist in
   `.env.example` but are not yet implemented. In particular no worker
   processes dataset exports, so an export stays `QUEUED` forever.
