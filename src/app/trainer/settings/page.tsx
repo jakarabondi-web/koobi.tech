@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NotificationPreferences, SensitiveContentToggle } from "@/components/trainer/settings-forms";
+import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -36,13 +37,16 @@ export default async function SettingsPage() {
               {user?.emailVerifiedAt ? <Badge variant="success">Verified</Badge> : <Badge variant="warning">Unverified</Badge>}
             </span>
           </div>
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Two-factor authentication</span>
-            <Badge variant="outline">Not enabled</Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Two-factor authentication isn&apos;t available yet — it&apos;s on the roadmap.
-          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Two-factor authentication</CardTitle>
+          <CardDescription>Require a code from your phone to sign in.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <TwoFactorSettings initiallyEnabled={user?.twoFactorEnabled ?? false} />
         </CardContent>
       </Card>
 

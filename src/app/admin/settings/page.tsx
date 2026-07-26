@@ -3,18 +3,22 @@ import { redirect } from "next/navigation";
 import { CheckCircle2, AlertTriangle } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
 import { getIdentityProvider } from "@/lib/identity";
 import { listPayoutProviders } from "@/lib/payments";
 import { brand } from "@/config/brand";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 
 export const metadata: Metadata = { title: "Platform settings" };
 
 export default async function AdminSettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+
+  const me = await prisma.user.findUnique({ where: { id: session.user.id } });
 
   const identity = getIdentityProvider();
   const payouts = listPayoutProviders();
@@ -31,6 +35,23 @@ export default async function AdminSettingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Platform settings" description="Brand configuration and integration status." />
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Your account</CardTitle>
+          <CardDescription>
+            An administrator account is a high-value target — two-factor authentication is strongly
+            recommended here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 pb-6 text-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-muted-foreground">Email</span>
+            <span>{me?.email}</span>
+          </div>
+          <TwoFactorSettings initiallyEnabled={me?.twoFactorEnabled ?? false} />
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

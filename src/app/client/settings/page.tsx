@@ -6,16 +6,20 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
+import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function ClientSettingsPage() {
   const tenant = await requireTenant();
 
-  const org = await prisma.organization.findUniqueOrThrow({
-    where: { id: tenant.organizationId },
-    include: { clientProfile: true, _count: { select: { members: true, projects: true } } },
-  });
+  const [org, me] = await Promise.all([
+    prisma.organization.findUniqueOrThrow({
+      where: { id: tenant.organizationId },
+      include: { clientProfile: true, _count: { select: { members: true, projects: true } } },
+    }),
+    prisma.user.findUnique({ where: { id: tenant.userId } }),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -51,6 +55,16 @@ export default async function ClientSettingsPage() {
               ? "You can create projects, invite teammates, and manage billing."
               : "You can view projects and results. Ask an admin for elevated access."}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Two-factor authentication</CardTitle>
+          <CardDescription>Require a code from your phone to sign in.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <TwoFactorSettings initiallyEnabled={me?.twoFactorEnabled ?? false} />
         </CardContent>
       </Card>
     </div>

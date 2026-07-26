@@ -1,10 +1,19 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import Google from "next-auth/providers/google";
+import LinkedIn from "next-auth/providers/linkedin";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
 import type { GlobalRole } from "@/lib/permissions/roles";
+import {
+  consumeRecoveryCode,
+  createTwoFactorChallenge,
+  verifyTotpCode,
+} from "@/lib/auth/two-factor";
+import { decryptSecret } from "@/lib/security/field-encryption";
+import { resolveOAuthSignIn } from "@/server/services/oauth-account";
 
 import { authConfig } from "./config";
 
@@ -29,6 +38,20 @@ class AccountInactiveError extends CredentialsSignin {
 /** The account's domain is bound to an organization that requires SSO. */
 class SsoRequiredError extends CredentialsSignin {
   code = "sso_required";
+}
+
+/**
+ * The password was correct, but the account has 2FA enabled. The challenge
+ * token rides inside the error code because CredentialsSignin has no other
+ * channel back to the client — the login form parses the suffix and sends
+ * the person to /login/verify-2fa.
+ */
+class TwoFactorRequiredError extends CredentialsSignin {
+  code: string;
+  constructor(challengeToken: string) {
+    super();
+    this.code = `two_factor_required:${challengeToken}`;
+  }
 }
 
 const LOCKOUT_THRESHOLD = 5;
@@ -107,6 +130,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
         });
 
+        // The password is proven at this point, but a 2FA-enabled account
+        // still needs a second factor before a session is minted. There is
+        // no session yet to "pause" — instead a fresh challenge is opened
+        // and the client is sent to consume it, which is also what the
+        // OAuth path below does, so both entry points share one UI and one
+        // ticket-consuming provider.
+        if (user.twoFactorEnabled) {
+          const token = await createTwoFactorChallenge(user.id);
+          throw new TwoFactorRequiredError(token);
+        }
+
         const roles = user.roles.map((r) => r.role.key) as GlobalRole[];
 
         return {
@@ -161,5 +195,175 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         };
       },
     }),
+
+    /**
+     * Consumes a 2FA challenge — the counterpart to TwoFactorRequiredError
+     * above and to the redirect the OAuth signIn callback issues below.
+     *
+     * The code is checked here, inside the same call that claims the
+     * challenge, so a wrong guess never burns the one-time token: the
+     * challenge is only marked consumed once verification actually
+     * succeeds, guarded by a conditional update against a second tab
+     * racing the same successful code.
+     */
+    Credentials({
+      id: "two-factor-ticket",
+      name: "Two-factor verification",
+      credentials: {
+        challenge: { label: "Challenge", type: "text" },
+        code: { label: "Code", type: "text" },
+      },
+      async authorize(raw) {
+        const challengeToken = typeof raw?.challenge === "string" ? raw.challenge : null;
+        const code = typeof raw?.code === "string" ? raw.code.trim() : null;
+        if (!challengeToken || !code) return null;
+
+        const challenge = await prisma.twoFactorChallenge.findUnique({
+          where: { token: challengeToken },
+        });
+        if (!challenge || challenge.consumedAt || challenge.expiresAt < new Date()) return null;
+
+        const user = await prisma.user.findUnique({
+          where: { id: challenge.userId },
+          include: { roles: { include: { role: true } } },
+        });
+        if (!user || !user.twoFactorEnabled || user.status !== "ACTIVE") return null;
+
+        let verified = false;
+        let remainingRecoveryCodes: string[] | null = null;
+
+        if (user.twoFactorSecret && (await verifyTotpCode(decryptSecret(user.twoFactorSecret), code))) {
+          verified = true;
+        } else {
+          const recovery = consumeRecoveryCode(user.twoFactorRecoveryCodes, code);
+          if (recovery.valid) {
+            verified = true;
+            remainingRecoveryCodes = recovery.remaining;
+          }
+        }
+
+        if (!verified) return null;
+
+        const claimed = await prisma.twoFactorChallenge.updateMany({
+          where: { id: challenge.id, consumedAt: null },
+          data: { consumedAt: new Date() },
+        });
+        if (claimed.count !== 1) return null;
+
+        if (remainingRecoveryCodes) {
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { twoFactorRecoveryCodes: remainingRecoveryCodes },
+          });
+        }
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
+        });
+
+        return {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName} ${user.lastName}`,
+          image: user.avatarUrl ?? undefined,
+          roles: user.roles.map((r) => r.role.key) as GlobalRole[],
+        };
+      },
+    }),
+
+    // clientId/clientSecret are read from AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET
+    // and AUTH_LINKEDIN_ID/AUTH_LINKEDIN_SECRET automatically — Auth.js's
+    // env-variable convention for providers, not something this file wires
+    // up itself. Both buttons render but redirect to a provider error page
+    // if the pair is unset.
+    Google({}),
+    LinkedIn({}),
   ],
+  callbacks: {
+    ...authConfig.callbacks,
+
+    /**
+     * Runs only for the OAuth providers above — the Credentials providers
+     * resolve everything inside `authorize` and never reach here with an
+     * `account` present of type "oauth".
+     *
+     * See resolveOAuthSignIn for the rules (verified email required, SSO
+     * domains excluded, account linking by verified email). A 2FA-enabled
+     * account cannot be signed into directly from here: returning a URL
+     * aborts the OAuth callback without creating a session, exactly like
+     * denying it, except the destination carries a fresh challenge token so
+     * the same verify-2fa screen the password path uses can finish the job.
+     */
+    async signIn({ account, profile }) {
+      if (!account || account.type !== "oauth") return true;
+      if (account.provider !== "google" && account.provider !== "linkedin") return true;
+
+      const p = (profile ?? {}) as Record<string, unknown>;
+      const resolution = await resolveOAuthSignIn(
+        account.provider,
+        {
+          email: typeof p.email === "string" ? p.email : null,
+          emailVerified: typeof p.email_verified === "boolean" ? p.email_verified : null,
+          givenName: typeof p.given_name === "string" ? p.given_name : null,
+          familyName: typeof p.family_name === "string" ? p.family_name : null,
+          name: typeof p.name === "string" ? p.name : null,
+          picture: typeof p.picture === "string" ? p.picture : null,
+        },
+        {
+          providerAccountId: account.providerAccountId,
+          accessToken: account.access_token,
+          refreshToken: account.refresh_token,
+          expiresAt: account.expires_at,
+          tokenType: account.token_type,
+          scope: account.scope,
+          idToken: account.id_token,
+        }
+      );
+
+      if (resolution.outcome === "denied") {
+        return `/login?error=oauth_${resolution.reason}`;
+      }
+
+      if (resolution.user.twoFactorEnabled) {
+        const token = await createTwoFactorChallenge(resolution.user.id);
+        return `/login/verify-2fa?challenge=${token}`;
+      }
+
+      return true;
+    },
+
+    /**
+     * The `user` object handed to `jwt` after a successful OAuth sign-in is
+     * whatever the provider's default `profile()` mapping produced (id from
+     * `sub`, not our database id). `signIn` above already resolved the real
+     * account; this callback is what actually gets to rewrite `user` before
+     * `authConfig`'s `jwt` callback reads `user.id` and `user.roles` off it.
+     */
+    async jwt(params) {
+      const { account, user } = params;
+      if (account?.type === "oauth" && (account.provider === "google" || account.provider === "linkedin")) {
+        // `signIn` above already created/linked the Account row for this
+        // exact (provider, providerAccountId) pair — looking it up by that
+        // key is precise, unlike matching on email again, which could in
+        // principle collide if an address were ever reused.
+        const linked = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          include: { user: { include: { roles: { include: { role: true } } } } },
+        });
+        if (linked) {
+          (user as { id: string }).id = linked.user.id;
+          (user as { roles?: GlobalRole[] }).roles = linked.user.roles.map(
+            (r) => r.role.key
+          ) as GlobalRole[];
+        }
+      }
+      return authConfig.callbacks!.jwt!(params);
+    },
+  },
 });

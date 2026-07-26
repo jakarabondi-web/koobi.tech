@@ -30,7 +30,7 @@ session-level advisory lock a transaction-mode pooler cannot hold.
 
 ### 2. Import the repo
 
-In Vercel: **Add New → Project**, import `jakarabondi-web/koobi.tech`, and
+In Vercel: **Add New → Project**, import the repository, and
 pick the branch. Framework detection (Next.js) is correct — don't override
 the build command; `package.json` already runs migrations before the build.
 
@@ -72,6 +72,21 @@ failing:
 - `STORAGE_*` — S3-compatible uploads
 - `IPINFO_TOKEN` — IP geolocation for work-location signals
 - `SSO_CLIENT_SECRET_<ORG_SLUG>` — per-organization SSO client secret
+- `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` — "Sign in with Google". Create an
+  OAuth client in Google Cloud Console (APIs & Services → Credentials →
+  OAuth client ID → Web application) and add
+  `https://your-domain.com/api/auth/callback/google` as an authorized
+  redirect URI.
+- `AUTH_LINKEDIN_ID` / `AUTH_LINKEDIN_SECRET` — "Sign in with LinkedIn".
+  Create an app in the LinkedIn Developer Portal with the "Sign In with
+  LinkedIn using OpenID Connect" product added, and add
+  `https://your-domain.com/api/auth/callback/linkedin` as an authorized
+  redirect URL.
+
+  Both buttons render on the login page regardless of whether these are set
+  — signing in just fails gracefully to a provider error page until the
+  matching pair is configured. See `SECURITY.md` for the account-linking
+  rules (verified email required, no adapter, no just-in-time SSO bypass).
 
 ### 4. Deploy
 

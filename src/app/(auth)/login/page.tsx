@@ -26,6 +26,10 @@ const SSO_ERRORS: Record<string, string> = {
   sso_domain_mismatch: "The account your provider returned isn't on your organization's verified domain.",
   sso_no_account: "There's no Traivr account for that address yet. Ask your admin to invite you first.",
   account_inactive: "This account isn't active. Contact support if you think that's wrong.",
+  oauth_no_email: "That provider didn't share an email address, so we can't match you to an account.",
+  oauth_email_unverified: "That provider reports your email address isn't verified there yet. Verify it with them, then try again.",
+  oauth_sso_required: "Your organization requires signing in through its own single sign-on, not a personal Google or LinkedIn account.",
+  oauth_inactive: "This account isn't active. Contact support if you think that's wrong.",
 };
 
 export default async function LoginPage({

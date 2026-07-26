@@ -173,6 +173,61 @@ remember.
 - **No refresh-token handling or single logout.** Signing out of the IdP does
   not end a Traivr session; the 8-hour session lifetime bounds it.
 
+## Two-factor authentication (TOTP)
+
+Implemented in `lib/auth/two-factor.ts`, `server/actions/two-factor.ts`, and
+the `"two-factor-ticket"` Credentials provider in `lib/auth/index.ts`.
+
+- **Enrollment is two-phase.** `startEnroll2fa` generates a secret and stores
+  it encrypted, but leaves `twoFactorEnabled` false. `confirmEnroll2fa` only
+  flips it to true after the person proves they can produce a real code from
+  it — otherwise a page reload mid-setup could lock someone out of an
+  account "enabled" for a factor they never actually captured.
+- **The TOTP secret is encrypted at rest** (AES-256-GCM, keyed off
+  `SHA-256(AUTH_SECRET)`) in `lib/security/field-encryption.ts` — never stored
+  or logged in plaintext.
+- **Ten recovery codes** (`xxxx-xxxx`, SHA-256 hashed, single-use) are issued
+  once at enrollment and shown exactly once. Losing them means losing the
+  recovery path, not the account — support can still disable 2FA for a
+  verified owner.
+- **Disabling 2FA requires the password**, not just an authenticated session,
+  so an unlocked, signed-in browser can't be used to strip the second factor.
+- **The same challenge flow gates both password and OAuth sign-in.** A
+  2FA-enabled account gets a single-use `TwoFactorChallenge` row (5-minute
+  expiry) regardless of entry point, consumed by the `"two-factor-ticket"`
+  provider — one implementation, not two.
+- **Clock drift tolerance is ±30 seconds**, matching one full TOTP step in
+  either direction — enough for a phone with a slightly wrong clock, not
+  enough to make replay easy.
+
+## OAuth sign-in (Google, LinkedIn)
+
+Implemented in `server/services/oauth-account.ts` (linking/creation
+decisions) and the `signIn`/`jwt` callbacks in `lib/auth/index.ts`. There is
+no Prisma Adapter — every linking and account-creation decision is explicit
+in `resolveOAuthSignIn`, not implicit adapter behavior.
+
+- **Requires a verified email from the provider.** A sign-in is refused if
+  the provider doesn't return an email, or returns one it hasn't verified
+  itself (`email_verified: false`) — this is the only identity fact being
+  trusted, so it has to be provider-attested.
+- **SSO-enforced domains block it.** If an organization's domain requires
+  SSO (see above), a personal Google/LinkedIn account on that domain is
+  refused the same way a password sign-in would be.
+- **Linking is by verified email match**, not by whatever the user happens to
+  claim: an existing account with the same verified email gets the OAuth
+  identity linked (and, if it was `PENDING`, activated); no match creates a
+  new `TRAINER` account. The `jwt` callback re-derives the user id from the
+  exact `(provider, providerAccountId)` pair, not from email, to avoid any
+  ambiguity if emails are ever reused.
+- **Requires `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`** or
+  `AUTH_LINKEDIN_ID`/`AUTH_LINKEDIN_SECRET` (Auth.js's provider-id-based env
+  convention — not read explicitly by this codebase). Buttons render
+  regardless; signing in fails gracefully to a provider error page if the
+  pair is unset. Redirect URIs to register with each provider:
+  `https://<domain>/api/auth/callback/google` and
+  `https://<domain>/api/auth/callback/linkedin`.
+
 ## Explicitly mocked (do not mistake for production-ready)
 
 - **Email** (`lib/email/client.ts`) — logs to console and returns
@@ -193,8 +248,6 @@ remember.
 - **File storage, Redis/queue jobs** — abstraction points exist in
   `.env.example` but are not yet implemented. In particular no worker
   processes dataset exports, so an export stays `QUEUED` forever.
-- **Two-factor authentication** — `User.twoFactorEnabled` exists as a schema
-  field; no TOTP/enrollment flow is built yet.
 - **Identity verification** (`src/lib/identity/persona.ts`) — simulates
   document/liveness/face-match/dedupe decisions unless `PERSONA_API_KEY` and
   `PERSONA_TEMPLATE_ID` are set, so the review workflow can be exercised end

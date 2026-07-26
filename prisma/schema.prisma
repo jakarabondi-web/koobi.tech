@@ -53,6 +53,12 @@ model User {
   locale            String    @default("en")
   status            UserStatus @default(ACTIVE)
   twoFactorEnabled  Boolean   @default(false)
+  /// AES-256-GCM ciphertext of the TOTP secret (iv:tag:ciphertext, base64).
+  /// Never stored or logged in plaintext — see lib/security/field-encryption.ts.
+  twoFactorSecret   String?
+  /// SHA-256 hashes of one-time recovery codes. Each is removed on use, so a
+  /// used code can never be replayed.
+  twoFactorRecoveryCodes String[] @default([])
   lastLoginAt       DateTime?
   lastLoginIp       String?
   failedLoginCount  Int       @default(0)
@@ -64,6 +70,7 @@ model User {
   accounts          Account[]
   sessions          Session[]
   ssoTickets        SsoTicket[]
+  twoFactorChallenges TwoFactorChallenge[]
   roles             UserRole[]
   memberships       OrganizationMember[]
   trainerProfile    TrainerProfile?
@@ -169,6 +176,24 @@ model SsoTicket {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sso_tickets")
+}
+
+/// A single-use handoff proving a 2FA (TOTP or recovery code) challenge was
+/// satisfied, for the same reason SsoTicket exists: the code is checked in a
+/// Server Action, which cannot mint an Auth.js session directly, and neither
+/// a password-based nor an OAuth sign-in has anywhere else to carry a
+/// second-factor result through to the session layer.
+model TwoFactorChallenge {
+  id         String    @id @default(uuid())
+  token      String    @unique
+  userId     String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("two_factor_challenges")
 }
 
 model Session {
