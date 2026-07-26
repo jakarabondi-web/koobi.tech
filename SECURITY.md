@@ -200,7 +200,7 @@ the `"two-factor-ticket"` Credentials provider in `lib/auth/index.ts`.
   either direction — enough for a phone with a slightly wrong clock, not
   enough to make replay easy.
 
-## OAuth sign-in (Google, LinkedIn)
+## OAuth sign-in (Google)
 
 Implemented in `server/services/oauth-account.ts` (linking/creation
 decisions) and the `signIn`/`jwt` callbacks in `lib/auth/index.ts`. There is
@@ -212,21 +212,19 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
   itself (`email_verified: false`) — this is the only identity fact being
   trusted, so it has to be provider-attested.
 - **SSO-enforced domains block it.** If an organization's domain requires
-  SSO (see above), a personal Google/LinkedIn account on that domain is
-  refused the same way a password sign-in would be.
+  SSO (see above), a personal Google account on that domain is refused the
+  same way a password sign-in would be.
 - **Linking is by verified email match**, not by whatever the user happens to
   claim: an existing account with the same verified email gets the OAuth
   identity linked (and, if it was `PENDING`, activated); no match creates a
   new `TRAINER` account. The `jwt` callback re-derives the user id from the
   exact `(provider, providerAccountId)` pair, not from email, to avoid any
   ambiguity if emails are ever reused.
-- **Requires `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`** or
-  `AUTH_LINKEDIN_ID`/`AUTH_LINKEDIN_SECRET` (Auth.js's provider-id-based env
-  convention — not read explicitly by this codebase). Buttons render
-  regardless; signing in fails gracefully to a provider error page if the
-  pair is unset. Redirect URIs to register with each provider:
-  `https://<domain>/api/auth/callback/google` and
-  `https://<domain>/api/auth/callback/linkedin`.
+- **Requires `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`** (Auth.js's
+  provider-id-based env convention — not read explicitly by this codebase).
+  The button renders regardless; signing in fails gracefully to a provider
+  error page if the pair is unset. Redirect URI to register:
+  `https://<domain>/api/auth/callback/google`.
 
 ## Explicitly mocked (do not mistake for production-ready)
 

@@ -56,16 +56,16 @@ function splitName(profile: OAuthProfile): { first: string; last: string } {
  *   used here as a substitute for our own email-confirmation token, so an
  *   unverified address proves nothing and must not create or claim an
  *   account.
- * - If the email's domain enforces enterprise SSO, a generic Google or
- *   LinkedIn login is not the enforced identity provider and is refused —
- *   otherwise SSO enforcement would be advisory.
+ * - If the email's domain enforces enterprise SSO, a generic Google login
+ *   is not the enforced identity provider and is refused — otherwise SSO
+ *   enforcement would be advisory.
  * - Linking to an existing account happens by verified email match. This is
  *   deliberately *not* gated behind "only if the account has no password" or
  *   similar — a verified email from Google is exactly as strong a proof of
  *   address ownership as our own confirmation link.
  */
 export async function resolveOAuthSignIn(
-  provider: "google" | "linkedin",
+  provider: "google",
   profile: OAuthProfile,
   tokens: OAuthAccountTokens
 ): Promise<OAuthResolution> {

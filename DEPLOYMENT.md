@@ -77,16 +77,10 @@ failing:
   OAuth client ID → Web application) and add
   `https://your-domain.com/api/auth/callback/google` as an authorized
   redirect URI.
-- `AUTH_LINKEDIN_ID` / `AUTH_LINKEDIN_SECRET` — "Sign in with LinkedIn".
-  Create an app in the LinkedIn Developer Portal with the "Sign In with
-  LinkedIn using OpenID Connect" product added, and add
-  `https://your-domain.com/api/auth/callback/linkedin` as an authorized
-  redirect URL.
-
-  Both buttons render on the login page regardless of whether these are set
-  — signing in just fails gracefully to a provider error page until the
-  matching pair is configured. See `SECURITY.md` for the account-linking
-  rules (verified email required, no adapter, no just-in-time SSO bypass).
+  The button renders on the login page regardless of whether this is set —
+  signing in just fails gracefully to a provider error page until the pair
+  is configured. See `SECURITY.md` for the account-linking rules (verified
+  email required, no adapter, no just-in-time SSO bypass).
 
 ### 4. Deploy
 

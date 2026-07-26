@@ -1,7 +1,6 @@
 import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
-import LinkedIn from "next-auth/providers/linkedin";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 
@@ -273,12 +272,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
 
     // clientId/clientSecret are read from AUTH_GOOGLE_ID/AUTH_GOOGLE_SECRET
-    // and AUTH_LINKEDIN_ID/AUTH_LINKEDIN_SECRET automatically — Auth.js's
-    // env-variable convention for providers, not something this file wires
-    // up itself. Both buttons render but redirect to a provider error page
-    // if the pair is unset.
+    // automatically — Auth.js's env-variable convention for providers, not
+    // something this file wires up itself. The button renders regardless;
+    // signing in redirects to a provider error page if the pair is unset.
     Google({}),
-    LinkedIn({}),
   ],
   callbacks: {
     ...authConfig.callbacks,
@@ -297,7 +294,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      */
     async signIn({ account, profile }) {
       if (!account || account.type !== "oauth") return true;
-      if (account.provider !== "google" && account.provider !== "linkedin") return true;
+      if (account.provider !== "google") return true;
 
       const p = (profile ?? {}) as Record<string, unknown>;
       const resolution = await resolveOAuthSignIn(
@@ -342,7 +339,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      */
     async jwt(params) {
       const { account, user } = params;
-      if (account?.type === "oauth" && (account.provider === "google" || account.provider === "linkedin")) {
+      if (account?.type === "oauth" && account.provider === "google") {
         // `signIn` above already created/linked the Account row for this
         // exact (provider, providerAccountId) pair — looking it up by that
         // key is precise, unlike matching on email again, which could in

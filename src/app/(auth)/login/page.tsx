@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Wallet, Clock, Sparkles } from "lucide-react";
 
+import { brand } from "@/config/brand";
 import { LoginForm } from "@/components/marketing/login-form";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -28,9 +30,15 @@ const SSO_ERRORS: Record<string, string> = {
   account_inactive: "This account isn't active. Contact support if you think that's wrong.",
   oauth_no_email: "That provider didn't share an email address, so we can't match you to an account.",
   oauth_email_unverified: "That provider reports your email address isn't verified there yet. Verify it with them, then try again.",
-  oauth_sso_required: "Your organization requires signing in through its own single sign-on, not a personal Google or LinkedIn account.",
+  oauth_sso_required: "Your organization requires signing in through its own single sign-on, not a personal Google account.",
   oauth_inactive: "This account isn't active. Contact support if you think that's wrong.",
 };
+
+const BENEFITS = [
+  { icon: Wallet, text: "Transparent pay, shown before you ever start a task" },
+  { icon: Clock, text: "Flexible projects — work them on your own schedule" },
+  { icon: Sparkles, text: "Your expertise, shaping AI models people actually use" },
+];
 
 export default async function LoginPage({
   searchParams,
@@ -41,22 +49,42 @@ export default async function LoginPage({
   const ssoError = error ? SSO_ERRORS[error] : undefined;
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader>
-        <CardTitle className="text-xl">Sign in</CardTitle>
-        <CardDescription>
-          {forSurface
-            ? `Sign in to access the ${forSurface} portal.`
-            : "Sign in to your Traivr account."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pb-6">
+    <Card className="w-full max-w-4xl gap-0 overflow-hidden p-0 md:flex-row">
+      <div className="hidden flex-col justify-center gap-8 bg-gradient-to-br from-primary/10 via-accent-violet/10 to-accent-cyan/10 p-10 md:flex md:w-5/12">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {forSurface ? `Welcome back to your ${forSurface} portal.` : "Good to see you again."}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">{brand.tagline}</p>
+        </div>
+        <ul className="space-y-5">
+          {BENEFITS.map(({ icon: Icon, text }) => (
+            <li key={text} className="flex items-start gap-3">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background text-primary shadow-sm">
+                <Icon className="size-4.5" />
+              </span>
+              <p className="pt-1.5 text-sm font-medium">{text}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="flex-1 p-8 sm:p-10">
+        <h2 className="text-xl font-semibold tracking-tight">Sign in</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {forSurface ? `Sign in to access the ${forSurface} portal.` : "Sign in to your Traivr account."}
+        </p>
+
         {ssoError ? (
-          <p className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             {ssoError}
           </p>
         ) : null}
-        <LoginForm callbackUrl={callbackUrl} />
+
+        <div className="mt-6">
+          <LoginForm callbackUrl={callbackUrl} />
+        </div>
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link href="/register" className="font-medium text-primary hover:underline">
@@ -68,7 +96,7 @@ export default async function LoginPage({
             Forgot your password?
           </Link>
         </p>
-      </CardContent>
+      </div>
     </Card>
   );
 }
