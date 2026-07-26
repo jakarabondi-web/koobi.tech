@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { GLOBAL_ROLES } from "../src/lib/permissions/roles";
 
-const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
 const DEMO_PASSWORD = "Trainora!Demo2026";
 
@@ -195,7 +195,14 @@ async function ensureAssessments() {
   });
 }
 
-async function main() {
+/**
+ * Populates an empty database with demo data.
+ *
+ * Exported rather than run on import so the same code backs both
+ * `npm run db:seed` and the one-time seed endpoint — two implementations of
+ * "what demo data looks like" would drift.
+ */
+export async function seedDatabase() {
   console.log("Seeding Trainora AI demo data…");
 
   await ensureRoles();
@@ -588,12 +595,3 @@ async function main() {
   console.log("  admin@trainora.demo    — Super Admin");
   void admin;
 }
-
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
