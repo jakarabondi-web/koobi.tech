@@ -92,18 +92,10 @@ DATABASE_URL="<direct connection string>" npm run db:seed
 ```
 
 **From the deployment itself**, when the database isn't reachable from your
-laptop — common with managed Postgres. Set `SEED_SECRET` to a long random
-value in your host's environment variables, redeploy so it takes effect, then:
-
-```bash
-curl -X POST https://your-app.vercel.app/api/admin/seed \
-  -H "Authorization: Bearer <your SEED_SECRET>"
-```
-
-That route (`src/app/api/admin/seed/route.ts`) 404s unless `SEED_SECRET` is
-set, requires it in constant time, and refuses to run once any user exists —
-so it cannot overwrite real accounts. **Unset `SEED_SECRET` and delete the
-route once you have signed in.**
+laptop, a temporary route can be added that seeds over HTTP behind a secret.
+One was used for this deployment and has since been removed — see commit
+history for `src/app/api/admin/seed/route.ts` if you need it again. Delete it
+again once used: it creates a super admin whose password is in this repo.
 
 ⚠️ The seed creates demo accounts with a **published password**
 (`Trainora!Demo2026`), including a super admin. That is correct for a demo
