@@ -17,10 +17,16 @@ Database → Neon), but Supabase, Railway, or RDS are all fine.
 | `DATABASE_URL` | the **pooled** one (Neon `-pooler`, Supabase port `6543`) | Every serverless invocation can open its own connection. Without a pooler you exhaust the connection limit long before anything else. |
 | `DIRECT_URL` | the **direct/unpooled** one — *optional* | Migrations take a session-level advisory lock that a transaction-mode pooler cannot hold. |
 
-`DIRECT_URL` is optional: if it's unset the build falls back to
-`DATABASE_URL` and prints a warning. That's correct for any database without
-a pooler. **Set it if you're on Neon, Supabase, or anything else fronted by
-PgBouncer** — otherwise migrations can hang or fail on the advisory lock.
+**With Vercel's Neon integration you set neither.** Connecting the database
+publishes `POSTGRES_PRISMA_URL` and `POSTGRES_URL_NON_POOLING`, and the app
+reads those directly (`src/lib/db/connection-url.ts`). They're marked
+sensitive in the dashboard, so copying them into hand-made variables isn't
+possible anyway.
+
+Set `DATABASE_URL` yourself only on a host that publishes nothing — a VM,
+Docker, plain RDS. `DIRECT_URL` likewise: it's used if present, and the build
+warns when only a pooled string is available, because migrations take a
+session-level advisory lock a transaction-mode pooler cannot hold.
 
 ### 2. Import the repo
 
@@ -33,13 +39,13 @@ the build command; `package.json` already runs migrations before the build.
 Required — the deploy fails or misbehaves without these:
 
 ```
-DATABASE_URL      = <pooled connection string>
 AUTH_SECRET       = <32-byte random value>   # openssl rand -base64 32
 ```
 
-Add `DIRECT_URL = <direct connection string>` too if your provider pools
-connections (Neon, Supabase). The Vercel/Neon integration creates this value
-already — look for a variable with `UNPOOLED` or `NON_POOLING` in its name.
+That is the only variable you must add by hand on Vercel with Neon attached.
+The connection strings come from the integration and are picked up
+automatically. On any other host, add `DATABASE_URL` too (and `DIRECT_URL` if
+the database is pooled).
 
 Strongly recommended once you know the URL:
 

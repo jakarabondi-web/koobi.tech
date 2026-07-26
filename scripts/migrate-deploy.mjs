@@ -54,24 +54,51 @@ function prismaCommand() {
 
 const env = { ...process.env };
 
-if (!env.DATABASE_URL) {
+// Same alias resolution the app uses at runtime — kept in one module so the
+// build and the running site can never disagree about which database they
+// mean. Duplicated as plain JS here because this script runs before any
+// TypeScript build step exists.
+const POOLED_KEYS = ["DATABASE_URL", "POSTGRES_PRISMA_URL", "POSTGRES_URL"];
+const DIRECT_KEYS = ["DIRECT_URL", "DATABASE_URL_UNPOOLED", "POSTGRES_URL_NON_POOLING"];
+
+const firstSet = (keys) => keys.find((k) => env[k] && env[k].trim() !== "");
+
+const pooledKey = firstSet(POOLED_KEYS);
+const directKey = firstSet(DIRECT_KEYS);
+
+if (!pooledKey) {
   console.error(
-    "\n✗ DATABASE_URL is not set.\n" +
-      "  The build applies migrations, so it needs a database.\n" +
-      "  Set DATABASE_URL in your host's environment variables and redeploy.\n"
+    "\n✗ No database connection string found.\n" +
+      `  Looked for: ${[...POOLED_KEYS, ...DIRECT_KEYS].join(", ")}\n` +
+      "  The build applies migrations, so it needs a database. Connect one in\n" +
+      "  your host's dashboard (Vercel: Storage → Create Database) or set\n" +
+      "  DATABASE_URL yourself, then redeploy.\n"
   );
   process.exit(1);
 }
 
-if (!env.DIRECT_URL) {
-  env.DIRECT_URL = env.DATABASE_URL;
+env.DATABASE_URL = env[pooledKey];
+
+if (directKey) {
+  env.DIRECT_URL = env[directKey];
+  if (directKey !== "DIRECT_URL") {
+    console.log(`ℹ Using ${directKey} for migrations.`);
+  }
+} else {
+  // No unpooled string published anywhere. Migrations take a session-level
+  // advisory lock a transaction-mode pooler cannot hold, so this can fail
+  // where a normal query would not — say so rather than let it look random.
+  env.DIRECT_URL = env[pooledKey];
   console.warn(
-    "\n⚠ DIRECT_URL is not set — falling back to DATABASE_URL for migrations.\n" +
-      "  Fine if your database has no connection pooler.\n" +
-      "  If it does (Neon, Supabase, PgBouncer), set DIRECT_URL to the direct\n" +
-      "  or 'unpooled' connection string: migrations take a session-level\n" +
-      "  advisory lock that a transaction-mode pooler cannot hold.\n"
+    `\n⚠ No direct (unpooled) connection string found — using ${pooledKey}.\n` +
+      "  Fine if your database has no connection pooler. If it does (Neon,\n" +
+      "  Supabase, PgBouncer) and migrations fail on an advisory lock, set\n" +
+      "  DIRECT_URL to the unpooled string.\n"
   );
+}
+
+if (pooledKey !== "DATABASE_URL") {
+  console.log(`ℹ Using ${pooledKey} as the database connection.`);
 }
 
 const { command, prefix } = prismaCommand();
