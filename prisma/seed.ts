@@ -5,7 +5,7 @@ import { GLOBAL_ROLES } from "../src/lib/permissions/roles";
 
 export const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = "Trainora!Demo2026";
+const DEMO_PASSWORD = "Traivr!Demo2026";
 
 // Fixed UUIDs rather than readable slugs: every id in production is a UUID,
 // and seed data that doesn't match that shape hides bugs in id validation.
@@ -203,7 +203,7 @@ async function ensureAssessments() {
  * "what demo data looks like" would drift.
  */
 export async function seedDatabase() {
-  console.log("Seeding Trainora AI demo data…");
+  console.log("Seeding Traivr demo data…");
 
   await ensureRoles();
   await ensureSkillsAndLanguages();
@@ -212,25 +212,25 @@ export async function seedDatabase() {
 
   // --- Demo accounts (development only) ---
   const trainer = await upsertUser({
-    email: "trainer@trainora.demo",
+    email: "trainer@traivr.demo",
     firstName: "Maya",
     lastName: "Okafor",
     role: "TRAINER",
   });
   const reviewer = await upsertUser({
-    email: "reviewer@trainora.demo",
+    email: "reviewer@traivr.demo",
     firstName: "Daniel",
     lastName: "Kessler",
     role: "REVIEWER",
   });
   const clientAdmin = await upsertUser({
-    email: "client@trainora.demo",
+    email: "client@traivr.demo",
     firstName: "Priya",
     lastName: "Raman",
     role: "CLIENT_ADMIN",
   });
   const admin = await upsertUser({
-    email: "admin@trainora.demo",
+    email: "admin@traivr.demo",
     firstName: "Jordan",
     lastName: "Lee",
     role: "SUPER_ADMIN",
@@ -370,7 +370,7 @@ export async function seedDatabase() {
   // A second applicant sitting in the review queue, so the admin screen
   // has something real to act on.
   const applicant = await upsertUser({
-    email: "applicant@trainora.demo",
+    email: "applicant@traivr.demo",
     firstName: "Tomas",
     lastName: "Ferreira",
     role: "TRAINER",
@@ -589,9 +589,9 @@ export async function seedDatabase() {
 
   console.log("Seed complete.");
   console.log("Demo accounts (password: %s):", DEMO_PASSWORD);
-  console.log("  trainer@trainora.demo  — Trainer");
-  console.log("  reviewer@trainora.demo — Reviewer");
-  console.log("  client@trainora.demo   — Client Admin (Meridian AI)");
-  console.log("  admin@trainora.demo    — Super Admin");
+  console.log("  trainer@traivr.demo  — Trainer");
+  console.log("  reviewer@traivr.demo — Reviewer");
+  console.log("  client@traivr.demo   — Client Admin (Meridian AI)");
+  console.log("  admin@traivr.demo    — Super Admin");
   void admin;
 }

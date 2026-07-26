@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Trainora AI design tokens.
+ * Traivr design tokens.
  * All brand colors live here as CSS variables so the visual identity
  * can be re-skinned without touching component code.
  */

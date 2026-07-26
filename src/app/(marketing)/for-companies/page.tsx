@@ -46,7 +46,7 @@ export default function ForCompaniesPage() {
 
       <section className="border-y border-border bg-surface py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-semibold tracking-tight">What teams build with Trainora AI</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">What teams build with Traivr</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {USE_CASES.map((u) => (
               <Card key={u.title}>

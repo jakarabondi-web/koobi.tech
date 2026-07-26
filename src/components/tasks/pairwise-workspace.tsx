@@ -52,7 +52,7 @@ export function PairwiseWorkspace({
     };
     if (typeof window === "undefined" || readOnly || existing) return base;
     try {
-      const raw = window.localStorage.getItem(`trainora:draft:${taskId}`);
+      const raw = window.localStorage.getItem(`traivr:draft:${taskId}`);
       if (!raw) return base;
       const saved = JSON.parse(raw) as Partial<typeof base>;
       return {
@@ -87,14 +87,14 @@ export function PairwiseWorkspace({
     if (readOnly) return;
     const draft = { preferred, confidence, justification };
     const t = setTimeout(() => {
-      localStorage.setItem(`trainora:draft:${taskId}`, JSON.stringify(draft));
+      localStorage.setItem(`traivr:draft:${taskId}`, JSON.stringify(draft));
       setSavedAt(new Date().toLocaleTimeString());
     }, 800);
     return () => clearTimeout(t);
   }, [taskId, preferred, confidence, justification, readOnly]);
 
   useEffect(() => {
-    if (state.status === "success") localStorage.removeItem(`trainora:draft:${taskId}`);
+    if (state.status === "success") localStorage.removeItem(`traivr:draft:${taskId}`);
   }, [state.status, taskId]);
 
   const incomplete = !preferred || justification.trim().length < 20;

@@ -89,7 +89,7 @@ describe("createPkcePair", () => {
 
 describe("checkDomainToken", () => {
   const token = "a".repeat(32);
-  const record = `trainora-domain-verification=${token}`;
+  const record = `traivr-domain-verification=${token}`;
   const stub = (records: string[][]) => async () => records;
 
   it("verifies when the exact record is present alongside others", async () => {
@@ -112,7 +112,7 @@ describe("checkDomainToken", () => {
     const result = await checkDomainToken(
       "acme.com",
       token,
-      stub([[`trainora-domain-verification=${"b".repeat(32)}`]])
+      stub([[`traivr-domain-verification=${"b".repeat(32)}`]])
     );
     expect(result.verified).toBe(false);
     if (!result.verified) {

@@ -47,7 +47,7 @@ export function SsoSettings({
   const [enforceState, enforceAction, enforcing] = useActionState(setSsoEnforcement, initial);
   const [copied, setCopied] = useState(false);
 
-  const recordValue = config.token ? `trainora-domain-verification=${config.token}` : null;
+  const recordValue = config.token ? `traivr-domain-verification=${config.token}` : null;
   const verified = config.verifiedAt !== null;
 
   return (
@@ -185,7 +185,7 @@ export function SsoSettings({
           <p className="mt-1 text-sm text-muted-foreground">
             Single sign-on can&apos;t complete until the client secret is set on the server as{" "}
             <code className="font-mono text-xs">{config.secretEnvVar}</code>. Secrets aren&apos;t
-            accepted through this form — send it to your Trainora contact over a secure channel.
+            accepted through this form — send it to your Traivr contact over a secure channel.
           </p>
         )}
       </div>

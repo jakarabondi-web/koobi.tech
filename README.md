@@ -1,8 +1,8 @@
-# Trainora AI
+# Traivr
 
 > Human expertise for better AI.
 
-Trainora AI is an AI-training workforce platform connecting verified trainers,
+Traivr is an AI-training workforce platform connecting verified trainers,
 subject-matter experts, and reviewers with AI companies that need human
 feedback, model evaluations, RLHF preference data, red teaming, and
 supervised fine-tuning data.
@@ -87,10 +87,10 @@ After running `npm run db:seed`, sign in at `/login` with:
 
 | Email                     | Role         | Password              |
 | -------------------------- | ------------ | ---------------------- |
-| `trainer@trainora.demo`    | Trainer      | `Trainora!Demo2026`    |
-| `reviewer@trainora.demo`   | Reviewer     | `Trainora!Demo2026`    |
-| `client@trainora.demo`     | Client Admin | `Trainora!Demo2026`    |
-| `admin@trainora.demo`      | Super Admin  | `Trainora!Demo2026`    |
+| `trainer@traivr.demo`    | Trainer      | `Traivr!Demo2026`    |
+| `reviewer@traivr.demo`   | Reviewer     | `Traivr!Demo2026`    |
+| `client@traivr.demo`     | Client Admin | `Traivr!Demo2026`    |
+| `admin@traivr.demo`      | Super Admin  | `Traivr!Demo2026`    |
 
 These accounts and password only exist in your local seeded database — never
 committed as production credentials.

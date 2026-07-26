@@ -24,7 +24,7 @@ export const metadata: Metadata = {
     template: `%s · ${brand.name}`,
   },
   description:
-    "Trainora AI connects verified AI trainers, subject-matter experts, and reviewers with AI companies that need high-quality training data, human feedback, and model evaluations.",
+    `${brand.name} connects verified AI trainers, subject-matter experts, and reviewers with AI companies that need high-quality training data, human feedback, and model evaluations.`,
 };
 
 export default function RootLayout({

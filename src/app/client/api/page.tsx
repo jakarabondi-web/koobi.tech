@@ -102,7 +102,7 @@ export default async function ClientApiPage() {
           <div className="mt-5 rounded-lg border border-border bg-muted/40 p-4">
             <p className="text-xs font-medium text-muted-foreground">Example</p>
             <pre className="mt-2 overflow-x-auto text-xs leading-relaxed">
-              <code>{`curl https://trainora.example/api/v1/projects \\
+              <code>{`curl https://traivr.com/api/v1/projects \\
   -H "Authorization: Bearer tra_live_..."`}</code>
             </pre>
           </div>

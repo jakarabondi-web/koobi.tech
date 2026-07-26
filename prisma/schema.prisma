@@ -1,4 +1,4 @@
-// Trainora AI — core database schema
+// Traivr — core database schema
 // See DATABASE.md for entity-relationship documentation.
 
 generator client {

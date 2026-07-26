@@ -24,7 +24,7 @@ const SSO_ERRORS: Record<string, string> = {
   sso_token_invalid: "We couldn't verify your identity provider's response. Start again — if it keeps happening, ask your admin to check the SSO configuration.",
   sso_email_unverified: "Your identity provider reports that your email address isn't verified. Confirm it there, then try again.",
   sso_domain_mismatch: "The account your provider returned isn't on your organization's verified domain.",
-  sso_no_account: "There's no Trainora account for that address yet. Ask your admin to invite you first.",
+  sso_no_account: "There's no Traivr account for that address yet. Ask your admin to invite you first.",
   account_inactive: "This account isn't active. Contact support if you think that's wrong.",
 };
 
@@ -43,7 +43,7 @@ export default async function LoginPage({
         <CardDescription>
           {forSurface
             ? `Sign in to access the ${forSurface} portal.`
-            : "Sign in to your Trainora AI account."}
+            : "Sign in to your Traivr account."}
         </CardDescription>
       </CardHeader>
       <CardContent className="pb-6">

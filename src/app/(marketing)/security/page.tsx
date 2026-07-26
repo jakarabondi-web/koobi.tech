@@ -22,7 +22,7 @@ export default function SecurityPage() {
       <MarketingPageHero
         eyebrow="Security"
         title="Security is a first-class product requirement"
-        description="Enterprise AI teams trust Trainora AI with sensitive prompts, model outputs, and evaluation data. Here's how we protect it."
+        description="Enterprise AI teams trust Traivr with sensitive prompts, model outputs, and evaluation data. Here's how we protect it."
       />
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

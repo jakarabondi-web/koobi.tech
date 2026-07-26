@@ -19,7 +19,7 @@ export default function ApplyPage() {
     <>
       <MarketingPageHero
         eyebrow="Apply as an expert"
-        title="Join the Trainora AI expert network"
+        title="Join the Traivr expert network"
         description="Applications take about 20 minutes. We review every application and follow up within a few business days."
       />
       <section className="py-16">

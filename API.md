@@ -68,8 +68,8 @@ the API in `server/services/api-auth.ts`.
 ### Ingesting tasks
 
 ```bash
-curl -X POST https://trainora.example/api/v1/tasks \
-  -H "Authorization: Bearer $TRAINORA_KEY" \
+curl -X POST https://traivr.com/api/v1/tasks \
+  -H "Authorization: Bearer $TRAIVR_KEY" \
   -H "content-type: application/json" \
   -d '{
     "project_id": "…",
@@ -106,8 +106,8 @@ accepting different data.
 ### Retrieving results
 
 ```bash
-curl "https://trainora.example/api/v1/submissions?project_id=…&decision=APPROVED&since=2026-01-01T00:00:00Z" \
-  -H "Authorization: Bearer $TRAINORA_KEY"
+curl "https://traivr.com/api/v1/submissions?project_id=…&decision=APPROVED&since=2026-01-01T00:00:00Z" \
+  -H "Authorization: Bearer $TRAIVR_KEY"
 ```
 
 Filter by `decision` (`APPROVED`, `REJECTED`, `REVISION_REQUESTED`,

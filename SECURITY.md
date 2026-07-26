@@ -1,6 +1,6 @@
 # Security
 
-Trainora AI is designed around SOC 2-aligned controls. **We do not hold SOC 2
+Traivr is designed around SOC 2-aligned controls. **We do not hold SOC 2
 certification** — marketing copy intentionally says "designed for SOC 2
 readiness," never "SOC 2 certified." Do not change that language without
 legal/compliance sign-off.
@@ -116,7 +116,7 @@ sign-ins. Two controls:
 
 - Shared consumer domains (`gmail.com`, `outlook.com`, …) are rejected
   outright and can never be bound to a tenant.
-- Every other domain requires a `trainora-domain-verification=<token>` TXT
+- Every other domain requires a `traivr-domain-verification=<token>` TXT
   record, checked with a real DNS lookup (`src/lib/auth/sso.ts`). Changing
   the domain resets verification and drops enforcement.
 
@@ -171,7 +171,7 @@ remember.
   directory.
 - **No SAML**, no SCIM directory sync, no IdP-initiated sign-in.
 - **No refresh-token handling or single logout.** Signing out of the IdP does
-  not end a Trainora session; the 8-hour session lifetime bounds it.
+  not end a Traivr session; the 8-hour session lifetime bounds it.
 
 ## Explicitly mocked (do not mistake for production-ready)
 

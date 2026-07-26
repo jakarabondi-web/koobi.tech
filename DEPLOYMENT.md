@@ -98,7 +98,7 @@ history for `src/app/api/admin/seed/route.ts` if you need it again. Delete it
 again once used: it creates a super admin whose password is in this repo.
 
 ⚠️ The seed creates demo accounts with a **published password**
-(`Trainora!Demo2026`), including a super admin. That is correct for a demo
+(`Traivr!Demo2026`), including a super admin. That is correct for a demo
 you're showing people and dangerous for anything else — anyone who reads this
 repo can sign in as an administrator. For a real environment, skip the seed
 and create the first admin directly, or seed and immediately change every

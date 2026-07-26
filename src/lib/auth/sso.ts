@@ -26,7 +26,7 @@ const PUBLIC_EMAIL_DOMAINS = new Set([
   "qq.com", "163.com", "126.com", "fastmail.com", "hey.com", "tutanota.com",
 ]);
 
-export const DNS_RECORD_PREFIX = "trainora-domain-verification=";
+export const DNS_RECORD_PREFIX = "traivr-domain-verification=";
 
 export function isPublicEmailDomain(domain: string): boolean {
   return PUBLIC_EMAIL_DOMAINS.has(domain.toLowerCase().trim());
@@ -98,7 +98,7 @@ export async function checkDomainToken(
   return {
     verified: false,
     reason: ours.length
-      ? "A Trainora verification record exists but its value doesn't match. Replace it with the value shown below."
+      ? "A Traivr verification record exists but its value doesn't match. Replace it with the value shown below."
       : "The verification record wasn't found. Add it to your DNS and try again.",
     found: ours,
   };

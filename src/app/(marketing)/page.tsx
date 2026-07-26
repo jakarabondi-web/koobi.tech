@@ -33,7 +33,10 @@ import { InteractiveHero } from "@/components/marketing/interactive-hero";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
 
 export const metadata: Metadata = {
-  title: `${brand.name} — Train better AI with verified human expertise`,
+  // `absolute` opts out of the root layout's "%s · Traivr" template, which
+  // would otherwise append the brand name to a title that already opens with
+  // it.
+  title: { absolute: `${brand.name} — Train better AI with verified human expertise` },
 };
 
 const SERVICES = [

@@ -158,7 +158,7 @@ export function InteractiveHero() {
           </div>
         ) : (
           <p className="mt-3 text-xs text-muted-foreground">
-            This is what thousands of vetted specialists do on Trainora AI every day — at scale, with
+            This is what thousands of vetted specialists do on Traivr every day — at scale, with
             multi-stage review behind every judgment.
           </p>
         )}

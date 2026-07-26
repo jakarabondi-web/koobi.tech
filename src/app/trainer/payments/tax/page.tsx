@@ -59,7 +59,7 @@ export default async function TaxPage() {
         <p className="mt-1">
           Downloadable tax forms (1099-NEC, W-8BEN and equivalents) aren&apos;t generated yet. Until
           then, use the totals above, and consult a tax professional for your jurisdiction —
-          Trainora AI doesn&apos;t provide tax advice.
+          Traivr doesn&apos;t provide tax advice.
         </p>
       </div>
     </div>

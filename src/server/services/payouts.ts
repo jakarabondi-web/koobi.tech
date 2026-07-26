@@ -38,7 +38,7 @@ export async function processPayoutRequest(params: {
     amountCents: request.amountCents,
     currency: "USD",
     destination,
-    reference: `trainora_payout_${request.id}`,
+    reference: `traivr_payout_${request.id}`,
   });
 
   if (!result.ok) {
