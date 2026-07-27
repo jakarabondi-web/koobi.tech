@@ -24,15 +24,26 @@ import {
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
 
 /**
- * What an applicant sees before they're approved: how to finish their
- * application, and where it stands. Everything else in the portal — the
+ * What an applicant sees before they're approved: the steps that get them
+ * approved, and a way to ask for help. Everything else in the portal — the
  * marketplace, task queues, earnings, payout details — is about work they
  * cannot be given yet, so showing it only invites dead ends.
  *
- * This is presentation only. `requireApprovedTrainer` is what actually
- * keeps those pages closed; hiding a link has never secured anything.
+ * Profile is deliberately absent: before approval it is read-only, repeats
+ * the application and identity status the dashboard already shows, and
+ * reports an empty quality score for work not yet done.
+ *
+ * Two things this does *not* do, both on purpose:
+ *
+ * - It does not secure anything. `requireApprovedTrainer` is what keeps the
+ *   restricted pages closed; hiding a link has never been a control.
+ * - It does not take pages away. Settings, notifications and profile stay
+ *   reachable by URL, and the header keeps its notification bell. Cutting
+ *   off account settings would mean an applicant could not turn on
+ *   two-factor auth until approved, which trades real account security for
+ *   a tidier sidebar.
  */
-function buildApplicantNavSections(counts: { unreadNotifications: number }): NavSection[] {
+function buildApplicantNavSections(): NavSection[] {
   return [
     {
       label: "Dashboard",
@@ -47,19 +58,8 @@ function buildApplicantNavSections(counts: { unreadNotifications: number }): Nav
       ],
     },
     {
-      label: "Account",
-      items: [
-        { href: "/trainer/notifications", label: "Notifications", icon: Bell, badge: counts.unreadNotifications || undefined },
-        { href: "/trainer/profile", label: "Profile", icon: UserCircle },
-        { href: "/trainer/settings", label: "Settings", icon: Settings },
-      ],
-    },
-    {
       label: "Support",
-      items: [
-        { href: "/trainer/support", label: "Help center", icon: LifeBuoy },
-        { href: "/trainer/support/tickets", label: "My tickets", icon: MessageCircleQuestion },
-      ],
+      items: [{ href: "/trainer/support", label: "Help center", icon: LifeBuoy }],
     },
   ];
 }
@@ -178,7 +178,7 @@ export function TrainerShell({
           ? buildNavSections({
               tasksDue, unreadNotifications, reviewQueue, adjudicationQueue, isReviewer, isLeadReviewer,
             })
-          : buildApplicantNavSections({ unreadNotifications })
+          : buildApplicantNavSections()
       }
       surfaceLabel="Trainer portal"
       userName={userName}
