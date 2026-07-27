@@ -5,6 +5,7 @@ import { CheckCircle2 } from "lucide-react";
 
 import { submitApplication, type ActionState } from "@/server/actions/applications";
 import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
+import { COUNTRIES } from "@/lib/constants/countries";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -94,7 +95,22 @@ export function ApplicationForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="space-y-1.5">
           <Label htmlFor="country">Country of residence</Label>
-          <Input id="country" name="country" required defaultValue={defaults.country ?? ""} />
+          <select
+            id="country"
+            name="country"
+            defaultValue={defaults.country ?? ""}
+            required
+            className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
+          >
+            <option value="" disabled>
+              Select a country
+            </option>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="space-y-1.5">
           <Label htmlFor="hoursPerWeek">Available hours per week</Label>

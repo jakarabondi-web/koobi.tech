@@ -10,6 +10,7 @@ import { assertCan } from "@/lib/permissions/can";
 import { assertReadyForApplicationApproval, GateError } from "@/server/services/trainer-gate";
 import { sendEmail } from "@/lib/email/client";
 import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
+import { COUNTRIES } from "@/lib/constants/countries";
 import {
   applicationApprovedEmail,
   applicationMoreInfoEmail,
@@ -30,7 +31,9 @@ const submitSchema = z.object({
       (v) => countWords(v) >= MIN_BACKGROUND_WORDS,
       `Tell us a bit more about your background — at least ${MIN_BACKGROUND_WORDS} words.`
     ),
-  country: z.string().min(2, "Country is required"),
+  // The form only ever offers the COUNTRIES list — a value outside it can
+  // only reach here by tampering with the request, not by using the form.
+  country: z.enum(COUNTRIES, { message: "Choose your country from the list." }),
   hoursPerWeek: z.coerce.number().int().min(1).max(60),
 });
 
