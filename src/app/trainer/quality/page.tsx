@@ -5,6 +5,7 @@ import { Gauge, Target, RefreshCw, XCircle, Timer, Handshake } from "lucide-reac
 import { auth } from "@/lib/auth";
 import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
+import { getProbationStatus } from "@/server/services/assignment";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -22,7 +23,7 @@ export default async function QualityPage() {
   await requireApprovedTrainer(session.user.id);
   const userId = session.user.id;
 
-  const [profile, snapshot, reviews, goldResults] = await Promise.all([
+  const [profile, snapshot, reviews, goldResults, probation] = await Promise.all([
     prisma.trainerProfile.findUnique({ where: { userId } }),
     prisma.qualitySnapshot.findFirst({
       where: { trainer: { userId } },
@@ -35,6 +36,7 @@ export default async function QualityPage() {
       take: 10,
     }),
     prisma.goldTaskResult.findMany({ where: { userId } }),
+    getProbationStatus(userId),
   ]);
 
   const approved = reviews.filter((r) => r.decision === "APPROVED").length;
@@ -57,6 +59,14 @@ export default async function QualityPage() {
         title="Your quality profile"
         description="We track several dimensions separately — no single number decides your eligibility."
       />
+
+      {probation.inProbation ? (
+        <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+          You&apos;re in your first {probation.threshold} tasks, so a higher share of your queue is
+          hidden gold-standard checks — {probation.tasksRemaining} to go before your queue moves to
+          the project&apos;s normal rate.
+        </p>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Overall quality" value={pct(profile?.qualityScore)} icon={Gauge} />

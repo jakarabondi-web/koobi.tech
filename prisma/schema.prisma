@@ -639,6 +639,11 @@ model AssessmentAttempt {
   startedAt    DateTime?
   submittedAt  DateTime?
   expiresAt    DateTime?
+  /// The random subset of the assessment's question bank drawn for this
+  /// attempt. Fixed at start so a trainee can't retake for a fresh draw
+  /// mid-attempt, and so the whole bank is never exposed to one attempt —
+  /// a fixed set of questions gets shared/memorized quickly at any scale.
+  selectedQuestionIds String[] @default([])
 
   assessment Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   user       User                 @relation(fields: [userId], references: [id], onDelete: Cascade)

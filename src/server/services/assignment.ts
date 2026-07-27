@@ -5,6 +5,28 @@ import { checkProjectEligibility } from "@/server/services/work-location";
 export class AssignmentError extends Error {}
 
 /**
+ * A newly-approved trainer has passed the qualification exam, but that's
+ * one test on one day — it says nothing about how they'll actually perform
+ * across real, varied work. Until they've cleared this many submissions,
+ * they get checked against gold tasks more often than the project's
+ * configured rate, regardless of how low that rate is set.
+ */
+export const PROBATION_TASK_THRESHOLD = 20;
+/** Floor on gold-task rate while a trainer is in probation. */
+export const PROBATION_GOLD_RATE = 0.25;
+
+/** Whether a trainer is still in their probation window, and how far along. */
+export async function getProbationStatus(userId: string) {
+  const tasksCompleted = await prisma.taskSubmission.count({ where: { submittedById: userId } });
+  return {
+    inProbation: tasksCompleted < PROBATION_TASK_THRESHOLD,
+    tasksCompleted,
+    tasksRemaining: Math.max(0, PROBATION_TASK_THRESHOLD - tasksCompleted),
+    threshold: PROBATION_TASK_THRESHOLD,
+  };
+}
+
+/**
  * Hands a trainer their next task on a project.
  *
  * Gold tasks are mixed in at the project's configured rate and are
@@ -32,11 +54,17 @@ export async function assignNextTask(params: {
   }
 
   const project = await prisma.project.findUniqueOrThrow({ where: { id: params.projectId } });
+  const probation = await getProbationStatus(params.userId);
 
   // Decide gold-vs-real before looking at what's available, so the rate
   // reflects the configured policy rather than whatever happens to be in
-  // the pool.
-  const wantGold = Math.random() < project.goldTaskRate;
+  // the pool. A trainer still in probation gets checked at least as often
+  // as the probation floor, even on a project configured with a lower
+  // gold-task rate.
+  const goldRate = probation.inProbation
+    ? Math.max(project.goldTaskRate, PROBATION_GOLD_RATE)
+    : project.goldTaskRate;
+  const wantGold = Math.random() < goldRate;
 
   const pick = async (isGold: boolean) =>
     prisma.task.findFirst({

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
 import { openAdjudication } from "@/server/services/adjudication";
+import { recomputeQualityScore } from "@/server/services/quality";
 
 export class ReviewError extends Error {}
 
@@ -163,6 +164,12 @@ export async function submitReview(params: {
       },
     });
   });
+
+  // Every decision on real work — and every gold-task result, recorded
+  // above when this submission was one — is exactly the evidence quality
+  // scoring runs on, so it has to stay current with each one, not just at
+  // approval time.
+  await recomputeQualityScore(submission.submittedById);
 
   // Escalation goes straight to a lead reviewer. Disagreement between
   // reviewers is detected here too, so a conflict never sits unnoticed.

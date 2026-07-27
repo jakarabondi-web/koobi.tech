@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
+import { recomputeQualityScore } from "@/server/services/quality";
 
 export class AdjudicationError extends Error {}
 
@@ -196,6 +197,11 @@ export async function resolveAdjudication(params: {
       },
     });
   });
+
+  // The lead reviewer's call is binding and can reverse what the raw review
+  // decisions said — quality scoring has to reflect the outcome that
+  // actually stood, not the overturned one.
+  await recomputeQualityScore(submission.submittedById);
 
   return { decision: params.decision, overturned: nowApproved !== previouslyApproved };
 }

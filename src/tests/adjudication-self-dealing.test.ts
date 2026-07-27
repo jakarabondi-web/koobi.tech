@@ -2,12 +2,27 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const findUnique = vi.fn();
 const txMock = vi.fn();
+const goldTaskResultFindMany = vi.fn();
+const taskSubmissionFindMany = vi.fn();
+const trainerProfileFindUnique = vi.fn();
+const trainerProfileUpdate = vi.fn();
+const qualityMetricCreate = vi.fn();
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
     adjudication: {
       findUnique: (...a: unknown[]) => findUnique(...a),
     },
+    // Reached by recomputeQualityScore after a resolution, outside the
+    // stubbed $transaction above — these just need to return "nothing to
+    // score yet" so that recompute is a no-op for these guard tests.
+    goldTaskResult: { findMany: (...a: unknown[]) => goldTaskResultFindMany(...a) },
+    taskSubmission: { findMany: (...a: unknown[]) => taskSubmissionFindMany(...a) },
+    trainerProfile: {
+      findUnique: (...a: unknown[]) => trainerProfileFindUnique(...a),
+      update: (...a: unknown[]) => trainerProfileUpdate(...a),
+    },
+    qualityMetric: { create: (...a: unknown[]) => qualityMetricCreate(...a) },
     $transaction: (...a: unknown[]) => txMock(...a),
   },
 }));
@@ -41,6 +56,15 @@ beforeEach(() => {
   txMock.mockImplementation(() => {
     throw new Error("transaction should not run for a refused adjudication");
   });
+
+  // Nothing for the post-resolution quality-score recompute to work with —
+  // it short-circuits to a no-op, which is all these separation-of-duties
+  // tests care about.
+  goldTaskResultFindMany.mockReset().mockResolvedValue([]);
+  taskSubmissionFindMany.mockReset().mockResolvedValue([]);
+  trainerProfileFindUnique.mockReset();
+  trainerProfileUpdate.mockReset();
+  qualityMetricCreate.mockReset();
 });
 
 describe("adjudication separation of duties", () => {

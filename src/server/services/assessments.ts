@@ -2,6 +2,29 @@ import { prisma } from "@/lib/db/prisma";
 
 export class AssessmentError extends Error {}
 
+/** Auto-gradable questions drawn per attempt, out of the full domain bank. */
+const MCQ_PER_ATTEMPT = 3;
+
+/**
+ * Draws this attempt's question set from the assessment's full bank: a
+ * random sample of the auto-gradable questions, plus every written-response
+ * question (there's rarely more than one, and free-text answers resist
+ * naive answer-sharing far better than a fixed multiple-choice key does).
+ *
+ * Fixed at start and stored on the attempt — the whole bank existing only
+ * to be served in full, every time, is what makes a fixed set of questions
+ * something people share instead of study for.
+ */
+function drawQuestionPool(questions: { id: string; type: string }[]): string[] {
+  const autoGradable = questions.filter((q) => q.type === "MULTIPLE_CHOICE" || q.type === "RANKING");
+  const written = questions.filter((q) => q.type === "WRITTEN_RESPONSE");
+
+  const shuffled = [...autoGradable].sort(() => Math.random() - 0.5);
+  const sample = shuffled.slice(0, Math.min(MCQ_PER_ATTEMPT, shuffled.length));
+
+  return [...sample, ...written].map((q) => q.id);
+}
+
 /**
  * Starts (or resumes) an attempt.
  *
@@ -55,6 +78,7 @@ export async function startAttempt(params: { userId: string; assessmentId: strin
       expiresAt: assessment.timeLimitMins
         ? new Date(Date.now() + assessment.timeLimitMins * 60_000)
         : null,
+      selectedQuestionIds: drawQuestionPool(assessment.questions),
     },
   });
 
@@ -88,7 +112,12 @@ export async function submitAttempt(params: {
     throw new AssessmentError("Time expired for this attempt.");
   }
 
-  const questions = attempt.assessment.questions;
+  // Grade only the subset actually drawn for this attempt — falling back to
+  // the full bank for attempts started before question pooling existed.
+  const questions =
+    attempt.selectedQuestionIds.length > 0
+      ? attempt.assessment.questions.filter((q) => attempt.selectedQuestionIds.includes(q.id))
+      : attempt.assessment.questions;
   let earned = 0;
   let autoGradablePoints = 0;
   let needsManualReview = false;

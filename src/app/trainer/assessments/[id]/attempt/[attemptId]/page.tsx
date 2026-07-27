@@ -25,13 +25,20 @@ export default async function AttemptPage({
   if (!attempt || attempt.userId !== session.user.id) notFound();
   if (attempt.status !== "IN_PROGRESS") redirect("/trainer/assessments");
 
-  // Correct answers are stripped before anything reaches the client — the
-  // full question rows never cross the server boundary.
-  const questions = attempt.assessment.questions.map((q) => ({
+  // Only the subset drawn for this attempt — the rest of the domain's bank
+  // never crosses the server boundary. Correct answers are stripped too.
+  const pool =
+    attempt.selectedQuestionIds.length > 0
+      ? attempt.assessment.questions.filter((q) => attempt.selectedQuestionIds.includes(q.id))
+      : attempt.assessment.questions;
+
+  const questions = pool.map((q) => ({
     id: q.id,
     type: q.type,
     prompt: q.prompt,
-    options: (q.options as string[] | null) ?? [],
+    // Shuffled per attempt so option position can't be memorized — grading
+    // compares the chosen value, not its position, so this is display-only.
+    options: [...((q.options as string[] | null) ?? [])].sort(() => Math.random() - 0.5),
     points: q.points,
   }));
 
