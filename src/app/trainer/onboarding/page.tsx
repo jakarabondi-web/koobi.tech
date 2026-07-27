@@ -35,7 +35,11 @@ export default async function OnboardingPage() {
 
       <OnboardingProgress gate={gate} />
 
-      <GateBanner gate={gate} />
+      {/* When the next step *is* this page, the banner would sit directly
+          above the form telling someone to go where they already are, with
+          a button linking to itself. It still earns its place for the other
+          stages, which explain why the form below is locked. */}
+      {gate.actionHref === "/trainer/onboarding" ? null : <GateBanner gate={gate} />}
 
       {locked ? (
         <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 import { isReviewer as hasReviewerRole } from "@/lib/permissions/roles";
 import { getTrainerGate } from "@/server/services/trainer-gate";
 import { TrainerShell } from "@/components/trainer/trainer-shell";
+import { ApplicantShell } from "@/components/trainer/applicant-shell";
 
 export default async function TrainerLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
@@ -28,6 +29,19 @@ export default async function TrainerLayout({ children }: { children: React.Reac
       ])
     : [0, 0, 0, 0, null];
 
+  // Before approval there is no portal to navigate — only an application to
+  // finish. The full shell returns the moment they're cleared for work.
+  if (!gate?.canAccessAssignments) {
+    return (
+      <ApplicantShell
+        userName={session?.user?.name ?? "Trainer"}
+        userEmail={session?.user?.email ?? ""}
+      >
+        {children}
+      </ApplicantShell>
+    );
+  }
+
   return (
     <TrainerShell
       userName={session?.user?.name ?? "Trainer"}
@@ -38,7 +52,6 @@ export default async function TrainerLayout({ children }: { children: React.Reac
       adjudicationQueue={adjudicationQueue}
       isReviewer={reviewer}
       isLeadReviewer={leadReviewer}
-      isApproved={gate?.canAccessAssignments ?? false}
     >
       {children}
     </TrainerShell>

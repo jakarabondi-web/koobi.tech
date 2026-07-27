@@ -18,51 +18,9 @@ import {
   MessageCircleQuestion,
   ClipboardCheck,
   Scale,
-  ShieldCheck,
 } from "lucide-react";
 
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
-
-/**
- * What an applicant sees before they're approved: the steps that get them
- * approved, and a way to ask for help. Everything else in the portal — the
- * marketplace, task queues, earnings, payout details — is about work they
- * cannot be given yet, so showing it only invites dead ends.
- *
- * Profile is deliberately absent: before approval it is read-only, repeats
- * the application and identity status the dashboard already shows, and
- * reports an empty quality score for work not yet done.
- *
- * Two things this does *not* do, both on purpose:
- *
- * - It does not secure anything. `requireApprovedTrainer` is what keeps the
- *   restricted pages closed; hiding a link has never been a control.
- * - It does not take pages away. Settings, notifications and profile stay
- *   reachable by URL, and the header keeps its notification bell. Cutting
- *   off account settings would mean an applicant could not turn on
- *   two-factor auth until approved, which trades real account security for
- *   a tidier sidebar.
- */
-function buildApplicantNavSections(): NavSection[] {
-  return [
-    {
-      label: "Dashboard",
-      items: [{ href: "/trainer/dashboard", label: "Overview", icon: LayoutDashboard }],
-    },
-    {
-      label: "Getting approved",
-      items: [
-        { href: "/trainer/onboarding", label: "Application", icon: ClipboardList },
-        { href: "/trainer/assessments", label: "Assessment", icon: GraduationCap },
-        { href: "/trainer/verification", label: "Identity", icon: ShieldCheck },
-      ],
-    },
-    {
-      label: "Support",
-      items: [{ href: "/trainer/support", label: "Help center", icon: LifeBuoy }],
-    },
-  ];
-}
 
 function buildNavSections(counts: {
   tasksDue: number;
@@ -156,7 +114,6 @@ export function TrainerShell({
   adjudicationQueue = 0,
   isReviewer = false,
   isLeadReviewer = false,
-  isApproved = false,
   children,
 }: {
   userName: string;
@@ -167,19 +124,13 @@ export function TrainerShell({
   adjudicationQueue?: number;
   isReviewer?: boolean;
   isLeadReviewer?: boolean;
-  /** Cleared for paid work. Applicants get a much smaller portal. */
-  isApproved?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <DashboardShell
-      navSections={
-        isApproved
-          ? buildNavSections({
-              tasksDue, unreadNotifications, reviewQueue, adjudicationQueue, isReviewer, isLeadReviewer,
-            })
-          : buildApplicantNavSections()
-      }
+      navSections={buildNavSections({
+        tasksDue, unreadNotifications, reviewQueue, adjudicationQueue, isReviewer, isLeadReviewer,
+      })}
       surfaceLabel="Trainer portal"
       userName={userName}
       userEmail={userEmail}
