@@ -12,6 +12,7 @@ const STYLES: Record<
   application_not_started: { icon: FileText, ring: "border-primary/40 bg-primary/5", iconTone: "text-primary" },
   assessment_required: { icon: FileText, ring: "border-primary/40 bg-primary/5", iconTone: "text-primary" },
   identity_required: { icon: ShieldCheck, ring: "border-primary/40 bg-primary/5", iconTone: "text-primary" },
+  identity_processing: { icon: Clock, ring: "border-info/40 bg-info/10", iconTone: "text-foreground" },
   under_review: { icon: Clock, ring: "border-info/40 bg-info/10", iconTone: "text-foreground" },
   more_info_required: { icon: AlertTriangle, ring: "border-warning/50 bg-warning/10", iconTone: "text-warning-foreground" },
   waitlisted: { icon: PauseCircle, ring: "border-warning/50 bg-warning/10", iconTone: "text-warning-foreground" },

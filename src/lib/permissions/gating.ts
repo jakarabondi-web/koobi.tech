@@ -19,6 +19,7 @@ export type TrainerGateState = {
     | "application_not_started"
     | "assessment_required"
     | "identity_required"
+    | "identity_processing"
     | "under_review"
     | "more_info_required"
     | "approved"
@@ -111,6 +112,22 @@ export function evaluateTrainerGate(input: {
         "Pass a short assessment in your area of expertise to continue. You can take it whenever you're ready.",
       actionHref: "/trainer/assessments",
       actionLabel: "Start assessment",
+    };
+  }
+
+  // Submitted and with the provider. Distinct from "not started" on
+  // purpose: telling someone who already uploaded their documents that
+  // verification "takes about two minutes" reads as though nothing was
+  // received, and sends them to re-submit work they have already done.
+  if (identityStatus === "PENDING") {
+    return {
+      canAccessAssignments: false,
+      stage: "identity_processing",
+      title: "We're reviewing your documents",
+      message:
+        "Your ID and selfie are with our verification provider. Most checks finish in a few minutes — we'll email you the moment there's a result.",
+      actionHref: "/trainer/verification",
+      actionLabel: "View status",
     };
   }
 

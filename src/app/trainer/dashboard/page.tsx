@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/badge-status";
 import { WeeklyTaskChart, type WeeklyTaskPoint } from "@/components/charts/weekly-task-chart";
 import { GateBanner } from "@/components/trainer/gate-banner";
+import { OnboardingProgress } from "@/components/trainer/onboarding-progress";
 import { getTrainerGate } from "@/server/services/trainer-gate";
 
 export const metadata: Metadata = { title: "Dashboard" };
@@ -107,6 +108,10 @@ export default async function TrainerDashboardPage() {
       />
 
       <GateBanner gate={gate} />
+
+      {/* Once someone is cleared, the journey is behind them — the dashboard
+          should be about the work, not the paperwork that got them here. */}
+      {gate.canAccessAssignments ? null : <OnboardingProgress gate={gate} />}
 
       {gate.canAccessAssignments && profileCompletion < 100 ? (
         <Card>

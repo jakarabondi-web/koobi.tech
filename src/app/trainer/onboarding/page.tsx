@@ -6,6 +6,7 @@ import { prisma } from "@/lib/db/prisma";
 import { PageHeader } from "@/components/shared/page-header";
 import { ApplicationForm } from "@/components/trainer/application-form";
 import { GateBanner } from "@/components/trainer/gate-banner";
+import { OnboardingProgress } from "@/components/trainer/onboarding-progress";
 import { getTrainerGate } from "@/server/services/trainer-gate";
 
 export const metadata: Metadata = { title: "Application" };
@@ -31,6 +32,8 @@ export default async function OnboardingPage() {
         title="Your application"
         description="Tell us about your expertise so we can match you to the right projects."
       />
+
+      <OnboardingProgress gate={gate} />
 
       <GateBanner gate={gate} />
 
