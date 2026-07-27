@@ -89,6 +89,28 @@ export async function resolveAdjudication(params: {
   if (adjudication.status === "RESOLVED") throw new AdjudicationError("Already resolved.");
 
   const submission = adjudication.submission;
+
+  // Separation of duties, enforced here rather than in the caller because
+  // this is the function that moves money.
+  //
+  // A LEAD_REVIEWER is a trainer role, so the same person can submit work
+  // and adjudicate. Without this, they could take their own rejected
+  // submission to adjudication, approve it, and mint the earning below for
+  // themselves. submitReview already refuses self-review; this closes the
+  // same hole one level up.
+  if (submission.submittedById === params.adjudicatorId) {
+    throw new AdjudicationError("You can't adjudicate your own submission.");
+  }
+
+  // Adjudication exists to settle a disagreement *between* reviewers. Ruling
+  // on a review you wrote yourself is not a second opinion. Staff who never
+  // reviewed the submission remain able to resolve it, so a queue cannot
+  // deadlock.
+  if (submission.reviews.some((r) => r.reviewerId === params.adjudicatorId)) {
+    throw new AdjudicationError(
+      "You reviewed this submission, so someone else has to adjudicate it."
+    );
+  }
   const previouslyApproved = submission.reviews.some((r) => r.decision === "APPROVED");
   const nowApproved = params.decision === "APPROVED";
 
