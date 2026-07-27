@@ -118,7 +118,8 @@ export function AssessmentRunner({
                 placeholder="Write your answer…"
               />
               <p className="mt-1.5 text-xs text-muted-foreground">
-                Written answers are graded by a human reviewer.
+                Write a few complete sentences and explain your reasoning — a reviewer reads this, not
+                an auto-grader, and a one-word or one-line answer won&apos;t give them enough to judge.
               </p>
             </div>
           )}
