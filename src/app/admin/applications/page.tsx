@@ -66,6 +66,61 @@ export default async function ApplicationsPage() {
           {pending.length === 0 ? (
             <EmptyState icon={CheckCircle2} title="Nothing waiting" description="New applications appear here." />
           ) : (
+            <>
+            {/* Below md the table's horizontal scroller put the decision
+                column — the entire point of this page — off-screen with no
+                sign it existed, so approving from a phone was impossible.
+                Same data and same actions, stacked instead. */}
+            <ul className="space-y-3 md:hidden">
+              {pending.map((a) => (
+                <li key={a.id} className="rounded-lg border border-border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">{a.user.firstName} {a.user.lastName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{a.user.email}</p>
+                    </div>
+                    <StatusBadge status={a.status} />
+                  </div>
+
+                  {a.user.trainerProfile?.headline ? (
+                    <p className="mt-2 text-xs text-muted-foreground">{a.user.trainerProfile.headline}</p>
+                  ) : null}
+
+                  <dl className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+                    <div className="flex gap-1">
+                      <dt className="text-muted-foreground">Domain</dt>
+                      <dd>{a.domain ?? "—"}</dd>
+                    </div>
+                    <div className="flex gap-1">
+                      <dt className="text-muted-foreground">Submitted</dt>
+                      <dd>{a.submittedAt?.toLocaleDateString() ?? "—"}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    <Badge variant={a.user.assessmentAttempts.length ? "success" : "outline"}>
+                      {a.user.assessmentAttempts.length ? "Assessment passed" : "No assessment"}
+                    </Badge>
+                    <Badge variant={a.user.identityVerification?.status === "VERIFIED" ? "success" : "outline"}>
+                      {a.user.identityVerification?.status === "VERIFIED" ? "ID verified" : "ID pending"}
+                    </Badge>
+                  </div>
+
+                  <div className="mt-4 border-t border-border pt-3">
+                    {canApprove ? (
+                      <ApplicationReviewActions
+                        applicationId={a.id}
+                        applicantName={`${a.user.firstName} ${a.user.lastName}`}
+                      />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">View only</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Applicant</TableHead><TableHead>Domain</TableHead>
@@ -113,6 +168,8 @@ export default async function ApplicationsPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

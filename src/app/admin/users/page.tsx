@@ -50,6 +50,36 @@ export default async function AdminUsersPage() {
           {users.length === 0 ? (
             <EmptyState icon={Users} title="No users yet" />
           ) : (
+            <>
+            {/* The roles column carries every control on this page — granting,
+                revoking, suspending. In the table's horizontal scroller all of
+                it sat off-screen on a phone. */}
+            <ul className="space-y-3 md:hidden">
+              {users.map((u) => (
+                <li key={u.id} className="rounded-lg border border-border p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium">{u.firstName} {u.lastName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{u.email}</p>
+                    </div>
+                    <StatusBadge status={u.status} />
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Joined {u.createdAt.toLocaleDateString()}
+                  </p>
+                  <div className="mt-3 border-t border-border pt-3">
+                    <UserRoleManager
+                      userId={u.id}
+                      roles={u.roles.map((r) => r.role.key as GlobalRole)}
+                      status={u.status}
+                      canManage={canManage}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            <div className="hidden md:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -86,6 +116,8 @@ export default async function AdminUsersPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

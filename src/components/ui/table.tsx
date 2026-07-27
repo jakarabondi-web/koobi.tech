@@ -2,9 +2,23 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils/cn";
 
+/**
+ * Wide tables scroll horizontally rather than crushing their columns, but a
+ * plain scroller gives no sign that anything is cut off — on a phone a table
+ * simply looked like it ended, hiding whole columns. These are the classic
+ * CSS scroll shadows: the `local` gradients paint over the shadow at each
+ * end, so a shadow shows only on the side that still has content, and both
+ * vanish once nothing is clipped. No JS, no measuring.
+ */
+const SCROLL_SHADOWS =
+  "bg-[linear-gradient(to_right,var(--card)_30%,transparent),linear-gradient(to_left,var(--card)_30%,transparent),radial-gradient(farthest-side_at_0_50%,rgba(0,0,0,0.14),transparent),radial-gradient(farthest-side_at_100%_50%,rgba(0,0,0,0.14),transparent)] " +
+  "bg-[position:left_center,right_center,left_center,right_center] " +
+  "bg-[size:44px_100%,44px_100%,14px_100%,14px_100%] " +
+  "bg-no-repeat [background-attachment:local,local,scroll,scroll]";
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
-    <div className="relative w-full overflow-x-auto">
+    <div className={cn("relative w-full overflow-x-auto", SCROLL_SHADOWS)}>
       <table data-slot="table" className={cn("w-full caption-bottom text-sm", className)} {...props} />
     </div>
   );
