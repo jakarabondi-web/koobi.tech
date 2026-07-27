@@ -4,7 +4,8 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Traivr design tokens.
+ * Traivr design tokens — a near-monochrome azure blue identity, restrained
+ * on purpose (a wide gradient across hues read as too flamboyant).
  * All brand colors live here as CSS variables so the visual identity
  * can be re-skinned without touching component code.
  */
@@ -20,14 +21,18 @@
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.022 245);
 
-  /* Brand: Slate — deep charcoal-blue through muted steel blue.
-     Kept low-chroma on purpose; the ambient mesh supplies the colour
-     interest so the UI chrome can stay quiet. */
-  --navy: oklch(0.19 0.028 245);
-  --primary: oklch(0.48 0.075 245);
-  --primary-foreground: oklch(0.98 0.005 245);
-  --accent-violet: oklch(0.63 0.075 240);
-  --accent-cyan: oklch(0.77 0.055 230);
+  /* Brand: a saturated indigo → violet → pink gradient family. Chroma is
+     pushed hard on purpose — this is the colour interest now, not just the
+     ambient mesh, so buttons, glows, and gradient text all read as vivid. */
+  --navy: oklch(0.18 0.04 250);
+  --primary: oklch(0.55 0.19 250);
+  --primary-foreground: oklch(0.98 0.01 250);
+  --accent-violet: oklch(0.65 0.16 235);
+  --accent-cyan: oklch(0.75 0.13 220);
+  --accent-pink: oklch(0.6 0.15 260);
+  --gradient-brand: linear-gradient(135deg, var(--primary) 0%, var(--accent-violet) 55%, var(--accent-pink) 100%);
+  --glow-brand: 0 0 1px color-mix(in oklch, var(--accent-violet) 60%, transparent),
+    0 8px 40px -8px color-mix(in oklch, var(--accent-violet) 55%, transparent);
   --secondary: oklch(0.95 0.008 240);
   --secondary-foreground: oklch(0.28 0.025 245);
   --muted: oklch(0.96 0.006 240);
@@ -46,21 +51,21 @@
 
   --border: oklch(0.9 0.007 240);
   --input: oklch(0.9 0.007 240);
-  --ring: oklch(0.58 0.075 245);
+  --ring: oklch(0.6 0.2 285);
 
   --chart-1: var(--primary);
   --chart-2: var(--accent-cyan);
   --chart-3: var(--accent-violet);
-  --chart-4: var(--success);
+  --chart-4: var(--accent-pink);
   --chart-5: var(--warning);
 
   --sidebar: var(--navy);
   --sidebar-foreground: oklch(0.94 0.008 240);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.3 0.03 245);
+  --sidebar-accent: oklch(0.28 0.06 280);
   --sidebar-accent-foreground: oklch(0.95 0.008 240);
-  --sidebar-border: oklch(0.31 0.025 245);
+  --sidebar-border: oklch(0.29 0.05 280);
   --sidebar-ring: var(--ring);
 }
 
@@ -73,11 +78,12 @@
   --popover: oklch(0.2 0.018 245);
   --popover-foreground: oklch(0.95 0.008 240);
 
-  --navy: oklch(0.14 0.02 245);
-  --primary: oklch(0.7 0.075 240);
+  --navy: oklch(0.14 0.035 250);
+  --primary: oklch(0.68 0.16 248);
   --primary-foreground: oklch(0.15 0.02 245);
-  --accent-violet: oklch(0.74 0.07 238);
-  --accent-cyan: oklch(0.82 0.055 228);
+  --accent-violet: oklch(0.72 0.14 235);
+  --accent-cyan: oklch(0.78 0.12 218);
+  --accent-pink: oklch(0.66 0.13 262);
   --secondary: oklch(0.27 0.016 245);
   --secondary-foreground: oklch(0.95 0.008 240);
   --muted: oklch(0.25 0.014 245);
@@ -95,15 +101,15 @@
 
   --border: oklch(0.31 0.016 245);
   --input: oklch(0.31 0.016 245);
-  --ring: oklch(0.62 0.075 243);
+  --ring: oklch(0.65 0.15 245);
 
-  --sidebar: oklch(0.13 0.018 245);
+  --sidebar: oklch(0.12 0.035 250);
   --sidebar-foreground: oklch(0.9 0.008 240);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.15 0.02 245);
-  --sidebar-accent: oklch(0.24 0.022 245);
+  --sidebar-accent: oklch(0.22 0.04 250);
   --sidebar-accent-foreground: oklch(0.9 0.008 240);
-  --sidebar-border: oklch(0.27 0.018 245);
+  --sidebar-border: oklch(0.25 0.035 250);
   --sidebar-ring: var(--ring);
 }
 
@@ -120,6 +126,7 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-accent-violet: var(--accent-violet);
   --color-accent-cyan: var(--accent-cyan);
+  --color-accent-pink: var(--accent-pink);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -170,6 +177,24 @@
   ::selection {
     background: var(--accent-violet);
     color: white;
+  }
+}
+
+@layer utilities {
+  .bg-gradient-brand {
+    background-image: var(--gradient-brand);
+  }
+  .text-gradient-brand {
+    background-image: var(--gradient-brand);
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+  }
+  .shadow-glow-brand {
+    box-shadow: var(--glow-brand);
+  }
+  .border-gradient-brand {
+    border-image: var(--gradient-brand) 1;
   }
 }
 

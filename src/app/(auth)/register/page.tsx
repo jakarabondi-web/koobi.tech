@@ -15,7 +15,7 @@ export default async function RegisterPage({
   const defaultRole = role === "client" ? "CLIENT_ADMIN" : "TRAINER";
 
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-lg shadow-glow-brand">
       <CardHeader>
         <CardTitle className="text-xl">Create your account</CardTitle>
         <CardDescription>Join as a trainer, expert, or AI company.</CardDescription>
