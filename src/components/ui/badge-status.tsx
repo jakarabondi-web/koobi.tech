@@ -19,6 +19,8 @@ const STATUS_MAP: Record<string, "default" | "secondary" | "success" | "warning"
   active: "success",
   paid: "success",
   passed: "success",
+  verified: "success",
+  not_started: "outline",
   scheduled: "info",
   processing: "info",
   additional_info_required: "warning",

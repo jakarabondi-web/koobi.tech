@@ -40,8 +40,13 @@ const COPY: Record<Decision, { label: string; title: string; desc: string; needs
   },
 };
 
-function DecisionDialog({ applicationId, decision, applicantName }: {
-  applicationId: string; decision: Decision; applicantName: string;
+function DecisionDialog({ applicationId, decision, applicantName, disabled, disabledReason }: {
+  applicationId: string;
+  decision: Decision;
+  applicantName: string;
+  /** Approve only: blocked until the assessment is passed and identity verified. */
+  disabled?: boolean;
+  disabledReason?: string;
 }) {
   const [state, formAction, pending] = useActionState(decideApplication, initialState);
   const [open, setOpen] = useState(false);
@@ -50,12 +55,15 @@ function DecisionDialog({ applicationId, decision, applicantName }: {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="sm"
-          variant={decision === "APPROVED" ? "violet" : decision === "REJECTED" ? "outline" : "outline"}
-        >
-          {copy.label}
-        </Button>
+        <span title={disabled ? disabledReason : undefined}>
+          <Button
+            size="sm"
+            variant={decision === "APPROVED" ? "violet" : decision === "REJECTED" ? "outline" : "outline"}
+            disabled={disabled}
+          >
+            {copy.label}
+          </Button>
+        </span>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -86,15 +94,33 @@ function DecisionDialog({ applicationId, decision, applicantName }: {
   );
 }
 
-export function ApplicationReviewActions({ applicationId, applicantName }: {
-  applicationId: string; applicantName: string;
+export function ApplicationReviewActions({ applicationId, applicantName, readyForApproval }: {
+  applicationId: string;
+  applicantName: string;
+  /**
+   * Mirrors what decideApplication enforces server-side — disabling the
+   * button here is purely so a reviewer sees why before they click, not what
+   * stops the approval. That happens in the action regardless of this prop.
+   */
+  readyForApproval: boolean;
 }) {
   return (
-    <div className="flex flex-wrap justify-end gap-1.5">
-      <DecisionDialog applicationId={applicationId} decision="APPROVED" applicantName={applicantName} />
-      <DecisionDialog applicationId={applicationId} decision="ADDITIONAL_INFO_REQUIRED" applicantName={applicantName} />
-      <DecisionDialog applicationId={applicationId} decision="WAITLISTED" applicantName={applicantName} />
-      <DecisionDialog applicationId={applicationId} decision="REJECTED" applicantName={applicantName} />
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-wrap justify-end gap-1.5">
+        <DecisionDialog
+          applicationId={applicationId}
+          decision="APPROVED"
+          applicantName={applicantName}
+          disabled={!readyForApproval}
+          disabledReason="Needs a passed assessment and verified identity before this can be approved."
+        />
+        <DecisionDialog applicationId={applicationId} decision="ADDITIONAL_INFO_REQUIRED" applicantName={applicantName} />
+        <DecisionDialog applicationId={applicationId} decision="WAITLISTED" applicantName={applicantName} />
+        <DecisionDialog applicationId={applicationId} decision="REJECTED" applicantName={applicantName} />
+      </div>
+      {!readyForApproval ? (
+        <p className="text-[11px] text-muted-foreground">Approve unlocks once both checks pass.</p>
+      ) : null}
     </div>
   );
 }

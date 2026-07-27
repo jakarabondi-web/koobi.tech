@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import type { AssessmentAttemptStatus, IdentityStatus, VerificationCheckResult } from "@prisma/client";
 
 import { prisma } from "@/lib/db/prisma";
 import { evaluateTrainerGate, type TrainerGateState } from "@/lib/permissions/gating";
@@ -69,4 +70,113 @@ export async function requireApprovedTrainer(userId: string) {
   const gate = await getTrainerGate(userId);
   if (!gate.canAccessAssignments) redirect("/trainer/dashboard");
   return gate;
+}
+
+export type ApplicantReadiness = {
+  hasPassedAssessment: boolean;
+  /** The attempt to show a reviewer, chosen by most recently touched. */
+  latestAttempt: {
+    status: AssessmentAttemptStatus;
+    /** 0–1. Null until submitted. */
+    score: number | null;
+    assessmentTitle: string;
+    assessmentDomain: string;
+    /** 0–1, the assessment's own pass bar — score is only meaningful next to this. */
+    passThreshold: number;
+    submittedAt: Date | null;
+  } | null;
+  identityStatus: IdentityStatus;
+  identityChecks: {
+    documentAuthentic: VerificationCheckResult | null;
+    livenessPassed: VerificationCheckResult | null;
+    faceMatchPassed: VerificationCheckResult | null;
+    duplicateCheckPassed: VerificationCheckResult | null;
+  } | null;
+  /** What decideApplication actually enforces before it accepts APPROVED. */
+  readyForApproval: boolean;
+};
+
+/**
+ * What a reviewer needs to see to approve on the evidence, not on trust:
+ * the assessment score against its own pass bar, and the identity checks
+ * behind the single VERIFIED/FAILED badge — not just pass/fail restated.
+ *
+ * `applicationDomain`, if given, picks which attempt to *display* when
+ * there's more than one: assessments aren't restricted to the domain
+ * someone applied under, so without this a reviewer could be shown a
+ * Software Engineering score while looking at a Legal application. Whether
+ * the applicant qualifies at all is unaffected — that's a platform-wide
+ * "has any passed attempt" rule, same as the trainer gate elsewhere, and
+ * narrowing it to one domain here would quietly diverge from that.
+ */
+export async function getApplicantReadiness(
+  userId: string,
+  applicationDomain?: string | null
+): Promise<ApplicantReadiness> {
+  const [identity, attempts] = await Promise.all([
+    prisma.identityVerification.findUnique({ where: { userId } }),
+    prisma.assessmentAttempt.findMany({
+      where: { userId },
+      orderBy: [
+        { submittedAt: { sort: "desc", nulls: "last" } },
+        { startedAt: { sort: "desc", nulls: "last" } },
+      ],
+      include: { assessment: { select: { title: true, domain: true, passThreshold: true } } },
+    }),
+  ]);
+
+  const passedAttempt = attempts.find((a) => a.status === "PASSED");
+  const latest =
+    (applicationDomain && attempts.find((a) => a.assessment.domain === applicationDomain)) ||
+    attempts[0];
+  const identityStatus = identity?.status ?? "NOT_STARTED";
+
+  return {
+    hasPassedAssessment: Boolean(passedAttempt),
+    latestAttempt: latest
+      ? {
+          status: latest.status,
+          score: latest.score,
+          assessmentTitle: latest.assessment.title,
+          assessmentDomain: latest.assessment.domain,
+          passThreshold: latest.assessment.passThreshold,
+          submittedAt: latest.submittedAt,
+        }
+      : null,
+    identityStatus,
+    identityChecks: identity
+      ? {
+          documentAuthentic: identity.documentAuthentic,
+          livenessPassed: identity.livenessPassed,
+          faceMatchPassed: identity.faceMatchPassed,
+          duplicateCheckPassed: identity.duplicateCheckPassed,
+        }
+      : null,
+    readyForApproval: Boolean(passedAttempt) && identityStatus === "VERIFIED",
+  };
+}
+
+/**
+ * Blocks an APPROVED decision until the applicant has actually passed the
+ * qualification assessment and cleared identity verification.
+ *
+ * Without this, nothing stopped a reviewer clicking Approve on day one —
+ * `getTrainerGate` would still refuse the trainer dashboard access until
+ * both were done, so no work was ever reachable, but the application's own
+ * status would read APPROVED while the applicant hadn't qualified for
+ * anything, which is wrong on its face and confusing for whoever reads the
+ * decision later.
+ */
+export async function assertReadyForApplicationApproval(userId: string) {
+  const readiness = await getApplicantReadiness(userId);
+  if (readiness.readyForApproval) return readiness;
+
+  const missing: string[] = [];
+  if (!readiness.hasPassedAssessment) missing.push("passed the qualification assessment");
+  if (readiness.identityStatus !== "VERIFIED") missing.push("completed identity verification");
+
+  throw new GateError(
+    `This applicant hasn't ${missing.join(" and ")} yet. Approval isn't available until both are done — ` +
+      `use "Request info" or "Waitlist" instead if you need to respond now.`
+  );
 }

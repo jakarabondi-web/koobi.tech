@@ -5,6 +5,7 @@ import { UserPlus, CheckCircle2 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { can } from "@/lib/permissions/can";
+import { getApplicantReadiness, type ApplicantReadiness } from "@/server/services/trainer-gate";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -16,23 +17,70 @@ import { ApplicationReviewActions } from "@/components/admin/application-review"
 
 export const metadata: Metadata = { title: "Trainer applications" };
 
+/**
+ * What the reviewer sees for the assessment: the score against the
+ * assessment's own pass bar, not a restated pass/fail badge. "72%" next to
+ * "needs 80%" is a decision a reviewer can make; "Failed" on its own is
+ * just decideApplication's answer repeated back to them.
+ */
+function AssessmentEvidence({ readiness }: { readiness: ApplicantReadiness }) {
+  const attempt = readiness.latestAttempt;
+  if (!attempt) {
+    return <Badge variant="outline">Assessment not started</Badge>;
+  }
+
+  const scorePct = attempt.score != null ? Math.round(attempt.score * 100) : null;
+  const thresholdPct = Math.round(attempt.passThreshold * 100);
+  const passed = attempt.status === "PASSED";
+
+  return (
+    <div className="space-y-0.5">
+      <Badge variant={passed ? "success" : attempt.status === "FAILED" ? "destructive" : "outline"}>
+        {attempt.assessmentDomain}
+        {scorePct != null ? ` — ${scorePct}%` : ` — ${attempt.status.replace(/_/g, " ").toLowerCase()}`}
+      </Badge>
+      {scorePct != null && !passed ? (
+        <p className="text-[11px] text-muted-foreground">Needs {thresholdPct}% to pass</p>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * What the reviewer sees for identity: the overall status, plus which
+ * specific check failed when it isn't a clean VERIFIED — "face match
+ * failed" tells a reviewer something "Not verified" does not.
+ */
+function IdentityEvidence({ readiness }: { readiness: ApplicantReadiness }) {
+  const checks = readiness.identityChecks;
+  const failed =
+    checks &&
+    ([
+      ["Document", checks.documentAuthentic],
+      ["Liveness", checks.livenessPassed],
+      ["Face match", checks.faceMatchPassed],
+      ["Duplicate check", checks.duplicateCheckPassed],
+    ] as const).filter(([, v]) => v === "FAIL");
+
+  return (
+    <div className="space-y-0.5">
+      <StatusBadge status={readiness.identityStatus} />
+      {failed && failed.length > 0 ? (
+        <p className="text-[11px] text-destructive">{failed.map(([label]) => label).join(", ")} failed</p>
+      ) : null}
+    </div>
+  );
+}
+
 export default async function ApplicationsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
   const canApprove = can(session.user.roles, "trainer.approve");
 
-  const [pending, decided, counts] = await Promise.all([
+  const [pendingApps, decided, counts] = await Promise.all([
     prisma.application.findMany({
       where: { status: { in: ["SUBMITTED", "UNDER_REVIEW", "ADDITIONAL_INFO_REQUIRED"] } },
-      include: {
-        user: {
-          include: {
-            trainerProfile: true,
-            identityVerification: true,
-            assessmentAttempts: { where: { status: "PASSED" }, take: 1 },
-          },
-        },
-      },
+      include: { user: { include: { trainerProfile: true } } },
       orderBy: { submittedAt: "asc" },
     }),
     prisma.application.findMany({
@@ -43,6 +91,16 @@ export default async function ApplicationsPage() {
     }),
     prisma.application.groupBy({ by: ["status"], _count: true }),
   ]);
+
+  // One readiness lookup per applicant — this is the same evidence
+  // decideApplication checks server-side, fetched here purely to show the
+  // reviewer why Approve is or isn't available, not to re-derive the rule.
+  const readinessByUserId = new Map(
+    await Promise.all(
+      pendingApps.map(async (a) => [a.userId, await getApplicantReadiness(a.userId, a.domain)] as const)
+    )
+  );
+  const pending = pendingApps.map((a) => ({ ...a, readiness: readinessByUserId.get(a.userId)! }));
 
   const countFor = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
 
@@ -61,7 +119,9 @@ export default async function ApplicationsPage() {
       </div>
 
       <Card>
-        <CardHeader><CardTitle className="text-base">Awaiting review</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-base">Awaiting review</CardTitle>
+        </CardHeader>
         <CardContent className="pb-6">
           {pending.length === 0 ? (
             <EmptyState icon={CheckCircle2} title="Nothing waiting" description="New applications appear here." />
@@ -97,13 +157,9 @@ export default async function ApplicationsPage() {
                     </div>
                   </dl>
 
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    <Badge variant={a.user.assessmentAttempts.length ? "success" : "outline"}>
-                      {a.user.assessmentAttempts.length ? "Assessment passed" : "No assessment"}
-                    </Badge>
-                    <Badge variant={a.user.identityVerification?.status === "VERIFIED" ? "success" : "outline"}>
-                      {a.user.identityVerification?.status === "VERIFIED" ? "ID verified" : "ID pending"}
-                    </Badge>
+                  <div className="mt-3 flex flex-wrap gap-3">
+                    <AssessmentEvidence readiness={a.readiness} />
+                    <IdentityEvidence readiness={a.readiness} />
                   </div>
 
                   <div className="mt-4 border-t border-border pt-3">
@@ -111,6 +167,7 @@ export default async function ApplicationsPage() {
                       <ApplicationReviewActions
                         applicationId={a.id}
                         applicantName={`${a.user.firstName} ${a.user.lastName}`}
+                        readyForApproval={a.readiness.readyForApproval}
                       />
                     ) : (
                       <span className="text-xs text-muted-foreground">View only</span>
@@ -124,7 +181,8 @@ export default async function ApplicationsPage() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Applicant</TableHead><TableHead>Domain</TableHead>
-                <TableHead>Readiness</TableHead><TableHead>Submitted</TableHead>
+                <TableHead>Assessment</TableHead><TableHead>Identity</TableHead>
+                <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead><TableHead className="text-right">Decision</TableHead>
               </TableRow></TableHeader>
               <TableBody>
@@ -140,16 +198,8 @@ export default async function ApplicationsPage() {
                       ) : null}
                     </TableCell>
                     <TableCell className="text-sm">{a.domain ?? "—"}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <Badge variant={a.user.assessmentAttempts.length ? "success" : "outline"}>
-                          {a.user.assessmentAttempts.length ? "Assessment passed" : "No assessment"}
-                        </Badge>
-                        <Badge variant={a.user.identityVerification?.status === "VERIFIED" ? "success" : "outline"}>
-                          {a.user.identityVerification?.status === "VERIFIED" ? "ID verified" : "ID pending"}
-                        </Badge>
-                      </div>
-                    </TableCell>
+                    <TableCell><AssessmentEvidence readiness={a.readiness} /></TableCell>
+                    <TableCell><IdentityEvidence readiness={a.readiness} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {a.submittedAt?.toLocaleDateString() ?? "—"}
                     </TableCell>
@@ -159,6 +209,7 @@ export default async function ApplicationsPage() {
                         <ApplicationReviewActions
                           applicationId={a.id}
                           applicantName={`${a.user.firstName} ${a.user.lastName}`}
+                          readyForApproval={a.readiness.readyForApproval}
                         />
                       ) : (
                         <span className="text-xs text-muted-foreground">View only</span>

@@ -7,6 +7,7 @@ import type { ApplicationStatus } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { assertCan } from "@/lib/permissions/can";
+import { assertReadyForApplicationApproval, GateError } from "@/server/services/trainer-gate";
 import { sendEmail } from "@/lib/email/client";
 import {
   applicationApprovedEmail,
@@ -116,6 +117,18 @@ export async function decideApplication(_prev: ActionState, formData: FormData):
     include: { user: true },
   });
   if (!application) return { status: "error", message: "Application not found." };
+
+  // The one decision that grants backend access has to be backed by
+  // evidence, not a reviewer's trust — refuse it outright if the applicant
+  // hasn't actually passed the assessment and cleared identity verification.
+  if (decision === "APPROVED") {
+    try {
+      await assertReadyForApplicationApproval(application.userId);
+    } catch (err) {
+      if (err instanceof GateError) return { status: "error", message: err.message };
+      throw err;
+    }
+  }
 
   await prisma.$transaction([
     prisma.application.update({

@@ -18,6 +18,10 @@ const MUST_CHECK_GATE: Record<string, string[]> = {
   "reviews.ts": ["assertClearedForTrainerWork"],
   "adjudication.ts": ["assertClearedForTrainerWork"],
   "payouts.ts": ["assertClearedForTrainerWork"],
+  // Approving an application is what grants backend access in the first
+  // place, so it needs its own evidence check rather than the trainer gate
+  // (which the application being decided is itself an input to).
+  "applications.ts": ["assertReadyForApplicationApproval"],
 };
 
 describe("trainer server actions check the gate, not just the page", () => {
