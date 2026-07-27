@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Wallet, Clock, Send, CheckCircle2, CreditCard } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { getWalletSummary, MIN_PAYOUT_CENTS } from "@/server/services/wallet";
 import { PageHeader } from "@/components/shared/page-header";
@@ -23,6 +24,7 @@ function usd(cents: number) {
 export default async function TrainerPaymentsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
   const userId = session.user.id;
 
   const [wallet, accounts, requests] = await Promise.all([

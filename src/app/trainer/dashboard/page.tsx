@@ -50,6 +50,42 @@ export default async function TrainerDashboardPage() {
 
   const gate = await getTrainerGate(userId);
 
+  // An applicant gets their status and nothing else. Returning before the
+  // queries below is deliberate: earnings, quality scores and task history
+  // are all necessarily empty at this point, and rendering them as zeroes
+  // alongside "Browse projects" reads as a working account with no work in
+  // it, rather than an application still being decided.
+  if (!gate.canAccessAssignments) {
+    return (
+      <div className="space-y-8">
+        <PageHeader
+          title={`Welcome, ${session.user.name?.split(" ")[0] ?? "there"}`}
+          description="Here's where your application stands."
+        />
+        <GateBanner gate={gate} />
+        <OnboardingProgress gate={gate} />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">What happens next</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 pb-6 text-sm text-muted-foreground">
+            <p>
+              Once every step is complete, our team reviews your application. We&apos;ll email you
+              as soon as there&apos;s a decision — you don&apos;t need to check back.
+            </p>
+            <p>
+              Projects, tasks and earnings unlock the moment you&apos;re approved. If anything
+              here looks wrong, our support team can help.
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/trainer/support">Contact support</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const [
     profile,
     activeAssignments,
@@ -107,13 +143,9 @@ export default async function TrainerDashboardPage() {
         }
       />
 
-      <GateBanner gate={gate} />
-
-      {/* Once someone is cleared, the journey is behind them — the dashboard
-          should be about the work, not the paperwork that got them here. */}
-      {gate.canAccessAssignments ? null : <OnboardingProgress gate={gate} />}
-
-      {gate.canAccessAssignments && profileCompletion < 100 ? (
+      {/* Reaching here means approved, so no gate banner or stepper: the
+          approval journey is behind them and this page is about the work. */}
+      {profileCompletion < 100 ? (
         <Card>
           <CardContent className="flex flex-col gap-3 pt-5 pb-5 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex-1 space-y-2">

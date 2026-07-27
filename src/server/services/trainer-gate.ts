@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+
 import { prisma } from "@/lib/db/prisma";
 import { evaluateTrainerGate, type TrainerGateState } from "@/lib/permissions/gating";
 
@@ -29,5 +31,21 @@ export class GateError extends Error {}
 export async function assertCanAccessAssignments(userId: string) {
   const gate = await getTrainerGate(userId);
   if (!gate.canAccessAssignments) throw new GateError(gate.title);
+  return gate;
+}
+
+/**
+ * Page-level guard for the parts of the trainer portal an applicant has no
+ * business seeing before approval — the marketplace, task queues, earnings,
+ * payout details, quality history.
+ *
+ * Sends them back to their dashboard, which shows where their application
+ * actually stands. This is what makes the restriction real: hiding the nav
+ * links alone would still leave every one of these pages reachable by
+ * typing the URL.
+ */
+export async function requireApprovedTrainer(userId: string) {
+  const gate = await getTrainerGate(userId);
+  if (!gate.canAccessAssignments) redirect("/trainer/dashboard");
   return gate;
 }

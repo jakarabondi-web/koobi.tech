@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Landmark } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -16,6 +17,7 @@ const usd = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency"
 export default async function TaxPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
 
   const paid = await prisma.earning.findMany({
     where: { userId: session.user.id, status: "PAID" },

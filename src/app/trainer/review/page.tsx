@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { ClipboardCheck, CheckCircle2, Handshake, Clock } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { getReviewQueue, getReviewerStats } from "@/server/services/reviews";
 import { PageHeader } from "@/components/shared/page-header";
@@ -21,6 +22,7 @@ export default async function ReviewQueuePage({
 }: { searchParams: Promise<{ done?: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
 
   // Reviewing is a distinct capability — a plain trainer can't reach this.
   if (!can(session.user.roles, "task.review")) {

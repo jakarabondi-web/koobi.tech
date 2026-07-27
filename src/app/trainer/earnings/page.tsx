@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { Wallet, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { getWalletSummary } from "@/server/services/wallet";
 import { PageHeader } from "@/components/shared/page-header";
@@ -21,6 +22,7 @@ const usd = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency"
 export default async function EarningsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
   const userId = session.user.id;
 
   const [wallet, earnings] = await Promise.all([

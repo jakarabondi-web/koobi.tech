@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Scale, CheckCircle2, Handshake } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { getAdjudicationQueue, getReviewerCalibration } from "@/server/services/adjudication";
 import { PageHeader } from "@/components/shared/page-header";
@@ -18,6 +19,7 @@ export const metadata: Metadata = { title: "Adjudication" };
 export default async function AdjudicationPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
 
   if (!can(session.user.roles, "task.adjudicate")) {
     return (

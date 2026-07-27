@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Medal } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { PageHeader } from "@/components/shared/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -16,6 +17,7 @@ export const metadata: Metadata = { title: "Gold tasks" };
 export default async function GoldTasksPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
 
   const results = await prisma.goldTaskResult.findMany({
     where: { userId: session.user.id },

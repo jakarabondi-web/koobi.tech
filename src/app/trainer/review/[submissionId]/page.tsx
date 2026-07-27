@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { loadSubmissionForReview, ReviewError } from "@/server/services/reviews";
 import { PageHeader } from "@/components/shared/page-header";
@@ -17,6 +18,7 @@ export default async function ReviewSubmissionPage({
 }: { params: Promise<{ submissionId: string }> }) {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  await requireApprovedTrainer(session.user.id);
   if (!can(session.user.roles, "task.review")) redirect("/trainer/review");
 
   const { submissionId } = await params;
