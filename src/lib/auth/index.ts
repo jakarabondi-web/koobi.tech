@@ -328,14 +328,47 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       // The `user` object handed to `jwt` right after this is this exact
-      // same reference (Auth.js threads it through unchanged when there is
-      // no adapter) — rewriting it here, with the id/roles resolveOAuthSignIn
-      // just resolved, means `jwt` needs no second database round-trip and
-      // there is no separate lookup that could disagree with this one.
+      // same reference when there is no adapter, so rewriting it here
+      // should be enough on its own. `jwt` below re-derives the same thing
+      // from the database as a fallback rather than trusting that
+      // unconditionally — cheap insurance against relying on exactly how
+      // Auth.js threads this object internally.
       user.id = resolution.user.id;
       (user as { roles?: GlobalRole[] }).roles = resolution.user.roles;
 
       return true;
+    },
+
+    /**
+     * Defensive fallback for the OAuth roles set in `signIn` above: if they
+     * didn't make it onto the token for any reason, re-derive them from the
+     * database by the (provider, providerAccountId) `signIn` already
+     * linked, rather than silently minting a session with no roles at all.
+     */
+    async jwt(params) {
+      const token = await authConfig.callbacks!.jwt!(params);
+      if (!token) return token;
+      const { account } = params;
+      if (
+        account?.type === "oauth" &&
+        account.provider === "google" &&
+        !(Array.isArray(token.roles) && token.roles.length > 0)
+      ) {
+        const linked = await prisma.account.findUnique({
+          where: {
+            provider_providerAccountId: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+            },
+          },
+          include: { user: { include: { roles: { include: { role: true } } } } },
+        });
+        if (linked) {
+          token.userId = linked.user.id;
+          token.roles = linked.user.roles.map((r) => r.role.key) as GlobalRole[];
+        }
+      }
+      return token;
     },
   },
 });

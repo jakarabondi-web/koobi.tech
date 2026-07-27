@@ -104,9 +104,13 @@ export default async function HomePage() {
   // OAuth and SSO sign-ins land here (they redirect to "/"), and this
   // marketing page has no way to show a signed-in state — so a successful
   // sign-in would otherwise look identical to never having signed in at
-  // all. Send anyone with a session straight to their dashboard instead.
+  // all. Send anyone with a session straight to their dashboard instead —
+  // but only when they actually have a role to send them to. A session
+  // with no recognized role redirecting into a surface it can't access
+  // would bounce straight to /403 with no way back; showing the ordinary
+  // marketing page is the safe fallback for that edge case.
   const session = await auth();
-  if (session?.user) {
+  if (session?.user?.surface) {
     redirect(dashboardPathForSurface(session.user.surface));
   }
 
