@@ -292,7 +292,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * denying it, except the destination carries a fresh challenge token so
      * the same verify-2fa screen the password path uses can finish the job.
      */
-    async signIn({ account, profile }) {
+    async signIn({ user, account, profile }) {
       if (!account || account.type !== "oauth") return true;
       if (account.provider !== "google") return true;
 
@@ -327,40 +327,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         return `/login/verify-2fa?challenge=${token}`;
       }
 
-      return true;
-    },
+      // The `user` object handed to `jwt` right after this is this exact
+      // same reference (Auth.js threads it through unchanged when there is
+      // no adapter) — rewriting it here, with the id/roles resolveOAuthSignIn
+      // just resolved, means `jwt` needs no second database round-trip and
+      // there is no separate lookup that could disagree with this one.
+      user.id = resolution.user.id;
+      (user as { roles?: GlobalRole[] }).roles = resolution.user.roles;
 
-    /**
-     * The `user` object handed to `jwt` after a successful OAuth sign-in is
-     * whatever the provider's default `profile()` mapping produced (id from
-     * `sub`, not our database id). `signIn` above already resolved the real
-     * account; this callback is what actually gets to rewrite `user` before
-     * `authConfig`'s `jwt` callback reads `user.id` and `user.roles` off it.
-     */
-    async jwt(params) {
-      const { account, user } = params;
-      if (account?.type === "oauth" && account.provider === "google") {
-        // `signIn` above already created/linked the Account row for this
-        // exact (provider, providerAccountId) pair — looking it up by that
-        // key is precise, unlike matching on email again, which could in
-        // principle collide if an address were ever reused.
-        const linked = await prisma.account.findUnique({
-          where: {
-            provider_providerAccountId: {
-              provider: account.provider,
-              providerAccountId: account.providerAccountId,
-            },
-          },
-          include: { user: { include: { roles: { include: { role: true } } } } },
-        });
-        if (linked) {
-          (user as { id: string }).id = linked.user.id;
-          (user as { roles?: GlobalRole[] }).roles = linked.user.roles.map(
-            (r) => r.role.key
-          ) as GlobalRole[];
-        }
-      }
-      return authConfig.callbacks!.jwt!(params);
+      return true;
     },
   },
 });
