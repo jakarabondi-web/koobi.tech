@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db/prisma";
 import { assertCan } from "@/lib/permissions/can";
 import { assertReadyForApplicationApproval, GateError } from "@/server/services/trainer-gate";
 import { sendEmail } from "@/lib/email/client";
+import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
 import {
   applicationApprovedEmail,
   applicationMoreInfoEmail,
@@ -23,7 +24,12 @@ export type ActionState = { status: "idle" | "success" | "error"; message?: stri
 
 const submitSchema = z.object({
   domain: z.string().min(1, "Choose your primary area of expertise"),
-  headline: z.string().min(10, "Tell us a bit more about your background"),
+  headline: z
+    .string()
+    .refine(
+      (v) => countWords(v) >= MIN_BACKGROUND_WORDS,
+      `Tell us a bit more about your background — at least ${MIN_BACKGROUND_WORDS} words.`
+    ),
   country: z.string().min(2, "Country is required"),
   hoursPerWeek: z.coerce.number().int().min(1).max(60),
 });

@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 import { submitApplication, type ActionState } from "@/server/actions/applications";
+import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,6 +32,9 @@ export function ApplicationForm({
   defaults: { domain?: string; headline?: string; country?: string; hoursPerWeek?: number };
 }) {
   const [state, formAction, pending] = useActionState(submitApplication, initialState);
+  const [headline, setHeadline] = useState(defaults.headline ?? "");
+  const wordCount = countWords(headline);
+  const wordCountMet = wordCount >= MIN_BACKGROUND_WORDS;
 
   if (state.status === "success") {
     return (
@@ -77,9 +81,14 @@ export function ApplicationForm({
           name="headline"
           rows={4}
           required
-          defaultValue={defaults.headline ?? ""}
+          value={headline}
+          onChange={(e) => setHeadline(e.target.value)}
           placeholder="e.g. Senior backend engineer, 8 years in distributed systems. MSc Computer Science."
         />
+        <p className={`text-xs ${wordCountMet ? "text-muted-foreground" : "text-destructive"}`}>
+          {wordCount} / {MIN_BACKGROUND_WORDS} words minimum — enough for a reviewer to actually judge
+          your background from, not just a title.
+        </p>
       </div>
 
       <div className="grid gap-5 sm:grid-cols-2">
