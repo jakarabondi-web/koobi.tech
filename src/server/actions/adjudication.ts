@@ -5,6 +5,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions/can";
+import { assertClearedForTrainerWork, GateError } from "@/server/services/trainer-gate";
 import { resolveAdjudication, AdjudicationError } from "@/server/services/adjudication";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string };
@@ -19,6 +20,15 @@ export async function submitAdjudication(_prev: ActionState, formData: FormData)
   const session = await auth();
   if (!session?.user) return { status: "error", message: "Not signed in." };
   assertCan(session.user.roles, "task.adjudicate");
+
+  // Same reasoning as recordReview: an adjudication overrides reviewers and
+  // settles what a trainer is paid. Staff are exempt; see the helper.
+  try {
+    await assertClearedForTrainerWork(session.user);
+  } catch (err) {
+    if (err instanceof GateError) return { status: "error", message: err.message };
+    throw err;
+  }
 
   const parsed = schema.safeParse({
     adjudicationId: formData.get("adjudicationId"),

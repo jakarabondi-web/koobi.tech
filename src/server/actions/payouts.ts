@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { auth } from "@/lib/auth";
+import { assertClearedForTrainerWork, GateError } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { assertCan } from "@/lib/permissions/can";
 import { normalizeMpesaPhone } from "@/lib/payments/mpesa";
@@ -22,6 +23,16 @@ const addMethodSchema = z.discriminatedUnion("provider", [
 export async function addPaymentMethod(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
   if (!session?.user) return { status: "error", message: "Not signed in." };
+
+  // Payout destinations belong to people cleared to earn. This had no role
+  // or gate check at all, so any signed-in account — including a client-org
+  // member who can never be paid — could attach one.
+  try {
+    await assertClearedForTrainerWork(session.user);
+  } catch (err) {
+    if (err instanceof GateError) return { status: "error", message: err.message };
+    throw err;
+  }
 
   const parsed = addMethodSchema.safeParse({
     provider: formData.get("provider"),
@@ -53,6 +64,16 @@ export async function addPaymentMethod(_prev: ActionState, formData: FormData): 
 export async function submitPayoutRequest(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
   if (!session?.user) return { status: "error", message: "Not signed in." };
+
+  // requestPayout already refuses without approved earnings, so this is
+  // defence in depth rather than the thing standing between an applicant
+  // and the money — but an ungated payout endpoint should not exist.
+  try {
+    await assertClearedForTrainerWork(session.user);
+  } catch (err) {
+    if (err instanceof GateError) return { status: "error", message: err.message };
+    throw err;
+  }
 
   const paymentAccountId = String(formData.get("paymentAccountId") ?? "");
   if (!paymentAccountId) return { status: "error", message: "Choose a payment method." };

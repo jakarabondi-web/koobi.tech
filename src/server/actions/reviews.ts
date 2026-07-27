@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { auth } from "@/lib/auth";
 import { assertCan } from "@/lib/permissions/can";
+import { assertClearedForTrainerWork, GateError } from "@/server/services/trainer-gate";
 import { submitReview, ReviewError } from "@/server/services/reviews";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string };
@@ -22,6 +23,16 @@ export async function recordReview(_prev: ActionState, formData: FormData): Prom
   const session = await auth();
   if (!session?.user) return { status: "error", message: "Not signed in." };
   assertCan(session.user.roles, "task.review");
+
+  // A reviewer's scores move other trainers' quality ratings and pay, so
+  // holding the role is not enough — an unapproved applicant granted it
+  // must still clear the gate. Staff are exempt; see the helper.
+  try {
+    await assertClearedForTrainerWork(session.user);
+  } catch (err) {
+    if (err instanceof GateError) return { status: "error", message: err.message };
+    throw err;
+  }
 
   const parsed = schema.safeParse({
     submissionId: formData.get("submissionId"),
