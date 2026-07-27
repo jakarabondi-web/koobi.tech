@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import type { GlobalRole } from "@/lib/permissions/roles";
+import type { SupportedOAuthProvider } from "@/lib/auth/oauth-providers";
 
 export type OAuthProfile = {
   email: string | null | undefined;
@@ -65,7 +66,7 @@ function splitName(profile: OAuthProfile): { first: string; last: string } {
  *   address ownership as our own confirmation link.
  */
 export async function resolveOAuthSignIn(
-  provider: "google",
+  provider: SupportedOAuthProvider,
   profile: OAuthProfile,
   tokens: OAuthAccountTokens
 ): Promise<OAuthResolution> {

@@ -12,6 +12,7 @@ import {
   verifyTotpCode,
 } from "@/lib/auth/two-factor";
 import { decryptSecret } from "@/lib/security/field-encryption";
+import { isSupportedOAuthAccount } from "@/lib/auth/oauth-providers";
 import { resolveOAuthSignIn } from "@/server/services/oauth-account";
 
 import { authConfig } from "./config";
@@ -281,9 +282,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig.callbacks,
 
     /**
-     * Runs only for the OAuth providers above — the Credentials providers
-     * resolve everything inside `authorize` and never reach here with an
-     * `account` present of type "oauth".
+     * Runs only for the federated providers above — the Credentials
+     * providers resolve everything inside `authorize` and never reach here
+     * with a federated `account` present.
      *
      * See resolveOAuthSignIn for the rules (verified email required, SSO
      * domains excluded, account linking by verified email). A 2FA-enabled
@@ -293,8 +294,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
      * the same verify-2fa screen the password path uses can finish the job.
      */
     async signIn({ user, account, profile }) {
-      if (!account || account.type !== "oauth") return true;
-      if (account.provider !== "google") return true;
+      if (!isSupportedOAuthAccount(account)) return true;
 
       const p = (profile ?? {}) as Record<string, unknown>;
       const resolution = await resolveOAuthSignIn(
@@ -350,15 +350,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!token) return token;
       const { account } = params;
       if (
-        account?.type === "oauth" &&
-        account.provider === "google" &&
+        isSupportedOAuthAccount(account) &&
         !(Array.isArray(token.roles) && token.roles.length > 0)
       ) {
         const linked = await prisma.account.findUnique({
           where: {
             provider_providerAccountId: {
               provider: account.provider,
-              providerAccountId: account.providerAccountId,
+              providerAccountId: account!.providerAccountId as string,
             },
           },
           include: { user: { include: { roles: { include: { role: true } } } } },
