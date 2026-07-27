@@ -115,6 +115,27 @@ describe("assessment question pool is drawn, not served in full", () => {
 
     expect(attempt.selectedQuestionIds).toHaveLength(2);
   });
+
+  it("refuses to start a new attempt while the last one is still under human review", async () => {
+    assessmentFindUnique.mockResolvedValue({
+      id: "assess-1",
+      isActive: true,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      timeLimitMins: null,
+      questions: SIX_MCQ_ONE_WRITTEN,
+    });
+    // First findFirst call: no IN_PROGRESS attempt to resume.
+    // Second findFirst call: the prior attempt is UNDER_REVIEW.
+    attemptFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: "attempt-0", status: "UNDER_REVIEW" });
+
+    await expect(startAttempt({ userId: "user-1", assessmentId: "assess-1" })).rejects.toThrow(
+      /still being reviewed/i
+    );
+    expect(attemptCreate).not.toHaveBeenCalled();
+  });
 });
 
 describe("submitAttempt grades only the drawn subset", () => {

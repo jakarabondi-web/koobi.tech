@@ -43,6 +43,15 @@ export async function startAttempt(params: { userId: string; assessmentId: strin
   });
   if (existing) return { attempt: existing, assessment };
 
+  const pendingReview = await prisma.assessmentAttempt.findFirst({
+    where: { userId: params.userId, assessmentId: params.assessmentId, status: "UNDER_REVIEW" },
+  });
+  if (pendingReview) {
+    throw new AssessmentError(
+      "Your last attempt is still being reviewed. You'll be able to retake this once a reviewer has scored your written answers."
+    );
+  }
+
   const priorAttempts = await prisma.assessmentAttempt.count({
     where: {
       userId: params.userId,

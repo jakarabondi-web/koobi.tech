@@ -32,7 +32,8 @@ export default async function AssessmentsPage() {
         <div className="grid gap-4 md:grid-cols-2">
           {items.map(({ assessment, attempt, attemptsUsed }) => {
             const passed = attempt?.status === "PASSED";
-            const exhausted = attemptsUsed >= assessment.maxAttempts && !passed;
+            const underReview = attempt?.status === "UNDER_REVIEW";
+            const exhausted = attemptsUsed >= assessment.maxAttempts && !passed && !underReview;
             return (
               <Card key={assessment.id}>
                 <CardContent className="space-y-3 pt-5 pb-5">
@@ -55,7 +56,7 @@ export default async function AssessmentsPage() {
                     <span>{attemptsUsed} / {assessment.maxAttempts} attempts used</span>
                   </div>
 
-                  {attempt?.score != null ? (
+                  {attempt?.score != null && !underReview ? (
                     <p className="text-sm">
                       Your score: <span className="font-medium">{Math.round(attempt.score * 100)}%</span>
                     </p>
@@ -63,6 +64,14 @@ export default async function AssessmentsPage() {
 
                   {passed ? (
                     <p className="text-sm font-medium text-success">Passed — you&apos;re qualified for this domain.</p>
+                  ) : underReview ? (
+                    // The multiple-choice portion is auto-graded the moment you
+                    // submit, but a written answer still needs a person to read
+                    // it — showing a score here, or letting a retake start,
+                    // would both imply this is finished when it isn't.
+                    <p className="text-sm text-muted-foreground">
+                      Submitted — your written answer is with a reviewer. You&apos;ll be notified once it&apos;s scored.
+                    </p>
                   ) : exhausted ? (
                     <p className="text-sm text-muted-foreground">
                       No attempts remaining. Contact support if you&apos;d like this reviewed.
