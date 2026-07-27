@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { shuffle } from "@/lib/utils/shuffle";
 
 export class AssessmentError extends Error {}
 
@@ -19,7 +20,7 @@ function drawQuestionPool(questions: { id: string; type: string }[]): string[] {
   const autoGradable = questions.filter((q) => q.type === "MULTIPLE_CHOICE" || q.type === "RANKING");
   const written = questions.filter((q) => q.type === "WRITTEN_RESPONSE");
 
-  const shuffled = [...autoGradable].sort(() => Math.random() - 0.5);
+  const shuffled = shuffle(autoGradable);
   const sample = shuffled.slice(0, Math.min(MCQ_PER_ATTEMPT, shuffled.length));
 
   return [...sample, ...written].map((q) => q.id);

@@ -4,6 +4,7 @@ import { ListChecks } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { shuffle } from "@/lib/utils/shuffle";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AssessmentRunner } from "@/components/trainer/assessment-runner";
@@ -40,7 +41,7 @@ export default async function AttemptPage({
     prompt: q.prompt,
     // Shuffled per attempt so option position can't be memorized — grading
     // compares the chosen value, not its position, so this is display-only.
-    options: [...((q.options as string[] | null) ?? [])].sort(() => Math.random() - 0.5),
+    options: shuffle((q.options as string[] | null) ?? []),
     points: q.points,
   }));
 
