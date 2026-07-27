@@ -13,6 +13,21 @@ const SEED_IDS = {
   projectPairwise: "11111111-1111-4111-8111-111111111111",
   assessmentSoftware: "22222222-2222-4222-8222-222222222222",
   assessmentGeneral: "33333333-3333-4333-8333-333333333333",
+  // One per entry in DOMAINS (application-form.tsx) other than Software
+  // engineering, which already has one above. Without these, most domains
+  // had nothing to pass — the application form's own copy ("This determines
+  // which qualification assessment you'll take") was false for 9 of 10
+  // applicants.
+  assessmentMathematics: "d29c74e9-dc43-4106-9a08-e1cfa87c7481",
+  assessmentMedicine: "69beadf2-a933-42ae-b2cf-2d1eb1558a13",
+  assessmentLaw: "3c27581b-4956-49e0-a54d-d0c75903986e",
+  assessmentFinance: "9ad5f5d3-fd10-4fd1-90b3-569ac6ef2dab",
+  assessmentScience: "727f5285-5de7-4bf3-b0ae-c42b4e37b585",
+  assessmentEngineering: "59566bc5-d352-4082-857e-77628399c2d5",
+  assessmentLinguistics: "5a3ae5b2-e881-4874-88a9-0e42762801cb",
+  assessmentEducation: "da5549b5-1a5c-4c39-a3aa-7683e6f843ff",
+  assessmentWriting: "9594079a-2a39-40d4-a44e-1a90f66349bf",
+  assessmentResearch: "8fc66bc1-00de-487d-a08a-bc639248d0d6",
 } as const;
 
 async function ensureRoles() {
@@ -187,6 +202,665 @@ async function ensureAssessments() {
             type: "WRITTEN_RESPONSE",
             prompt:
               "Describe a case where the more helpful-sounding response is the worse response, and explain how you would justify that in a review.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  // Domain assessments below. Each mirrors the Software engineering /
+  // General assistant pattern above: they test judgment of an AI response
+  // in the domain (calibration, instruction-following, hallucination,
+  // safety) rather than asking the trainee to personally practice medicine,
+  // law, or finance — the qualification is for evaluating model outputs,
+  // not for giving advice, so the questions never do either.
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentMathematics },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentMathematics,
+      title: "Mathematics evaluation qualification",
+      domain: "Mathematics",
+      description: "Checks that you can judge mathematical reasoning for correctness, not just the final answer.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt:
+              "A model's derivation has a sign error in an intermediate step but the final answer is correct. How should you score it?",
+            options: [
+              "Full marks — the final answer is right",
+              "Docked — an intermediate error means the reasoning cannot be trusted even if it cancelled out",
+              "Zero — any error is disqualifying",
+              "Cannot be judged without the original problem",
+            ],
+            correctAnswer: "Docked — an intermediate error means the reasoning cannot be trusted even if it cancelled out",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks the model to “show your steps.” The model gives only the final answer, correctly. How do you score instruction following?",
+            options: [
+              "Full marks — the answer is correct",
+              "Low — it ignored an explicit constraint",
+              "Ignore the constraint, it's a minor detail",
+              "Full marks if the answer is simple enough to not need steps",
+            ],
+            correctAnswer: "Low — it ignored an explicit constraint",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model reports an approximate value (e.g. from a numerical method) as “the exact answer.” What is the issue?",
+            options: [
+              "None — the number is close enough",
+              "Overclaiming precision — an approximation should be labeled as one",
+              "Style issue only",
+              "This is only a problem if the approximation is wrong",
+            ],
+            correctAnswer: "Overclaiming precision — an approximation should be labeled as one",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "A model's multi-step proof has one flawed step but arrives at the correct final result. Write the feedback you would give, and explain how you would score it.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentMedicine },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentMedicine,
+      title: "Medicine evaluation qualification",
+      domain: "Medicine",
+      description:
+        "Checks that you can judge a medical-context AI response for calibration and safety — this is an evaluation qualification, not a clinical exam.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model gives a confident, specific diagnosis from a one-line symptom description. What is the main problem?",
+            options: [
+              "Tone is too clinical",
+              "Overconfidence — it is not calibrated to how little evidence it was given",
+              "The answer is too short",
+              "Nothing, it is decisive and helpful",
+            ],
+            correctAnswer: "Overconfidence — it is not calibrated to how little evidence it was given",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model states a specific medication dosage with no safety caveat or disclaimer. How should this be scored?",
+            options: [
+              "Fine — the number itself matters most",
+              "Flagged — specific dosing without a safety caveat is a real risk regardless of accuracy",
+              "Ignore it, disclaimers are boilerplate",
+              "Only a problem if the dosage is wrong",
+            ],
+            correctAnswer: "Flagged — specific dosing without a safety caveat is a real risk regardless of accuracy",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "On a treatment where clinical opinion is genuinely divided, one response gives the calibrated consensus view with caveats; another states one side confidently as settled fact. Which is better?",
+            options: [
+              "The confident one — users want a clear answer",
+              "The calibrated one — confidently misrepresenting genuine debate as settled is worse than an honest caveat",
+              "They are equal",
+              "Neither, both should refuse to answer",
+            ],
+            correctAnswer: "The calibrated one — confidently misrepresenting genuine debate as settled is worse than an honest caveat",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate a medical-context response for calibration and safety without needing to personally verify the underlying clinical facts yourself.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentLaw },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentLaw,
+      title: "Law evaluation qualification",
+      domain: "Law",
+      description:
+        "Checks that you can judge a legal-context AI response for calibration and appropriate caveats — this is an evaluation qualification, not a legal exam.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model confidently predicts the outcome of a specific court case from a two-sentence description of the facts. What is the issue?",
+            options: [
+              "None — confidence is reassuring",
+              "Overconfidence — case outcomes depend on far more than can be inferred from a short summary",
+              "It should have cited a statute",
+              "Nothing, this is what users want",
+            ],
+            correctAnswer: "Overconfidence — case outcomes depend on far more than can be inferred from a short summary",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks about the law in a specific jurisdiction. The model answers with general principles and never addresses that jurisdiction. How do you score instruction following?",
+            options: [
+              "Full marks — general principles are still useful",
+              "Low — it ignored an explicit, material constraint",
+              "Ignore it, jurisdiction rarely matters",
+              "Full marks if the general principles are accurate",
+            ],
+            correctAnswer: "Low — it ignored an explicit, material constraint",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A response to a specific legal question includes a brief, appropriate “this isn't legal advice, consult a lawyer” note alongside a substantive answer. How should this be scored?",
+            options: [
+              "Penalized — disclaimers weaken the answer",
+              "Rewarded — an appropriate disclaimer alongside a substantive answer is the right calibration",
+              "Irrelevant to scoring",
+              "Only acceptable if the disclaimer is the entire answer",
+            ],
+            correctAnswer: "Rewarded — an appropriate disclaimer alongside a substantive answer is the right calibration",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate a legal-context response for calibration to genuine legal uncertainty, without yourself giving legal advice in your review.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentFinance },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentFinance,
+      title: "Finance evaluation qualification",
+      domain: "Finance",
+      description: "Checks that you can judge a finance-context AI response for accuracy, caveats, and overclaiming.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model describes an investment as “guaranteed” to return a specific percentage. What is the issue?",
+            options: [
+              "None, if the number is plausible",
+              "Overconfidence — investment returns are never guaranteed, and stating otherwise is materially misleading",
+              "Style issue only",
+              "Only a problem if the percentage is unusually high",
+            ],
+            correctAnswer: "Overconfidence — investment returns are never guaranteed, and stating otherwise is materially misleading",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks for a break-even calculation. The model gives sound general advice but never computes the number. How do you score instruction following?",
+            options: [
+              "Full marks — the advice is sound",
+              "Low — it omitted the specific calculation that was explicitly requested",
+              "Ignore the omission",
+              "Full marks if the advice implies the answer",
+            ],
+            correctAnswer: "Low — it omitted the specific calculation that was explicitly requested",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A response gives tax advice with no mention that tax treatment varies by jurisdiction. How should this be scored?",
+            options: [
+              "Fine — most users are in the same jurisdiction",
+              "Flagged — unqualified tax advice that omits jurisdiction dependence can be materially wrong for the reader",
+              "Irrelevant to scoring",
+              "Only a problem if the advice is factually incorrect somewhere",
+            ],
+            correctAnswer: "Flagged — unqualified tax advice that omits jurisdiction dependence can be materially wrong for the reader",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "A model's numeric answer to a finance question is arithmetically correct but omits the assumptions it relied on. Write the feedback you would give, and explain how you would score it.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentScience },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentScience,
+      title: "Science evaluation qualification",
+      domain: "Science",
+      description: "Checks that you can judge a science-context AI response for factual accuracy and appropriate uncertainty.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model cites a single preliminary study as if it were established scientific consensus. What is the issue?",
+            options: [
+              "None — citing a study is good practice",
+              "Overstatement — one preliminary study is not consensus, and presenting it that way misleads the reader",
+              "The citation format is wrong",
+              "Nothing, as long as the study is real",
+            ],
+            correctAnswer: "Overstatement — one preliminary study is not consensus, and presenting it that way misleads the reader",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user asks how a specific mechanism works. The model responds with a vivid analogy but never actually explains the mechanism. How should this be scored?",
+            options: [
+              "Full marks — the analogy is clear and engaging",
+              "Low — it never answered the question that was actually asked",
+              "Ignore it, analogies are always sufficient",
+              "Full marks if the analogy is memorable",
+            ],
+            correctAnswer: "Low — it never answered the question that was actually asked",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model's calculation is correct except the units are wrong, changing the result by a factor of 1000. How significant is this error?",
+            options: [
+              "Minor — the method was correct",
+              "Major — a unit error of this scale makes the reported result wrong and potentially dangerous if acted on",
+              "Not an error at all",
+              "Only significant in engineering contexts",
+            ],
+            correctAnswer: "Major — a unit error of this scale makes the reported result wrong and potentially dangerous if acted on",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate a science-context response for both factual accuracy and whether it expresses an appropriate degree of certainty.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentEngineering },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentEngineering,
+      title: "Engineering evaluation qualification",
+      domain: "Engineering",
+      description: "Checks that you can judge an engineering-context AI response for correctness against stated constraints.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user states an explicit safety margin the design must meet. The model's proposal doesn't meet it and never mentions the shortfall. How should this be scored?",
+            options: [
+              "Full marks if the design otherwise works",
+              "Failed — silently missing a stated safety constraint is a critical failure, not a minor gap",
+              "Ignore the constraint, it was probably conservative anyway",
+              "Only a problem if someone builds it",
+            ],
+            correctAnswer: "Failed — silently missing a stated safety constraint is a critical failure, not a minor gap",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model's calculation has a unit-conversion error that changes the result by roughly 10x. What is the significance?",
+            options: [
+              "Minor — the approach was right",
+              "Major — a 10x magnitude error invalidates the practical result even if the method is sound",
+              "Not an error",
+              "Only significant for very large structures",
+            ],
+            correctAnswer: "Major — a 10x magnitude error invalidates the practical result even if the method is sound",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model substitutes a different component than the one specified, without flagging that the substitution affects tolerances. How should this be scored?",
+            options: [
+              "Fine — substitutions are common practice",
+              "Flagged — an unflagged substitution that affects tolerances hides a real change in the design's behavior",
+              "Irrelevant to scoring",
+              "Only a problem if the substitute is cheaper",
+            ],
+            correctAnswer: "Flagged — an unflagged substitution that affects tolerances hides a real change in the design's behavior",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate whether an engineering response respected explicit constraints — tolerances, safety margins, applicable standards — rather than just whether it “works.”",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentLinguistics },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentLinguistics,
+      title: "Linguistics evaluation qualification",
+      domain: "Linguistics",
+      description: "Checks that you can judge whether a linguistics-context AI response used the correct analytical framework.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks for a syntactic analysis of a sentence. The model instead explains what the sentence means. How should this be scored?",
+            options: [
+              "Full marks — the explanation is accurate",
+              "Low — it answered a different question than the one asked (semantics instead of syntax)",
+              "Ignore the mismatch",
+              "Full marks if the meaning explanation is detailed",
+            ],
+            correctAnswer: "Low — it answered a different question than the one asked (semantics instead of syntax)",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model confidently states a folk etymology for a word that linguists have documented as false. What is the issue?",
+            options: [
+              "None — folk etymologies are interesting",
+              "Factual error stated with unwarranted confidence",
+              "Style issue only",
+              "Not an error since the word's origin is now what people believe",
+            ],
+            correctAnswer: "Factual error stated with unwarranted confidence",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user asks for the IPA transcription of a word. The model gives a rough phonetic spelling instead (e.g. “kat” instead of the IPA symbols). How should this be scored?",
+            options: [
+              "Full marks — close enough for most readers",
+              "Low — it did not follow the explicit request for IPA notation",
+              "Ignore the format difference",
+              "Full marks if the pronunciation is roughly right",
+            ],
+            correctAnswer: "Low — it did not follow the explicit request for IPA notation",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would judge whether a response applied the correct linguistic framework (syntax, semantics, phonology, etc.) for what was actually asked.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentEducation },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentEducation,
+      title: "Education evaluation qualification",
+      domain: "Education",
+      description: "Checks that you can judge whether an AI response is pedagogically appropriate for its stated audience.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user says they are a complete beginner. The model's explanation is accurate but full of unexplained jargon. How should this be scored?",
+            options: [
+              "Full marks — the content is correct",
+              "Low — it did not adapt to the stated skill level, making it unusable for the actual reader",
+              "Ignore the audience, correctness is all that matters",
+              "Full marks if the jargon is standard terminology",
+            ],
+            correctAnswer: "Low — it did not adapt to the stated skill level, making it unusable for the actual reader",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model's worked example arrives at a different number in the final step than the steps leading up to it support. What is the issue?",
+            options: [
+              "None — the final number is what matters",
+              "Internal inconsistency — a worked example that contradicts its own steps will confuse a learner following along",
+              "Style issue only",
+              "Not a problem if the final number happens to be correct",
+            ],
+            correctAnswer: "Internal inconsistency — a worked example that contradicts its own steps will confuse a learner following along",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user asks for exactly three practice questions. The model provides seven, all high quality. How do you score instruction following?",
+            options: [
+              "Full marks — more practice is better",
+              "Low — it did not follow the explicit count constraint",
+              "Ignore the count",
+              "Full marks if all seven are relevant",
+            ],
+            correctAnswer: "Low — it did not follow the explicit count constraint",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate whether a response was pedagogically appropriate for a stated skill level, beyond just checking factual accuracy.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentWriting },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentWriting,
+      title: "Writing evaluation qualification",
+      domain: "Writing",
+      description: "Checks that you can judge an AI response for craft and for whether it actually fulfilled the brief.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks for a formal tone. The model writes fluent but casual, conversational prose. How should this be scored?",
+            options: [
+              "Full marks — the writing is fluent",
+              "Low — it did not match the explicitly requested register",
+              "Ignore tone, only grammar matters",
+              "Full marks if casual reads as friendly",
+            ],
+            correctAnswer: "Low — it did not match the explicitly requested register",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user asks the model to make a passage more concise. The revision is well-written but longer than the original. How should this be scored?",
+            options: [
+              "Full marks — the new version reads better",
+              "Low — it did the opposite of what was explicitly requested",
+              "Ignore length, quality is what matters",
+              "Full marks if the added length adds detail",
+            ],
+            correctAnswer: "Low — it did the opposite of what was explicitly requested",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "One response is grammatically perfect but never actually addresses the prompt. Another has minor grammar issues but directly and usefully answers it. Which is better?",
+            options: [
+              "The grammatically perfect one — correctness matters most",
+              "The one that addresses the prompt — relevance to the actual ask outweighs minor polish",
+              "They are equal",
+              "Neither, both should be rejected",
+            ],
+            correctAnswer: "The one that addresses the prompt — relevance to the actual ask outweighs minor polish",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would evaluate a piece of writing for both craft (clarity, tone, grammar) and whether it actually fulfilled the brief it was given.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentResearch },
+    update: {},
+    create: {
+      id: SEED_IDS.assessmentResearch,
+      title: "Research evaluation qualification",
+      domain: "Research",
+      description: "Checks that you can judge whether an AI response accurately represents its sources and evidence.",
+      timeLimitMins: 30,
+      passThreshold: 0.75,
+      maxAttempts: 2,
+      cooldownHours: 72,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model summarizes a study that found a correlation and states that the study “proves” one thing causes the other. What is the issue?",
+            options: [
+              "None — correlation and causation are close enough for a summary",
+              "Overstatement — the model claimed causation the underlying study did not establish",
+              "Style issue only",
+              "Not a problem if the correlation is strong",
+            ],
+            correctAnswer: "Overstatement — the model claimed causation the underlying study did not establish",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks for sources from the last five years. Several of the model's citations are over a decade old, unflagged. How should this be scored?",
+            options: [
+              "Full marks — older sources can still be relevant",
+              "Low — it did not meet the explicit recency constraint",
+              "Ignore the dates",
+              "Full marks if the older sources are well-known",
+            ],
+            correctAnswer: "Low — it did not meet the explicit recency constraint",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model cites a real paper in support of a claim, but the cited paper doesn't actually say that. What is this?",
+            options: [
+              "Acceptable — the citation exists",
+              "Citation misuse — a real citation that doesn't support the claim is misleading, arguably worse than no citation",
+              "A minor formatting issue",
+              "Not a problem since the paper is real",
+            ],
+            correctAnswer: "Citation misuse — a real citation that doesn't support the claim is misleading, arguably worse than no citation",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "WRITTEN_RESPONSE",
+            prompt:
+              "Describe how you would check whether a research summary accurately represents its cited sources, including how you'd spot suspected citation misuse.",
             points: 4,
           },
         ],

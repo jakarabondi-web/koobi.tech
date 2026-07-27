@@ -152,14 +152,30 @@ export async function submitAttempt(params: {
   return { status, score };
 }
 
-/** Assessments the trainer can see, with their attempt state. */
+/**
+ * Assessments the trainer can see, with their attempt state.
+ *
+ * Scoped to the domain they actually applied under — the application form
+ * tells them "this determines which qualification assessment you'll take",
+ * so showing all eleven regardless of domain made that a lie for anyone
+ * outside Software engineering. "General assistant" stays visible to
+ * everyone as the platform-wide fallback, and any assessment they've
+ * already attempted stays visible too, so a domain change or admin edit
+ * never hides a trainee's own history.
+ */
 export async function listAssessmentsForUser(userId: string) {
-  const [assessments, attempts] = await Promise.all([
+  const [application, assessments, attempts] = await Promise.all([
+    prisma.application.findUnique({ where: { userId }, select: { domain: true } }),
     prisma.assessment.findMany({ where: { isActive: true }, orderBy: { title: "asc" } }),
     prisma.assessmentAttempt.findMany({ where: { userId }, orderBy: { startedAt: "desc" } }),
   ]);
 
-  return assessments.map((a) => {
+  const attemptedIds = new Set(attempts.map((t) => t.assessmentId));
+  const relevant = assessments.filter(
+    (a) => a.domain === application?.domain || a.domain === "General assistant" || attemptedIds.has(a.id)
+  );
+
+  return relevant.map((a) => {
     const mine = attempts.filter((t) => t.assessmentId === a.id);
     const best = mine.find((t) => t.status === "PASSED") ?? mine[0] ?? null;
     return {
