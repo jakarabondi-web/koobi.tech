@@ -1,58 +1,58 @@
 import type { Metadata } from "next";
-import { GitCompareArrows, Wand2, Radar, ShieldAlert, BookOpenText, Languages, Code2, FlaskConical } from "lucide-react";
+import { Cpu, Workflow, Binary, Terminal, Database, Globe2, Code2, Fingerprint } from "lucide-react";
 
 import { MarketingPageHero } from "@/components/marketing/page-hero";
-import { FeatureBento } from "@/components/marketing/feature-bento";
+import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
 export const metadata: Metadata = { title: "Services" };
 
-const SERVICES = [
+const SERVICES: FeatureBentoItem[] = [
   {
-    icon: GitCompareArrows,
+    icon: <Cpu className="size-6" />,
     title: "RLHF & preference data",
-    desc: "Bradley-Terry pairwise comparisons and multi-response ranking, with configurable confidence scoring, feed directly into reward-model training.",
+    desc: "Bradley–Terry and Elo-style pairwise ranking. JSONL export, schema-validated against your training config.",
     tag: "Reward modeling",
   },
   {
-    icon: Wand2,
+    icon: <Terminal className="size-6" />,
     title: "Supervised fine-tuning data",
-    desc: "Domain experts write ideal responses and instruction-tuning prompts to targeted specifications, with full version history.",
+    desc: "Ideal-response and instruction-tuning prompts, authored to spec. Full version diffs, API-ready.",
     tag: "SFT",
   },
   {
-    icon: Radar,
+    icon: <Workflow className="size-6" />,
     title: "Model evaluations",
-    desc: "Single-response and rubric-based scoring across correctness, relevance, completeness, and tone.",
+    desc: "Single-response and rubric-scored evals against your harness — precision/recall reported per category.",
     tag: "Eval harness",
   },
   {
-    icon: ShieldAlert,
+    icon: <Binary className="size-6" />,
     title: "Red teaming",
-    desc: "Structured adversarial testing mapped to the OWASP LLM Top 10 and your safety and policy boundaries.",
+    desc: "Adversarial probes across OWASP LLM01–LLM10, severity-tagged and exported to your tracker.",
     tag: "OWASP LLM Top 10",
   },
   {
-    icon: BookOpenText,
+    icon: <Database className="size-6" />,
     title: "Expert data creation",
-    desc: "Original datasets — problems, references, worked solutions — authored by verified domain professionals.",
+    desc: "Original problems, references, and worked solutions — versioned, license-cleared, ready for training or eval sets.",
     tag: "Dataset authoring",
   },
   {
-    icon: Languages,
+    icon: <Globe2 className="size-6" />,
     title: "Multilingual evaluation",
-    desc: "Native and near-native fluency review across dozens of languages and regional variants.",
+    desc: "Native-fluency review across 30+ languages and locale variants, confidence-scored per item.",
     tag: "i18n / L10n",
   },
   {
-    icon: Code2,
+    icon: <Code2 className="size-6" />,
     title: "Code & reasoning tasks",
-    desc: "Code review, output evaluation against test cases, and multi-step reasoning verification.",
+    desc: "Code review, test-case evaluation, and multi-step reasoning checks. Diffs and pass/fail exported per case.",
     tag: "SWE-bench style",
   },
   {
-    icon: FlaskConical,
+    icon: <Fingerprint className="size-6" />,
     title: "Safety & policy testing",
-    desc: "Safety classification, policy classification, and hallucination detection against your rubric.",
+    desc: "Safety and policy classification, hallucination detection — rubric-scored, false-positive rate reported.",
     tag: "Trust & safety",
   },
 ];
@@ -67,7 +67,7 @@ export default function ServicesPage() {
       />
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <FeatureBento items={SERVICES} featured={false} />
+          <FeatureBento items={SERVICES} />
         </div>
       </section>
     </>

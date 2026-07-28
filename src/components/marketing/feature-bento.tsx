@@ -1,20 +1,31 @@
-import type { ComponentType } from "react";
-import { ArrowUpRight } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import type { ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
 
 /**
- * Premium bento-grid presentation for icon+title+desc feature lists —
- * replaces the plain bordered-card grid pattern that used to repeat across
- * the marketing site. Dark navy field, glass cards, glow accents; the first
- * item gets an oversized featured cell so the grid has visual rhythm
- * instead of N identical boxes.
+ * Premium bento presentation for icon+title+desc feature lists — replaces
+ * the plain bordered-card grid pattern that used to repeat across the
+ * marketing site. Dark navy field, glass cards, glow accents. Every card is
+ * the same size and shows only its icon, title, and tag by default; the
+ * description is progressive disclosure, revealed on click — keeps the
+ * grid scannable at a glance instead of front-loading every card with a
+ * paragraph.
+ *
+ * `icon` is a rendered element (e.g. `<GitCompareArrows className="size-6" />`),
+ * not a component reference — the pages using this are server components
+ * (they export `metadata`, which requires it), and a Lucide component
+ * reference can't cross the server→client prop boundary, only its already-
+ * rendered output can.
  */
 
 export type FeatureBentoItem = {
   title: string;
   desc: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: ReactNode;
   tag: string;
 };
 
@@ -25,54 +36,61 @@ const COLORS = [
   "text-accent-amber bg-accent-amber/10",
 ];
 
-export function FeatureBento({
-  items,
-  /** The featured (large) cell is a 2x2 span instead of the standard 1x1 —
-   *  set false for larger sets (8 items) where forcing a featured cell
-   *  fights the grid's auto-placement and leaves gaps. */
-  featured = true,
-}: {
-  items: FeatureBentoItem[];
-  featured?: boolean;
-}) {
+export function FeatureBento({ items }: { items: FeatureBentoItem[] }) {
+  const [open, setOpen] = useState<Set<number>>(new Set());
+
+  function toggle(i: number) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(i)) next.delete(i);
+      else next.add(i);
+      return next;
+    });
+  }
+
   return (
     <div className="relative overflow-hidden rounded-3xl bg-navy p-6 sm:p-8">
       <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-accent-violet/25 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-primary/20 blur-3xl" />
       <div className="relative grid grid-cols-2 gap-4 lg:grid-cols-4">
         {items.map((item, i) => {
-          const isFeatured = featured && i === 0;
+          const isOpen = open.has(i);
           return (
-            <div
+            <button
               key={item.title}
+              type="button"
+              onClick={() => toggle(i)}
+              aria-expanded={isOpen}
               className={cn(
-                "group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:bg-white/[0.07]",
-                isFeatured ? "col-span-2 row-span-2 min-h-[220px]" : "min-h-[150px]"
+                "group relative flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-left backdrop-blur transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:bg-white/[0.07]"
               )}
             >
-              {isFeatured ? (
-                <item.icon className="pointer-events-none absolute -right-10 top-1/2 size-64 -translate-y-1/2 text-white/[0.06]" />
-              ) : null}
               <div className="flex items-start justify-between">
-                <span
-                  className={cn(
-                    "flex items-center justify-center rounded-xl",
-                    isFeatured ? "size-20" : "size-12",
-                    COLORS[i % COLORS.length]
-                  )}
-                >
-                  <item.icon className={isFeatured ? "size-10" : "size-6"} />
+                <span className={cn("flex size-12 items-center justify-center rounded-xl", COLORS[i % COLORS.length])}>
+                  {item.icon}
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{item.tag}</span>
               </div>
-              <div className="mt-auto pt-4">
-                <h3 className={cn("font-semibold text-white", isFeatured ? "text-xl" : "text-sm")}>{item.title}</h3>
-                <p className={cn("mt-1.5 text-white/60", isFeatured ? "text-sm leading-relaxed" : "text-xs leading-snug")}>
-                  {item.desc}
-                </p>
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-white">{item.title}</h3>
+                <ChevronDown
+                  className={cn(
+                    "size-4 shrink-0 text-white/40 transition-transform duration-300",
+                    isOpen ? "rotate-180" : "rotate-0"
+                  )}
+                />
               </div>
-              <ArrowUpRight className="absolute right-4 top-4 size-4 text-white/0 transition-all duration-300 group-hover:text-white/40" />
-            </div>
+              {/* grid-rows trick for a smooth height animation without a
+                  fixed max-height guess — 0fr/1fr both interpolate cleanly. */}
+              <div
+                className={cn(
+                  "grid transition-all duration-300 ease-out",
+                  isOpen ? "mt-2 grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                )}
+              >
+                <p className="overflow-hidden text-xs leading-relaxed text-white/60">{item.desc}</p>
+              </div>
+            </button>
           );
         })}
       </div>

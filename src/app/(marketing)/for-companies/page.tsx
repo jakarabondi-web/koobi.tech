@@ -1,36 +1,36 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, GitCompareArrows, Radar, ShieldAlert, Wand2 } from "lucide-react";
+import { ArrowRight, Cpu, Workflow, Binary, Terminal } from "lucide-react";
 
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
-import { FeatureBento } from "@/components/marketing/feature-bento";
+import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
 export const metadata: Metadata = { title: "For AI companies" };
 
-const USE_CASES = [
+const USE_CASES: FeatureBentoItem[] = [
   {
     title: "RLHF & preference data",
-    desc: "Bradley-Terry pairwise comparisons and multi-response ranking, exported in the schema your reward-model training pipeline already expects.",
-    icon: GitCompareArrows,
+    desc: "Bradley–Terry and Elo-style pairwise ranking. JSONL export, schema-validated against your training config.",
+    icon: <Cpu className="size-6" />,
     tag: "Reward modeling",
   },
   {
     title: "Model evaluation",
-    desc: "Rubric-based scoring across correctness, safety, and tone — aligned to your own eval harness, not a black-box grade.",
-    icon: Radar,
+    desc: "Rubric-scored evals against your harness — precision/recall reported per category, not just an aggregate score.",
+    icon: <Workflow className="size-6" />,
     tag: "Eval harness",
   },
   {
     title: "Red teaming",
-    desc: "Adversarial probing mapped to the OWASP LLM Top 10 and your internal policy boundaries.",
-    icon: ShieldAlert,
+    desc: "Adversarial probes across OWASP LLM01–LLM10, severity-tagged and exported to your tracker.",
+    icon: <Binary className="size-6" />,
     tag: "OWASP LLM Top 10",
   },
   {
     title: "SFT data creation",
-    desc: "Ideal-response writing and instruction-tuning prompts authored by vetted subject-matter experts.",
-    icon: Wand2,
+    desc: "Ideal-response and prompt authoring with schema validation and full version diffs, API-ready.",
+    icon: <Terminal className="size-6" />,
     tag: "Instruction tuning",
   },
 ];
