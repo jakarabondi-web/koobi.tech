@@ -1,18 +1,38 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { ArrowRight, GitCompareArrows, Radar, ShieldAlert, Wand2 } from "lucide-react";
 
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { FeatureBento } from "@/components/marketing/feature-bento";
 
 export const metadata: Metadata = { title: "For AI companies" };
 
 const USE_CASES = [
-  { title: "RLHF & preference data", desc: "Collect calibrated pairwise and ranked preference data to train reward models." },
-  { title: "Model evaluation", desc: "Score model outputs against your rubric across correctness, safety, and tone." },
-  { title: "Red teaming", desc: "Adversarial testing to surface failure modes before your users do." },
-  { title: "SFT data creation", desc: "Ideal-response writing and prompt generation from subject-matter experts." },
+  {
+    title: "RLHF & preference data",
+    desc: "Bradley-Terry pairwise comparisons and multi-response ranking, exported in the schema your reward-model training pipeline already expects.",
+    icon: GitCompareArrows,
+    tag: "Reward modeling",
+  },
+  {
+    title: "Model evaluation",
+    desc: "Rubric-based scoring across correctness, safety, and tone — aligned to your own eval harness, not a black-box grade.",
+    icon: Radar,
+    tag: "Eval harness",
+  },
+  {
+    title: "Red teaming",
+    desc: "Adversarial probing mapped to the OWASP LLM Top 10 and your internal policy boundaries.",
+    icon: ShieldAlert,
+    tag: "OWASP LLM Top 10",
+  },
+  {
+    title: "SFT data creation",
+    desc: "Ideal-response writing and instruction-tuning prompts authored by vetted subject-matter experts.",
+    icon: Wand2,
+    tag: "Instruction tuning",
+  },
 ];
 
 const STATS = [
@@ -47,23 +67,8 @@ export default function ForCompaniesPage() {
       <section className="border-y border-border bg-surface py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="text-2xl font-semibold tracking-tight">What teams build with Traivr</h2>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2">
-            {USE_CASES.map((u) => (
-              <Card key={u.title} className="h-full">
-                {/* items-center (not items-start) so the icon centers against
-                    the text block instead of pinning to its first line — and
-                    h-full + flex-1 on the content so a two-line description
-                    next to a one-line one doesn't leave the shorter card's
-                    text stranded near the top with dead space below it. */}
-                <CardContent className="flex h-full items-center gap-3 py-5">
-                  <CheckCircle2 className="size-5 shrink-0 text-success" />
-                  <div>
-                    <h3 className="text-sm font-semibold">{u.title}</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">{u.desc}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mt-8">
+            <FeatureBento items={USE_CASES} />
           </div>
         </div>
       </section>
