@@ -62,9 +62,14 @@ const BADGE_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-teal", "bg-ac
  * for badges that represent stages in one sequence, where alternating
  * shape would read as inconsistency rather than variety.
  */
+// Size and icon size are fixed across all three shapes — letting them vary
+// (as an earlier version did) reads as misalignment once several badges
+// stack in the same column, since a size-10 badge sits shoulder to shoulder
+// with size-11 ones above and below it. Shape and color still vary; size
+// doesn't.
 const BADGE_SHAPES = [
   { shape: "rounded-full", size: "size-11", iconSize: "size-5" },
-  { shape: "rounded-xl", size: "size-10", iconSize: "size-4.5" },
+  { shape: "rounded-xl", size: "size-11", iconSize: "size-5" },
   { shape: "rounded-lg border-2 border-current bg-transparent", size: "size-11", iconSize: "size-5" },
 ];
 
@@ -264,10 +269,10 @@ export default async function HomePage() {
               training on one platform.
             </p>
           </div>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
             {SERVICES.map((s, i) => (
               <Card key={s.title} className="overflow-hidden">
-                <CardContent className="pt-1 pb-5">
+                <CardContent className="px-4 pt-1 pb-5 sm:px-6">
                   <IconBadge icon={s.icon} index={i} />
                   <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
                   <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
@@ -386,9 +391,9 @@ export default async function HomePage() {
             Every dataset moves through a structured pipeline before it reaches you — never a single unreviewed
             submission.
           </p>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {QUALITY_POINTS.map((q, i) => (
-              <div key={q.title} className="rounded-xl border border-border bg-card p-5">
+              <div key={q.title} className="rounded-xl border border-border bg-card p-4 sm:p-5">
                 <IconBadge icon={q.icon} index={i} />
                 <h3 className="mt-3 text-sm font-semibold">{q.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{q.desc}</p>
@@ -405,9 +410,9 @@ export default async function HomePage() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             Enterprise-grade security by default
           </h2>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
             {SECURITY_POINTS.map((s, i) => (
-              <div key={s.title} className="rounded-xl border border-border bg-card p-5">
+              <div key={s.title} className="rounded-xl border border-border bg-card p-4 sm:p-5">
                 <IconBadge icon={s.icon} index={i} />
                 <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
