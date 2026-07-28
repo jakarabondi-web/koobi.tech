@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { UserPlus, ClipboardList, ClipboardCheck, Fingerprint, Rocket } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
+import { ICON_BADGE_COLORS } from "@/lib/constants/icon-colors";
 
 type RegistrationStepData = {
   code: string;
@@ -26,16 +27,6 @@ const REGISTRATION_STEPS: RegistrationStepData[] = [
   { code: "IDENTITY", title: "Verify your identity", desc: "A photo ID and a selfie confirm you're a real, accountable person.", icon: Fingerprint },
   { code: "MATCHING", title: "Get matched to paid work", desc: "Once approved, browse live projects in your domain and start earning.", icon: Rocket },
 ];
-
-// Solid, genuinely distinct hues rather than blended gradients of the same
-// two or three colors — adjacent gradient stops (e.g. "cyan to primary"
-// next to "primary to violet") both contain blue and end up reading as one
-// color from a glance. Rotating a flat fill per step is what keeps a
-// five-item vertical list from reading as "step, step, step, step, step"
-// with the same circle repeated five times. Muted amber/teal alongside the
-// blue family for real variety, deliberately without pink or anything
-// higher-chroma than the rest of the palette.
-const STEP_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-teal", "bg-accent-amber", "bg-accent-cyan"];
 
 function StepRow({ step, index }: { step: RegistrationStepData; index: number }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -69,9 +60,9 @@ function StepRow({ step, index }: { step: RegistrationStepData; index: number })
       <div className="flex flex-col items-center">
         <span
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-500",
+            "flex size-12 shrink-0 items-center justify-center rounded-xl border-2 shadow-sm transition-all duration-500",
             visible
-              ? cn("border-transparent text-white shadow-primary/20", STEP_COLORS[index % STEP_COLORS.length])
+              ? cn("border-transparent shadow-primary/10", ICON_BADGE_COLORS[index % ICON_BADGE_COLORS.length])
               : "border-border bg-card text-muted-foreground shadow-none"
           )}
         >

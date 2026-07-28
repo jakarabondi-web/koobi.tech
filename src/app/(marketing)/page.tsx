@@ -48,69 +48,31 @@ import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
+import { ICON_BADGE_COLORS } from "@/lib/constants/icon-colors";
 
-/**
- * Five solid, genuinely distinct hues — not blended gradients of the same
- * two or three colors, which is what made an earlier version of these
- * badges read as "all one color" even though the classes technically
- * differed. Deliberately restrained: muted amber and teal alongside the
- * blue family for real variety without going "rainbow" — no pink, no
- * high-chroma novelty colors. Paired with alternating shape/size (see
- * IconBadge), so neither color nor form repeats on consecutive items.
- */
-const BADGE_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-teal", "bg-accent-amber", "bg-accent-cyan"];
-
-/**
- * Three alternating shape/size treatments, cycled independently of color
- * (3 and 4 share no common factor below 12, so a 6-8 item grid rarely
- * repeats the same color+shape pairing twice). "flow" pins a single shape
- * for badges that represent stages in one sequence, where alternating
- * shape would read as inconsistency rather than variety.
- */
-// Size and icon size are fixed across all three shapes — letting them vary
-// (as an earlier version did) reads as misalignment once several badges
-// stack in the same column, since a size-10 badge sits shoulder to shoulder
-// with size-11 ones above and below it. Shape and color still vary; size
-// doesn't.
-const BADGE_SHAPES = [
-  { shape: "rounded-full", size: "size-11", iconSize: "size-5" },
-  { shape: "rounded-xl", size: "size-11", iconSize: "size-5" },
-  { shape: "rounded-lg border-2 border-current bg-transparent", size: "size-11", iconSize: "size-5" },
-];
-
-function IconBadge({
-  icon: Icon,
+/** Small icon+label chip — a lighter cousin of FeatureBento's badge that
+ *  draws from the same ICON_BADGE_COLORS palette, for places (expert
+ *  category chips, the client-steps flow) that need just a badge, not a
+ *  full expandable card. */
+function IconChip({
+  icon,
   index,
-  variant = "grid",
   className,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ReactNode;
   index: number;
-  /** "grid" varies shape per item (a catalog, no implied order). "flow"
-   *  keeps one shape so a sequence of steps still reads as one sequence. */
-  variant?: "grid" | "flow";
   className?: string;
 }) {
-  const color = BADGE_COLORS[index % BADGE_COLORS.length];
-  const { shape, size, iconSize } =
-    variant === "flow" ? BADGE_SHAPES[0] : BADGE_SHAPES[index % BADGE_SHAPES.length];
-  // The third shape is an outline treatment: colored ring + colored icon on
-  // a transparent fill, instead of a white icon on a solid color — real
-  // contrast in *treatment*, not just another hue.
-  const outline = shape.includes("border-current");
-
   return (
-    <div
+    <span
       className={cn(
-        "flex shrink-0 items-center justify-center shadow-sm",
-        size,
-        shape,
-        outline ? cn("text-current", color.replace("bg-", "text-")) : cn(color, "text-white"),
+        "flex size-12 shrink-0 items-center justify-center rounded-xl",
+        ICON_BADGE_COLORS[index % ICON_BADGE_COLORS.length],
         className
       )}
     >
-      <Icon className={iconSize} />
-    </div>
+      {icon}
+    </span>
   );
 }
 
@@ -133,21 +95,21 @@ const SERVICES: FeatureBentoItem[] = [
 ];
 
 const EXPERT_CATEGORIES = [
-  { icon: Code2, label: "Software engineers" },
-  { icon: Calculator, label: "Mathematicians" },
-  { icon: FlaskConical, label: "Scientists" },
-  { icon: Scale, label: "Legal experts" },
-  { icon: Stethoscope, label: "Medical experts" },
-  { icon: Landmark, label: "Finance professionals" },
-  { icon: Languages, label: "Linguists" },
-  { icon: BookOpenText, label: "Researchers" },
+  { icon: <Code2 className="size-6" />, label: "Software engineers" },
+  { icon: <Calculator className="size-6" />, label: "Mathematicians" },
+  { icon: <FlaskConical className="size-6" />, label: "Scientists" },
+  { icon: <Scale className="size-6" />, label: "Legal experts" },
+  { icon: <Stethoscope className="size-6" />, label: "Medical experts" },
+  { icon: <Landmark className="size-6" />, label: "Finance professionals" },
+  { icon: <Languages className="size-6" />, label: "Linguists" },
+  { icon: <BookOpenText className="size-6" />, label: "Researchers" },
 ];
 
 const CLIENT_STEPS = [
-  { title: "Define the project", desc: "Set your task type, rubric, domain, and quality bar in the project wizard.", icon: Target },
-  { title: "Match with verified experts", desc: "Our matching engine pairs your project with qualified, available specialists.", icon: UserCheck },
-  { title: "Collect and review data", desc: "Multi-stage review, consensus scoring, and adjudication keep quality high.", icon: ScanSearch },
-  { title: "Export production-ready results", desc: "Download or stream client-ready datasets through the API.", icon: PackageCheck },
+  { title: "Define the project", desc: "Set your task type, rubric, domain, and quality bar in the project wizard.", icon: <Target className="size-6" /> },
+  { title: "Match with verified experts", desc: "Our matching engine pairs your project with qualified, available specialists.", icon: <UserCheck className="size-6" /> },
+  { title: "Collect and review data", desc: "Multi-stage review, consensus scoring, and adjudication keep quality high.", icon: <ScanSearch className="size-6" /> },
+  { title: "Export production-ready results", desc: "Download or stream client-ready datasets through the API.", icon: <PackageCheck className="size-6" /> },
 ];
 
 const QUALITY_POINTS: FeatureBentoItem[] = [
@@ -286,24 +248,30 @@ export default async function HomePage() {
           <span className="font-mono text-xs uppercase tracking-widest text-primary">02 · For AI companies</span>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">How it works for clients</h2>
           {/* A flow, not a numbered list — each stage gets its own icon and
-              color, connected by an arrow instead of a "1, 2, 3, 4" count. */}
-          <div className="mt-10 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
-            {CLIENT_STEPS.map((step, i) => (
-              <Fragment key={step.title}>
-                <div className="flex items-start gap-4 lg:min-w-0 lg:flex-1 lg:flex-col lg:items-start lg:pr-6">
-                  <IconBadge icon={step.icon} index={i} variant="flow" />
-                  <div className="lg:mt-4">
-                    <h3 className="text-sm font-semibold">{step.title}</h3>
-                    <p className="mt-1.5 text-sm text-muted-foreground">{step.desc}</p>
+              color, connected by an arrow instead of a "1, 2, 3, 4" count.
+              Same dark-bento field as FeatureBento, so this reads as the
+              same design language as the card grids rather than a one-off. */}
+          <div className="relative mt-10 overflow-hidden rounded-3xl bg-navy p-6 sm:p-8">
+            <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-accent-violet/25 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-primary/20 blur-3xl" />
+            <div className="relative flex flex-col gap-4 lg:flex-row lg:items-stretch lg:gap-4">
+              {CLIENT_STEPS.map((step, i) => (
+                <Fragment key={step.title}>
+                  <div className="flex flex-1 flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5 backdrop-blur">
+                    <IconChip icon={step.icon} index={i} />
+                    <div>
+                      <h3 className="text-sm font-semibold text-white">{step.title}</h3>
+                      <p className="mt-1.5 text-xs leading-relaxed text-white/60">{step.desc}</p>
+                    </div>
                   </div>
-                </div>
-                {i < CLIENT_STEPS.length - 1 ? (
-                  <div className="hidden shrink-0 items-center justify-center pt-5 text-border lg:flex" aria-hidden="true">
-                    <ArrowRight className="size-5" />
-                  </div>
-                ) : null}
-              </Fragment>
-            ))}
+                  {i < CLIENT_STEPS.length - 1 ? (
+                    <div className="hidden shrink-0 items-center justify-center text-white/25 lg:flex" aria-hidden="true">
+                      <ArrowRight className="size-5" />
+                    </div>
+                  ) : null}
+                </Fragment>
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -365,12 +333,12 @@ export default async function HomePage() {
         <div className="bg-surface py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-              {EXPERT_CATEGORIES.map((c) => (
+              {EXPERT_CATEGORIES.map((c, i) => (
                 <div
                   key={c.label}
-                  className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-6 text-center"
+                  className="group flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-6 text-center transition-all duration-300 hover:-translate-y-1 hover:shadow-md"
                 >
-                  <c.icon className="size-5 text-primary" />
+                  <IconChip icon={c.icon} index={i} />
                   <span className="text-sm font-medium">{c.label}</span>
                 </div>
               ))}

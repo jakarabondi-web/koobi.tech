@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils/cn";
+import { ICON_BADGE_COLORS } from "@/lib/constants/icon-colors";
 
 /**
  * Premium bento presentation for icon+title+desc feature lists — replaces
@@ -29,12 +30,7 @@ export type FeatureBentoItem = {
   tag: string;
 };
 
-const COLORS = [
-  "text-primary bg-primary/10",
-  "text-accent-violet bg-accent-violet/10",
-  "text-accent-teal bg-accent-teal/10",
-  "text-accent-amber bg-accent-amber/10",
-];
+const COLORS = ICON_BADGE_COLORS;
 
 export function FeatureBento({ items }: { items: FeatureBentoItem[] }) {
   const [open, setOpen] = useState<Set<number>>(new Set());
