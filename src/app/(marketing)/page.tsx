@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Fragment } from "react";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
   ScanEye,
+  ScanSearch,
   GitCompareArrows,
   ListOrdered,
   PenLine,
@@ -25,11 +27,15 @@ import {
   Wallet,
   MessageSquareQuote,
   Globe2,
+  Target,
+  UserCheck,
+  PackageCheck,
 } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { auth } from "@/lib/auth";
 import { dashboardPathForSurface } from "@/lib/permissions/roles";
+import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +43,40 @@ import { InteractiveHero } from "@/components/marketing/interactive-hero";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
+
+/**
+ * A small rotating gradient palette for icon badges — rotating the color
+ * instead of repeating one flat tint is what makes a grid of icons read as
+ * "designed" rather than "the same square, over and over."
+ */
+const ICON_GRADIENTS = [
+  "from-primary to-accent-violet",
+  "from-accent-violet to-accent-pink",
+  "from-accent-cyan to-primary",
+  "from-accent-pink to-accent-cyan",
+];
+
+function IconBadge({
+  icon: Icon,
+  index,
+  className,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  index: number;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm shadow-primary/20",
+        ICON_GRADIENTS[index % ICON_GRADIENTS.length],
+        className
+      )}
+    >
+      <Icon className="size-4.5" />
+    </div>
+  );
+}
 
 export const metadata: Metadata = {
   // `absolute` opts out of the root layout's "%s · Traivr" template, which
@@ -68,10 +108,10 @@ const EXPERT_CATEGORIES = [
 ];
 
 const CLIENT_STEPS = [
-  { title: "Define the project", desc: "Set your task type, rubric, domain, and quality bar in the project wizard." },
-  { title: "Match with verified experts", desc: "Our matching engine pairs your project with qualified, available specialists." },
-  { title: "Collect and review data", desc: "Multi-stage review, consensus scoring, and adjudication keep quality high." },
-  { title: "Export production-ready results", desc: "Download or stream client-ready datasets through the API." },
+  { title: "Define the project", desc: "Set your task type, rubric, domain, and quality bar in the project wizard.", icon: Target },
+  { title: "Match with verified experts", desc: "Our matching engine pairs your project with qualified, available specialists.", icon: UserCheck },
+  { title: "Collect and review data", desc: "Multi-stage review, consensus scoring, and adjudication keep quality high.", icon: ScanSearch },
+  { title: "Export production-ready results", desc: "Download or stream client-ready datasets through the API.", icon: PackageCheck },
 ];
 
 const QUALITY_POINTS = [
@@ -193,14 +233,9 @@ export default async function HomePage() {
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {SERVICES.map((s, i) => (
-              <Card key={s.title} className="relative overflow-hidden">
-                <span className="absolute right-4 top-4 font-mono text-xs text-muted-foreground/50">
-                  {String(i + 1).padStart(2, "0")}
-                </span>
+              <Card key={s.title} className="overflow-hidden">
                 <CardContent className="pt-1 pb-5">
-                  <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                    <s.icon className="size-4.5" />
-                  </div>
+                  <IconBadge icon={s.icon} index={i} />
                   <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
                   <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
                 </CardContent>
@@ -215,15 +250,24 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <span className="font-mono text-xs uppercase tracking-widest text-primary">02 · For AI companies</span>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">How it works for clients</h2>
-          <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+          {/* A flow, not a numbered list — each stage gets its own icon and
+              color, connected by an arrow instead of a "1, 2, 3, 4" count. */}
+          <div className="mt-10 flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
             {CLIENT_STEPS.map((step, i) => (
-              <div key={step.title} className="relative">
-                <div className="flex size-9 items-center justify-center rounded-full bg-primary font-mono text-sm font-semibold text-primary-foreground">
-                  {i + 1}
+              <Fragment key={step.title}>
+                <div className="flex items-start gap-4 lg:min-w-0 lg:flex-1 lg:flex-col lg:items-start lg:pr-6">
+                  <IconBadge icon={step.icon} index={i} />
+                  <div className="lg:mt-4">
+                    <h3 className="text-sm font-semibold">{step.title}</h3>
+                    <p className="mt-1.5 text-sm text-muted-foreground">{step.desc}</p>
+                  </div>
                 </div>
-                <h3 className="mt-4 text-sm font-semibold">{step.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{step.desc}</p>
-              </div>
+                {i < CLIENT_STEPS.length - 1 ? (
+                  <div className="hidden shrink-0 items-center justify-center pt-5 text-border lg:flex" aria-hidden="true">
+                    <ArrowRight className="size-5" />
+                  </div>
+                ) : null}
+              </Fragment>
             ))}
           </div>
         </div>
@@ -300,9 +344,9 @@ export default async function HomePage() {
             submission.
           </p>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {QUALITY_POINTS.map((q) => (
+            {QUALITY_POINTS.map((q, i) => (
               <div key={q.title} className="rounded-xl border border-border bg-card p-5">
-                <q.icon className="size-5 text-accent-violet" />
+                <IconBadge icon={q.icon} index={i} />
                 <h3 className="mt-3 text-sm font-semibold">{q.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{q.desc}</p>
               </div>
@@ -319,9 +363,9 @@ export default async function HomePage() {
             Enterprise-grade security by default
           </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {SECURITY_POINTS.map((s) => (
+            {SECURITY_POINTS.map((s, i) => (
               <div key={s.title} className="rounded-xl border border-border bg-card p-5">
-                <s.icon className="size-5 text-primary" />
+                <IconBadge icon={s.icon} index={i} />
                 <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
                 <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
               </div>

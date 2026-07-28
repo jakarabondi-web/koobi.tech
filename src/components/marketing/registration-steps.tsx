@@ -20,11 +20,23 @@ type RegistrationStepData = {
 // — a progress claim on the marketing page has to match what actually
 // happens after signup, not a simplified or aspirational version of it.
 const REGISTRATION_STEPS: RegistrationStepData[] = [
-  { code: "STEP · 01", title: "Create your account", desc: "Sign up as a trainer or an AI company in under a minute.", icon: UserPlus },
-  { code: "STEP · 02", title: "Submit your application", desc: "Tell us your domain and background — the fields that actually get reviewed.", icon: ClipboardList },
-  { code: "STEP · 03", title: "Pass a qualification assessment", desc: "A short, domain-specific test of evaluation judgment, not trivia.", icon: ClipboardCheck },
-  { code: "STEP · 04", title: "Verify your identity", desc: "A photo ID and a selfie confirm you're a real, accountable person.", icon: Fingerprint },
-  { code: "STEP · 05", title: "Get matched to paid work", desc: "Once approved, browse live projects in your domain and start earning.", icon: Rocket },
+  { code: "ACCOUNT", title: "Create your account", desc: "Sign up as a trainer or an AI company in under a minute.", icon: UserPlus },
+  { code: "APPLICATION", title: "Submit your application", desc: "Tell us your domain and background — the fields that actually get reviewed.", icon: ClipboardList },
+  { code: "ASSESSMENT", title: "Pass a qualification assessment", desc: "A short, domain-specific test of evaluation judgment, not trivia.", icon: ClipboardCheck },
+  { code: "IDENTITY", title: "Verify your identity", desc: "A photo ID and a selfie confirm you're a real, accountable person.", icon: Fingerprint },
+  { code: "MATCHING", title: "Get matched to paid work", desc: "Once approved, browse live projects in your domain and start earning.", icon: Rocket },
+];
+
+// Matches the rotating palette used on the homepage's other icon grids —
+// rotating the fill color per step (instead of one flat blue circle
+// repeated five times) is what keeps a five-item vertical list from
+// reading as just "step, step, step, step, step."
+const STEP_GRADIENTS = [
+  "from-primary to-accent-violet",
+  "from-accent-violet to-accent-pink",
+  "from-accent-cyan to-primary",
+  "from-accent-pink to-accent-cyan",
+  "from-primary to-accent-cyan",
 ];
 
 function StepRow({ step, index }: { step: RegistrationStepData; index: number }) {
@@ -59,8 +71,10 @@ function StepRow({ step, index }: { step: RegistrationStepData; index: number })
       <div className="flex flex-col items-center">
         <span
           className={cn(
-            "flex size-11 shrink-0 items-center justify-center rounded-full border-2 transition-colors duration-500",
-            visible ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground"
+            "flex size-11 shrink-0 items-center justify-center rounded-full border-2 shadow-sm transition-all duration-500",
+            visible
+              ? cn("border-transparent bg-gradient-to-br text-white shadow-primary/20", STEP_GRADIENTS[index % STEP_GRADIENTS.length])
+              : "border-border bg-card text-muted-foreground shadow-none"
           )}
         >
           <step.icon className="size-5" />
