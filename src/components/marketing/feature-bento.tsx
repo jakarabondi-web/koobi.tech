@@ -50,9 +50,18 @@ export function FeatureBento({
                 isFeatured ? "col-span-2 row-span-2 min-h-[220px]" : "min-h-[150px]"
               )}
             >
+              {isFeatured ? (
+                <item.icon className="pointer-events-none absolute -right-10 top-1/2 size-64 -translate-y-1/2 text-white/[0.06]" />
+              ) : null}
               <div className="flex items-start justify-between">
-                <span className={cn("flex size-10 items-center justify-center rounded-xl", COLORS[i % COLORS.length])}>
-                  <item.icon className="size-5" />
+                <span
+                  className={cn(
+                    "flex items-center justify-center rounded-xl",
+                    isFeatured ? "size-20" : "size-12",
+                    COLORS[i % COLORS.length]
+                  )}
+                >
+                  <item.icon className={isFeatured ? "size-10" : "size-6"} />
                 </span>
                 <span className="font-mono text-[10px] uppercase tracking-widest text-white/35">{item.tag}</span>
               </div>
