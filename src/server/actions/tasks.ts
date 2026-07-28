@@ -6,6 +6,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { assertCanAccessAssignments, GateError } from "@/server/services/trainer-gate";
+import { checkSubmissionSimilarity } from "@/server/services/plagiarism";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string };
 
@@ -63,7 +64,7 @@ export async function submitTask(_prev: ActionState, formData: FormData): Promis
 
   const priorVersions = await prisma.taskSubmission.count({ where: { taskId } });
 
-  await prisma.$transaction([
+  const [created] = await prisma.$transaction([
     prisma.taskSubmission.create({
       data: {
         taskId,
@@ -79,6 +80,17 @@ export async function submitTask(_prev: ActionState, formData: FormData): Promis
     }),
     prisma.task.update({ where: { id: taskId }, data: { status: "SUBMITTED" } }),
   ]);
+
+  // Best-effort: a plagiarism check that fails shouldn't block a submission
+  // that's already recorded. It runs after the transaction commits so it
+  // has other trainers' committed submissions to compare against, not a
+  // stale snapshot from before this one landed.
+  await checkSubmissionSimilarity({
+    submissionId: created.id,
+    taskId,
+    submittedById: session.user.id,
+    justification,
+  }).catch(() => null);
 
   revalidatePath("/trainer/tasks");
   revalidatePath(`/trainer/tasks/${taskId}`);

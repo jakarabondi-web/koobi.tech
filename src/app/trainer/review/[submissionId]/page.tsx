@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { loadSubmissionForReview, ReviewError } from "@/server/services/reviews";
+import { getOpenSimilarityFlag } from "@/server/services/plagiarism";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { ReviewWorkspace, type ReviewSubmission } from "@/components/tasks/review-workspace";
@@ -31,6 +32,8 @@ export default async function ReviewSubmissionPage({
     throw err;
   }
 
+  const similarityFlag = await getOpenSimilarityFlag(submissionId);
+
   const payload = loaded.task.payload as {
     prompt?: string; responseA?: string; responseB?: string;
   };
@@ -52,6 +55,7 @@ export default async function ReviewSubmissionPage({
     justification: content.justification,
     flags: content.flags,
     goldAnswer: loaded.goldAnswer ? String(loaded.goldAnswer) : null,
+    similarityFlag,
   };
 
   return (

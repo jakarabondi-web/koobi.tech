@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CheckCircle2, RefreshCw, XCircle, ArrowUpCircle, EyeOff } from "lucide-react";
+import { CheckCircle2, RefreshCw, XCircle, ArrowUpCircle, EyeOff, AlertTriangle } from "lucide-react";
 
 import { recordReview, type ActionState } from "@/server/actions/reviews";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,8 @@ export type ReviewSubmission = {
   justification?: string;
   flags?: Record<string, boolean>;
   goldAnswer: string | null;
+  /** Set when the justification closely matches another trainer's submission on this same task. */
+  similarityFlag?: { severity: string; similarity: number | null } | null;
 };
 
 export function ReviewWorkspace({ submission }: { submission: ReviewSubmission }) {
@@ -72,6 +74,27 @@ export function ReviewWorkspace({ submission }: { submission: ReviewSubmission }
           Blind review — the trainer&apos;s identity is withheld so your judgment isn&apos;t
           influenced by who did the work.
         </div>
+
+        {submission.similarityFlag ? (
+          <div
+            className={cn(
+              "flex items-start gap-2 rounded-lg border p-3 text-xs",
+              submission.similarityFlag.severity === "high"
+                ? "border-destructive/40 bg-destructive/10 text-destructive"
+                : "border-warning/40 bg-warning/10 text-warning-foreground"
+            )}
+          >
+            <AlertTriangle className="size-4 shrink-0" />
+            <span>
+              This justification closely matches another trainer&apos;s submission on this same
+              task{submission.similarityFlag.similarity != null
+                ? ` (${Math.round(submission.similarityFlag.similarity * 100)}% text overlap)`
+                : ""}
+              . Flagged for the quality team — weigh it, but blind review still applies: this
+              doesn&apos;t tell you which submission or trainer it matched.
+            </span>
+          </div>
+        ) : null}
 
         <div className="rounded-xl border border-border bg-card p-5">
           <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Prompt</p>
