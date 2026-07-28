@@ -3,22 +3,22 @@
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils/cn";
-import { LAND_POLYGONS } from "@/components/shared/world-land-polygons";
+import { GLOBE_LAND_DOTS, GLOBE_OCEAN_DOTS } from "@/components/shared/globe-dots";
 
 /**
  * The signature visual: a live cartographic network diagram, not a generic
  * particle field. Traivr's actual business is literal — specialists spread
  * across the globe feed a shared pipeline — so the background draws that
- * directly: real continent outlines (simplified from Natural Earth 110m —
- * see world-land-polygons.ts — so this reads as an actual map, not just an
- * abstract grid), real city coordinates, a graticule (the technical, GPS/
- * nav-chart texture that reads "techie" honestly rather than via sci-fi
- * glow), and arcs that continuously fire from a rotating set of expert hubs
- * into one central hub. Domain tags cycle through so it's never just "a
- * city blinked" — it's "a linguist in Manila just contributed."
+ * directly: a dot-matrix world map (real coastlines from Natural Earth
+ * 110m, see globe-dots.ts — land dots denser and brighter, ocean dots
+ * sparse and faint) with animated great-circle-style connections that fire
+ * directly between pairs of real cities, not everything converging on one
+ * arbitrary point in the ocean.
  *
  * Same performance discipline as NeuralMesh: DPR-aware, pauses off-screen
- * tabs, renders one static frame under prefers-reduced-motion.
+ * tabs, renders one static frame under prefers-reduced-motion, and batches
+ * the ~3,000 dots into two fill() calls (one per tier) rather than one
+ * call per dot.
  */
 
 type City = { name: string; domain: string; lat: number; lon: number };
@@ -43,18 +43,14 @@ const CITIES: City[] = [
   { name: "Sydney", domain: "Mathematics", lat: -33.87, lon: 151.21 },
 ];
 
-// A rough centroid over the Atlantic keeps arc lengths roughly balanced
-// across every origin city rather than favoring one hemisphere.
-const HUB = { lat: 20, lon: -30 };
-
-type Arc = { city: City; start: number; duration: number };
+type Arc = { from: City; to: City; start: number; duration: number };
 
 export function WorldNetworkMap({
   className,
   opacity = 1,
-  /** "dark" (default) is tuned for a navy backdrop. "light" darkens and
-   *  saturates the graticule, dots, and arcs so the same map holds up on a
-   *  white/near-white surface instead of washing out. */
+  /** "dark" (default) is tuned for a navy backdrop: light blue dots and
+   *  connections. "light" darkens and saturates them for a white/near-white
+   *  surface instead. */
   tone = "dark",
 }: {
   className?: string;
@@ -73,29 +69,22 @@ export function WorldNetworkMap({
     let width = 0;
     let height = 0;
     let frame = 0;
-    let t = 0;
 
-    // Same blue family either way — light tone is just pulled darker and
-    // more saturated so it doesn't wash out against a white/near-white page.
     const palette =
       tone === "light"
         ? {
-            land: "rgba(20, 50, 100, 0.09)",
-            landStroke: "rgba(20, 50, 100, 0.22)",
-            graticule: "rgba(30, 64, 120, 0.06)",
-            dot: "30, 96, 176",
-            hub: "16, 80, 160",
+            land: "rgba(20, 62, 122, 0.55)",
+            ocean: "rgba(20, 62, 122, 0.12)",
+            city: "16, 80, 160",
             arc: "24, 104, 190",
             lead: "8, 66, 140",
           }
         : {
-            land: "rgba(255, 255, 255, 0.05)",
-            landStroke: "rgba(180, 210, 255, 0.16)",
-            graticule: "rgba(255, 255, 255, 0.04)",
-            dot: "150, 200, 255",
-            hub: "120, 190, 255",
-            arc: "140, 210, 255",
-            lead: "180, 225, 255",
+            land: "rgba(195, 220, 255, 0.6)",
+            ocean: "rgba(195, 220, 255, 0.12)",
+            city: "180, 215, 255",
+            arc: "150, 205, 255",
+            lead: "205, 230, 255",
           };
 
     const project = (lat: number, lon: number) => ({
@@ -107,16 +96,11 @@ export function WorldNetworkMap({
 
     let arcs: Arc[] = [];
     const spawnArc = (now: number) => {
-      const city = CITIES[Math.floor(Math.random() * CITIES.length)];
-      arcs.push({ city, start: now, duration: 2200 + Math.random() * 1400 });
+      const from = CITIES[Math.floor(Math.random() * CITIES.length)];
+      let to = from;
+      while (to === from) to = CITIES[Math.floor(Math.random() * CITIES.length)];
+      arcs.push({ from, to, start: now, duration: 2200 + Math.random() * 1400 });
     };
-
-    // Land outlines and the graticule never move — only the dots and arcs
-    // animate — so they're traced once per resize onto an offscreen canvas
-    // and blitted every frame instead of re-walking ~1,600 polygon points
-    // 60 times a second for a background that hasn't changed.
-    const staticLayer = document.createElement("canvas");
-    const staticCtx = staticLayer.getContext("2d");
 
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -126,92 +110,55 @@ export function WorldNetworkMap({
       canvas.width = Math.max(1, width * dpr);
       canvas.height = Math.max(1, height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      staticLayer.width = canvas.width;
-      staticLayer.height = canvas.height;
-      if (staticCtx) {
-        staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drawStaticLayer(staticCtx);
-      }
-    };
-
-    const drawStaticLayer = (sctx: CanvasRenderingContext2D) => {
-      sctx.clearRect(0, 0, width, height);
-
-      sctx.fillStyle = palette.land;
-      sctx.strokeStyle = palette.landStroke;
-      sctx.lineWidth = 1;
-      for (const polygon of LAND_POLYGONS) {
-        sctx.beginPath();
-        for (let i = 0; i < polygon.length; i++) {
-          const [lon, lat] = polygon[i];
-          const p = project(lat, lon);
-          if (i === 0) sctx.moveTo(p.x, p.y);
-          else sctx.lineTo(p.x, p.y);
-        }
-        sctx.closePath();
-        sctx.fill();
-        sctx.stroke();
-      }
-
-      sctx.strokeStyle = palette.graticule;
-      sctx.lineWidth = 1;
-      for (let lon = -180; lon <= 180; lon += 20) {
-        sctx.beginPath();
-        for (let lat = -80; lat <= 85; lat += 5) {
-          const p = project(lat, lon);
-          if (lat === -80) sctx.moveTo(p.x, p.y);
-          else sctx.lineTo(p.x, p.y);
-        }
-        sctx.stroke();
-      }
-      for (let lat = -80; lat <= 80; lat += 20) {
-        const p0 = project(lat, -180);
-        const p1 = project(lat, 180);
-        sctx.beginPath();
-        sctx.moveTo(p0.x, p0.y);
-        sctx.lineTo(p1.x, p1.y);
-        sctx.stroke();
-      }
     };
 
     const draw = (now: number) => {
       ctx.clearRect(0, 0, width, height);
-      ctx.drawImage(staticLayer, 0, 0, width, height);
+      ctx.globalAlpha = opacity;
 
-      const hub = project(HUB.lat, HUB.lon);
+      // Ocean — sparse, faint texture so the map reads as a full world,
+      // not just floating continent-shaped dot clusters on empty space.
+      ctx.beginPath();
+      for (const [lon, lat] of GLOBE_OCEAN_DOTS) {
+        const p = project(lat, lon);
+        ctx.moveTo(p.x + 0.6, p.y);
+        ctx.arc(p.x, p.y, 0.6, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = palette.ocean;
+      ctx.fill();
 
-      // Quiet city dots — the arcs are the story, dots just ground them.
+      // Land — the actual map, denser and brighter than ocean.
+      ctx.beginPath();
+      for (const [lon, lat] of GLOBE_LAND_DOTS) {
+        const p = project(lat, lon);
+        ctx.moveTo(p.x + 1, p.y);
+        ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = palette.land;
+      ctx.fill();
+
+      ctx.globalAlpha = 1;
+
       for (const city of CITIES) {
         const p = project(city.lat, city.lon);
-        ctx.fillStyle = `rgba(${palette.dot}, ${0.35 * opacity})`;
+        ctx.fillStyle = `rgba(${palette.city}, ${0.55 * opacity})`;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Hub — the shared pipeline every arc feeds.
-      const hubPulse = 3 + Math.sin(now / 400) * 1.2;
-      ctx.fillStyle = `rgba(${palette.hub}, ${0.55 * opacity})`;
-      ctx.beginPath();
-      ctx.arc(hub.x, hub.y, hubPulse, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(${palette.hub}, ${0.25 * opacity})`;
-      ctx.beginPath();
-      ctx.arc(hub.x, hub.y, hubPulse + 6, 0, Math.PI * 2);
-      ctx.stroke();
-
+      // Arcs — directly between two real cities, not converging on one
+      // arbitrary hub point (which tended to land in open ocean).
       arcs = arcs.filter((a) => now - a.start < a.duration);
       for (const arc of arcs) {
-        const p0 = project(arc.city.lat, arc.city.lon);
+        const p0 = project(arc.from.lat, arc.from.lon);
+        const p1 = project(arc.to.lat, arc.to.lon);
         const progress = Math.min(1, (now - arc.start) / arc.duration);
-        // Ease so the arc accelerates in, then settles at the hub.
+        // Ease so the arc accelerates in, then settles at the destination.
         const eased = 1 - Math.pow(1 - progress, 3);
-        const midX = (p0.x + hub.x) / 2;
-        const midY = Math.min(p0.y, hub.y) - 40 - Math.abs(p0.x - hub.x) * 0.08;
+        const midX = (p0.x + p1.x) / 2;
+        const midY = Math.min(p0.y, p1.y) - 36 - Math.abs(p0.x - p1.x) * 0.06;
 
-        // Draw the arc path up to `eased` using a quadratic bezier sampled
-        // in short segments, and drop a bright pulse at its leading edge.
         ctx.strokeStyle = `rgba(${palette.arc}, ${0.55 * (1 - progress * 0.3) * opacity})`;
         ctx.lineWidth = 1.1;
         ctx.beginPath();
@@ -219,22 +166,21 @@ export function WorldNetworkMap({
         const upto = Math.max(1, Math.round(steps * eased));
         for (let i = 0; i <= upto; i++) {
           const s = i / steps;
-          const x = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * midX + s * s * hub.x;
-          const y = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * midY + s * s * hub.y;
+          const x = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * midX + s * s * p1.x;
+          const y = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * midY + s * s * p1.y;
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         }
         ctx.stroke();
 
         const s = eased;
-        const leadX = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * midX + s * s * hub.x;
-        const leadY = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * midY + s * s * hub.y;
+        const leadX = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * midX + s * s * p1.x;
+        const leadY = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * midY + s * s * p1.y;
         ctx.fillStyle = `rgba(${palette.lead}, ${0.9 * opacity})`;
         ctx.beginPath();
         ctx.arc(leadX, leadY, 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Origin ring — fades in, marking which specialist just went live.
         if (progress < 0.35) {
           ctx.strokeStyle = `rgba(${palette.lead}, ${(1 - progress / 0.35) * 0.7 * opacity})`;
           ctx.beginPath();
@@ -245,9 +191,8 @@ export function WorldNetworkMap({
     };
 
     const loop = (now: number) => {
-      t = now;
-      if (Math.random() < 0.035) spawnArc(t);
-      draw(t);
+      if (Math.random() < 0.035) spawnArc(now);
+      draw(now);
       frame = requestAnimationFrame(loop);
     };
 

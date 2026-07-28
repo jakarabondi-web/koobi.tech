@@ -45,13 +45,15 @@ import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 
 /**
- * Four solid, genuinely distinct brand hues — not blended gradients of the
- * same two or three colors, which is what made an earlier version of these
+ * Five solid, genuinely distinct hues — not blended gradients of the same
+ * two or three colors, which is what made an earlier version of these
  * badges read as "all one color" even though the classes technically
- * differed. Paired with alternating shape/size (see IconBadge), so neither
- * color nor form repeats on consecutive items.
+ * differed. Deliberately restrained: muted amber and teal alongside the
+ * blue family for real variety without going "rainbow" — no pink, no
+ * high-chroma novelty colors. Paired with alternating shape/size (see
+ * IconBadge), so neither color nor form repeats on consecutive items.
  */
-const BADGE_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-cyan", "bg-accent-pink"];
+const BADGE_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-teal", "bg-accent-amber", "bg-accent-cyan"];
 
 /**
  * Three alternating shape/size treatments, cycled independently of color
@@ -321,39 +323,49 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Expert network — the world map again, this time as the subject
-          of the section rather than hero backdrop. */}
-      <section className="relative overflow-hidden border-b border-border bg-surface py-20">
-        <WorldNetworkMap opacity={0.55} tone="light" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_oklch,var(--primary)_8%,transparent),transparent_55%)]" />
-        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary">
-                <Globe2 className="size-3.5" /> 04 · Global network
-              </span>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-                A verified network across every domain
-              </h2>
-              <p className="mt-3 max-w-xl text-muted-foreground">
-                Trainers and experts are vetted through identity checks and domain assessments before working on
-                live projects.
-              </p>
-            </div>
-            <Button variant="outline" asChild>
-              <Link href="/for-companies">Explore the expert network</Link>
-            </Button>
-          </div>
-          <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {EXPERT_CATEGORIES.map((c) => (
-              <div
-                key={c.label}
-                className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-6 text-center"
-              >
-                <c.icon className="size-5 text-primary" />
-                <span className="text-sm font-medium">{c.label}</span>
+      {/* Expert network — the dark band keeps the map's light-blue dots and
+          connections legible (they're tuned for a dark backdrop) and reads
+          as a deliberate accent, the same way the homepage hero used to
+          before it was lightened — just scoped to this one section rather
+          than site-wide. The category cards sit below on the page's normal
+          light surface, not inside the dark band. */}
+      <section className="border-b border-border">
+        <div className="relative overflow-hidden bg-navy py-16 text-white">
+          <WorldNetworkMap opacity={0.6} tone="dark" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_oklch,var(--accent-violet)_35%,transparent),transparent_55%)]" />
+          <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-accent-cyan">
+                  <Globe2 className="size-3.5" /> 04 · Global network
+                </span>
+                <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                  A verified network across every domain
+                </h2>
+                <p className="mt-3 max-w-xl text-white/70">
+                  Trainers and experts are vetted through identity checks and domain assessments before working on
+                  live projects.
+                </p>
               </div>
-            ))}
+              <Button variant="outline" className="border-white/25 bg-transparent text-white hover:bg-white/10" asChild>
+                <Link href="/for-companies">Explore the expert network</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+        <div className="bg-surface py-16">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+              {EXPERT_CATEGORIES.map((c) => (
+                <div
+                  key={c.label}
+                  className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-6 text-center"
+                >
+                  <c.icon className="size-5 text-primary" />
+                  <span className="text-sm font-medium">{c.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

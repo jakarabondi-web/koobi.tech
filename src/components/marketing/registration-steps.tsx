@@ -27,13 +27,15 @@ const REGISTRATION_STEPS: RegistrationStepData[] = [
   { code: "MATCHING", title: "Get matched to paid work", desc: "Once approved, browse live projects in your domain and start earning.", icon: Rocket },
 ];
 
-// Solid, genuinely distinct brand hues rather than blended gradients of
-// the same two or three colors — adjacent gradient stops (e.g. "cyan to
-// primary" next to "primary to violet") both contain blue and end up
-// reading as one color from a glance. Rotating a flat fill per step is
-// what keeps a five-item vertical list from reading as "step, step, step,
-// step, step" with the same circle repeated five times.
-const STEP_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-cyan", "bg-accent-pink", "bg-primary"];
+// Solid, genuinely distinct hues rather than blended gradients of the same
+// two or three colors — adjacent gradient stops (e.g. "cyan to primary"
+// next to "primary to violet") both contain blue and end up reading as one
+// color from a glance. Rotating a flat fill per step is what keeps a
+// five-item vertical list from reading as "step, step, step, step, step"
+// with the same circle repeated five times. Muted amber/teal alongside the
+// blue family for real variety, deliberately without pink or anything
+// higher-chroma than the rest of the palette.
+const STEP_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-teal", "bg-accent-amber", "bg-accent-cyan"];
 
 function StepRow({ step, index }: { step: RegistrationStepData; index: number }) {
   const ref = useRef<HTMLDivElement>(null);

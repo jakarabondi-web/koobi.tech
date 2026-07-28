@@ -30,6 +30,12 @@
   --accent-violet: oklch(0.65 0.16 235);
   --accent-cyan: oklch(0.75 0.13 220);
   --accent-pink: oklch(0.6 0.15 260);
+  /* Warm counterweights to the blue-violet-cyan-pink family — used for
+     decorative variety (icon badges, charts) where "everything is a shade
+     of blue" reads as monotonous rather than restrained. Core brand
+     surfaces (buttons, links, logo) stay blue; these are accents. */
+  --accent-amber: oklch(0.76 0.14 65);
+  --accent-teal: oklch(0.64 0.11 180);
   --gradient-brand: linear-gradient(135deg, var(--primary) 0%, var(--accent-violet) 55%, var(--accent-pink) 100%);
   --glow-brand: 0 0 1px color-mix(in oklch, var(--accent-violet) 60%, transparent),
     0 8px 40px -8px color-mix(in oklch, var(--accent-violet) 55%, transparent);
@@ -61,15 +67,18 @@
 
   /* Sidebar chrome — was permanently navy regardless of light/dark theme;
      now a light, faintly blue-tinted surface to match the lightened hero.
-     (.dark below keeps its own dark sidebar values untouched — those are a
-     real dark theme, not this fixed-navy-chrome pattern.) */
-  --sidebar: oklch(0.975 0.01 245);
+     Deliberately a step darker than --background/--surface (the page's
+     main content), not lighter — a sidebar needs to read as its own
+     region, not blend into the page. (.dark below keeps its own dark
+     sidebar values untouched — those are a real dark theme, not this
+     fixed-navy-chrome pattern.) */
+  --sidebar: oklch(0.93 0.014 245);
   --sidebar-foreground: oklch(0.22 0.025 245);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.92 0.03 265);
-  --sidebar-accent-foreground: oklch(0.3 0.05 260);
-  --sidebar-border: oklch(0.91 0.012 245);
+  --sidebar-accent: oklch(0.87 0.032 265);
+  --sidebar-accent-foreground: oklch(0.26 0.05 260);
+  --sidebar-border: oklch(0.87 0.016 245);
   --sidebar-ring: var(--ring);
 }
 
@@ -88,6 +97,8 @@
   --accent-violet: oklch(0.72 0.14 235);
   --accent-cyan: oklch(0.78 0.12 218);
   --accent-pink: oklch(0.66 0.13 262);
+  --accent-amber: oklch(0.78 0.13 65);
+  --accent-teal: oklch(0.7 0.11 180);
   --secondary: oklch(0.27 0.016 245);
   --secondary-foreground: oklch(0.95 0.008 240);
   --muted: oklch(0.25 0.014 245);
@@ -131,6 +142,8 @@
   --color-accent-violet: var(--accent-violet);
   --color-accent-cyan: var(--accent-cyan);
   --color-accent-pink: var(--accent-pink);
+  --color-accent-amber: var(--accent-amber);
+  --color-accent-teal: var(--accent-teal);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
