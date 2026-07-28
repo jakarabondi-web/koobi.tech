@@ -18,6 +18,10 @@ export type NavItem = {
   label: string;
   icon: ComponentType<{ className?: string }>;
   badge?: string | number;
+  /** "default" (violet) for routine counts. "attention" is a brighter,
+   *  more urgent color — reserved for things worth actually noticing,
+   *  like unread notifications, not just any nonzero count. */
+  badgeVariant?: "default" | "attention";
 };
 
 export type NavSection = {
@@ -101,7 +105,12 @@ export function DashboardShell({
                     <item.icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
                     <span className="flex-1 truncate">{item.label}</span>
                     {item.badge ? (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-violet px-1.5 text-[10px] font-semibold text-white">
+                      <span
+                        className={cn(
+                          "flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold text-white",
+                          item.badgeVariant === "attention" ? "bg-accent-amber text-navy" : "bg-accent-violet"
+                        )}
+                      >
                         {item.badge}
                       </span>
                     ) : null}

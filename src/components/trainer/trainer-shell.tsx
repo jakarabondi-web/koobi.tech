@@ -90,7 +90,7 @@ function buildNavSections(counts: {
     {
       label: "Account",
       items: [
-        { href: "/trainer/notifications", label: "Notifications", icon: Bell, badge: counts.unreadNotifications || undefined },
+        { href: "/trainer/notifications", label: "Notifications", icon: Bell, badge: counts.unreadNotifications || undefined, badgeVariant: "attention" },
         { href: "/trainer/profile", label: "Profile", icon: UserCircle },
         { href: "/trainer/settings", label: "Settings", icon: Settings },
       ],
