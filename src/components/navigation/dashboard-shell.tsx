@@ -64,15 +64,21 @@ export function DashboardShell({
         <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
           <Sparkles className="size-4" />
         </span>
-        <div className="leading-tight">
+        <div className="min-w-0 leading-tight">
           <p className="text-sm font-semibold">{brand.name}</p>
-          <p className="text-[11px] text-sidebar-foreground/60">{surfaceLabel}</p>
+          <div className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/60">
+            <span className="relative flex size-1.5 shrink-0">
+              <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+            </span>
+            <span className="truncate font-mono">{surfaceLabel}</span>
+          </div>
         </div>
       </div>
       <nav className="relative z-10 flex-1 space-y-4 overflow-y-auto px-3 py-3">
         {navSections.map((section) => (
           <div key={section.label}>
-            <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
+            <p className="px-3 pb-1 font-mono text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/45">
               {section.label}
             </p>
             <div className="space-y-0.5">

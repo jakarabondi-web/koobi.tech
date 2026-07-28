@@ -24,16 +24,18 @@ import {
   BadgeCheck,
   Wallet,
   MessageSquareQuote,
+  Globe2,
 } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { auth } from "@/lib/auth";
 import { dashboardPathForSurface } from "@/lib/permissions/roles";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InteractiveHero } from "@/components/marketing/interactive-hero";
-import { NeuralMesh } from "@/components/shared/neural-mesh";
+import { WorldNetworkMap } from "@/components/shared/world-network-map";
+import { LiveStatStrip } from "@/components/marketing/live-stat-strip";
+import { RegistrationSteps } from "@/components/marketing/registration-steps";
 
 export const metadata: Metadata = {
   // `absolute` opts out of the root layout's "%s · Traivr" template, which
@@ -118,17 +120,26 @@ export default async function HomePage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-navy via-navy to-background">
-        {/* Live neural mesh — the network of experts feeding a model, made
-            literal. Sits under a soft wash so headline contrast holds. */}
-        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_55%,transparent),transparent_60%)]" />
+        {/* Live network map — not decorative sci-fi glow, but the literal
+            shape of the business: specialists worldwide, arcing into one
+            shared pipeline in real time. */}
+        <WorldNetworkMap opacity={0.9} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_60%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
-            <Badge variant="outline" className="border-white/20 bg-white/5 text-white/80">
-              Human expertise for better AI
-            </Badge>
-            <h1 className="mt-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
-              Train better AI with verified human expertise.
+            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-accent-cyan">
+              <span className="relative flex size-1.5">
+                <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-cyan opacity-75" />
+                <span className="relative inline-flex size-1.5 rounded-full bg-accent-cyan" />
+              </span>
+              Global expert network · live
+            </div>
+            <h1 className="mt-5 text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
+              Train better AI
+              <br />
+              <span className="text-accent-cyan">with verified</span>
+              <br />
+              human expertise.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-white/70">
               {brand.name} connects leading AI teams with carefully vetted specialists who create, evaluate, and
@@ -144,6 +155,9 @@ export default async function HomePage() {
                 <Link href="/apply">Become an AI trainer</Link>
               </Button>
             </div>
+            <div className="mt-10">
+              <LiveStatStrip />
+            </div>
           </div>
 
           {/* Live, playable miniature of the actual task workflow */}
@@ -156,8 +170,8 @@ export default async function HomePage() {
       {/* Trust */}
       <section className="border-b border-border py-12">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-center text-sm font-medium text-muted-foreground">
-            Built for teams developing the next generation of AI.
+          <p className="text-center font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+            Built for teams developing the next generation of AI
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 opacity-70">
             {SAMPLE_CLIENTS.map((name) => (
@@ -172,19 +186,25 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Services */}
+      {/* What Traivr does — the full pipeline, numbered like the stages it is */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
-            <h2 className="text-3xl font-semibold tracking-tight">Every stage of the data pipeline, covered</h2>
+            <span className="font-mono text-xs uppercase tracking-widest text-primary">01 · What we do</span>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+              Every stage of the data pipeline, covered
+            </h2>
             <p className="mt-3 text-muted-foreground">
               From raw prompt generation to production-ready datasets, run the full lifecycle of human-in-the-loop AI
               training on one platform.
             </p>
           </div>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {SERVICES.map((s) => (
-              <Card key={s.title}>
+            {SERVICES.map((s, i) => (
+              <Card key={s.title} className="relative overflow-hidden">
+                <span className="absolute right-4 top-4 font-mono text-xs text-muted-foreground/50">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
                 <CardContent className="pt-1 pb-5">
                   <div className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                     <s.icon className="size-4.5" />
@@ -198,14 +218,15 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* How it works */}
+      {/* How it works for AI companies */}
       <section className="border-y border-border bg-surface py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-semibold tracking-tight">How it works for clients</h2>
+          <span className="font-mono text-xs uppercase tracking-widest text-primary">02 · For AI companies</span>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">How it works for clients</h2>
           <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {CLIENT_STEPS.map((step, i) => (
               <div key={step.title} className="relative">
-                <div className="flex size-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                <div className="flex size-9 items-center justify-center rounded-full bg-primary font-mono text-sm font-semibold text-primary-foreground">
                   {i + 1}
                 </div>
                 <h3 className="mt-4 text-sm font-semibold">{step.title}</h3>
@@ -216,25 +237,60 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Expert network */}
+      {/* How registration works — the real applicant flow, made visible */}
       <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid gap-12 lg:grid-cols-[1fr_1.4fr] lg:gap-16">
+            <div>
+              <span className="font-mono text-xs uppercase tracking-widest text-primary">03 · For experts</span>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+                From sign-up to your first paid task
+              </h2>
+              <p className="mt-4 max-w-md text-muted-foreground">
+                Five steps, start to finish — the same ones you&apos;ll see progress through once you&apos;re
+                signed in, not a simplified marketing version of them.
+              </p>
+              <Button size="lg" variant="violet" className="mt-6" asChild>
+                <Link href="/apply">
+                  Start your application <ArrowRight className="size-4" />
+                </Link>
+              </Button>
+            </div>
+            <RegistrationSteps />
+          </div>
+        </div>
+      </section>
+
+      {/* Expert network — the world map again, this time as the subject
+          of the section rather than hero backdrop. */}
+      <section className="relative overflow-hidden border-b border-border bg-navy py-20 text-white">
+        <WorldNetworkMap opacity={0.55} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_oklch,var(--navy)_60%,transparent),transparent_55%)]" />
+        <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-3xl font-semibold tracking-tight">A verified network across every domain</h2>
-              <p className="mt-3 max-w-xl text-muted-foreground">
+              <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-accent-cyan">
+                <Globe2 className="size-3.5" /> 04 · Global network
+              </span>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+                A verified network across every domain
+              </h2>
+              <p className="mt-3 max-w-xl text-white/70">
                 Trainers and experts are vetted through identity checks and domain assessments before working on
                 live projects.
               </p>
             </div>
-            <Button variant="outline" asChild>
+            <Button variant="outline" className="border-white/25 bg-transparent text-white hover:bg-white/10" asChild>
               <Link href="/for-companies">Explore the expert network</Link>
             </Button>
           </div>
           <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-4">
             {EXPERT_CATEGORIES.map((c) => (
-              <div key={c.label} className="flex flex-col items-center gap-2 rounded-xl border border-border p-6 text-center">
-                <c.icon className="size-5 text-primary" />
+              <div
+                key={c.label}
+                className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm"
+              >
+                <c.icon className="size-5 text-accent-cyan" />
                 <span className="text-sm font-medium">{c.label}</span>
               </div>
             ))}
@@ -243,9 +299,10 @@ export default async function HomePage() {
       </section>
 
       {/* Quality */}
-      <section className="border-y border-border bg-surface py-20">
+      <section className="py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-semibold tracking-tight">Quality is the product</h2>
+          <span className="font-mono text-xs uppercase tracking-widest text-accent-violet">05 · Quality control</span>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Quality is the product</h2>
           <p className="mt-3 max-w-2xl text-muted-foreground">
             Every dataset moves through a structured pipeline before it reaches you — never a single unreviewed
             submission.
@@ -263,9 +320,12 @@ export default async function HomePage() {
       </section>
 
       {/* Security */}
-      <section className="py-20">
+      <section className="border-y border-border bg-surface py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-semibold tracking-tight">Enterprise-grade security by default</h2>
+          <span className="font-mono text-xs uppercase tracking-widest text-primary">06 · Security</span>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
+            Enterprise-grade security by default
+          </h2>
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SECURITY_POINTS.map((s) => (
               <div key={s.title} className="rounded-xl border border-border bg-card p-5">
@@ -282,7 +342,8 @@ export default async function HomePage() {
       <section className="border-y border-border bg-navy py-20 text-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div>
-            <h2 className="text-3xl font-semibold tracking-tight">
+            <span className="font-mono text-xs uppercase tracking-widest text-accent-cyan">07 · For experts</span>
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
               Get paid to improve the world&apos;s most advanced AI systems.
             </h2>
             <p className="mt-4 text-white/70">
