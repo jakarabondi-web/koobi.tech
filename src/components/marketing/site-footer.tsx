@@ -42,7 +42,7 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-surface">
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-6">
+        <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-8 md:grid-cols-6">
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
               <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
@@ -55,10 +55,16 @@ export function SiteFooter() {
           {COLUMNS.map((col) => (
             <div key={col.title}>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{col.title}</p>
-              <ul className="mt-3 space-y-2">
+              {/* py-2 on each link (instead of relying on text-sm
+                  line-height + a gap between list items) gives each row a
+                  real tap target, not just a thin line of text. */}
+              <ul className="mt-1">
                 {col.links.map((link) => (
                   <li key={link.href}>
-                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground">
+                    <Link
+                      href={link.href}
+                      className="block py-2 text-sm text-muted-foreground hover:text-foreground"
+                    >
                       {link.label}
                     </Link>
                   </li>
@@ -67,15 +73,15 @@ export function SiteFooter() {
             </div>
           ))}
         </div>
-        <div className="mt-10 flex flex-col gap-4 border-t border-border pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-8 flex flex-col items-center gap-4 border-t border-border pt-6 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()} {brand.legalName}. All rights reserved.
           </p>
-          <div className="flex gap-4 text-xs text-muted-foreground">
-            <a href={brand.social.linkedin} className="hover:text-foreground">
+          <div className="flex gap-5 text-xs text-muted-foreground">
+            <a href={brand.social.linkedin} className="py-1.5 hover:text-foreground">
               LinkedIn
             </a>
-            <a href={brand.social.twitter} className="hover:text-foreground">
+            <a href={brand.social.twitter} className="py-1.5 hover:text-foreground">
               X / Twitter
             </a>
           </div>
