@@ -71,7 +71,7 @@
      charcoal. (.dark below keeps its own dark sidebar values untouched —
      those are a real dark theme, not this fixed-chrome pattern.) */
   --sidebar: oklch(0.46 0.045 254);
-  --sidebar-foreground: oklch(0.99 0.003 245);
+  --sidebar-foreground: oklch(1 0 0);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
   --sidebar-accent: oklch(0.56 0.06 260);

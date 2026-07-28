@@ -91,11 +91,11 @@ export function DashboardShell({
                     href={item.href}
                     onClick={() => setMobileOpen(false)}
                     className={cn(
-                      "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium",
+                      "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold",
                       "transition-all duration-200 ease-out active:scale-[0.97] active:duration-75",
                       active
                         ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                        : "text-sidebar-foreground/70 hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground hover:shadow-sm"
+                        : "text-sidebar-foreground/90 hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground hover:shadow-sm"
                     )}
                   >
                     <item.icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
