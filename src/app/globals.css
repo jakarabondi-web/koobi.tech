@@ -65,19 +65,18 @@
   --chart-4: var(--accent-pink);
   --chart-5: var(--warning);
 
-  /* Sidebar chrome — a light-medium slate blue (option "E" from the shade
-     review), dark text. Enough lightness to sit comfortably next to the
-     page's light content while still reading as a distinct, faintly blue
-     region rather than blending into --background/--surface. (.dark below
-     keeps its own dark sidebar values untouched — those are a real dark
-     theme, not this fixed-chrome pattern.) */
-  --sidebar: oklch(0.75 0.035 253);
-  --sidebar-foreground: oklch(0.24 0.03 250);
+  /* Sidebar chrome — a medium-dark slate blue with white text, so the
+     wording actually pops instead of just sitting there in dark-on-light.
+     Darker than the "too dark" 0.32 attempt but still clearly a blue, not
+     charcoal. (.dark below keeps its own dark sidebar values untouched —
+     those are a real dark theme, not this fixed-chrome pattern.) */
+  --sidebar: oklch(0.46 0.045 254);
+  --sidebar-foreground: oklch(0.99 0.003 245);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.84 0.05 260);
-  --sidebar-accent-foreground: oklch(0.22 0.03 250);
-  --sidebar-border: oklch(0.69 0.04 253);
+  --sidebar-accent: oklch(0.56 0.06 260);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.53 0.05 254);
   --sidebar-ring: var(--ring);
 }
 
