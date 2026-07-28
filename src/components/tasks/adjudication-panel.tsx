@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { Scale, CheckCircle2, RefreshCw, XCircle } from "lucide-react";
+import { Scale, CheckCircle2, RefreshCw, XCircle, AlertTriangle } from "lucide-react";
 
 import { submitAdjudication, type ActionState } from "@/server/actions/adjudication";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,13 @@ export type AdjudicationItem = {
   justification?: string;
   goldAnswer: string | null;
   reviews: Array<{ reviewer: string; decision: string; feedback: string | null; confidence: number | null }>;
+  /** Present when reason is "plagiarism_suspected" — the matched trainer's identity is never included. */
+  similarity?: number | null;
+};
+
+const REASON_LABEL: Record<string, string> = {
+  escalated: "Escalated by reviewer",
+  plagiarism_suspected: "Plagiarism suspected",
 };
 
 export function AdjudicationPanel({ item }: { item: AdjudicationItem }) {
@@ -57,10 +64,23 @@ export function AdjudicationPanel({ item }: { item: AdjudicationItem }) {
           <p className="truncate text-sm font-semibold">{item.projectName}</p>
           <p className="text-xs text-muted-foreground">{item.prompt}</p>
         </div>
-        <Badge variant={item.reason === "escalated" ? "warning" : "info"}>
-          {item.reason === "escalated" ? "Escalated by reviewer" : "Reviewers disagreed"}
+        <Badge variant={item.reason === "plagiarism_suspected" ? "destructive" : item.reason === "escalated" ? "warning" : "info"}>
+          {REASON_LABEL[item.reason] ?? "Reviewers disagreed"}
         </Badge>
       </div>
+
+      {item.reason === "plagiarism_suspected" ? (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-xs text-destructive">
+          <AlertTriangle className="size-4 shrink-0" />
+          <span>
+            This justification closely matches another trainer&apos;s submission on the same task
+            {item.similarity != null ? ` (${Math.round(item.similarity * 100)}% text overlap)` : ""}.
+            Routed straight here instead of ordinary peer review — no reviewer has weighed in yet.
+            The matched submission and trainer aren&apos;t shown; judge this one on its own merits
+            and the evidence above.
+          </span>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-2">
         {(["A", "B"] as const).map((side) => (

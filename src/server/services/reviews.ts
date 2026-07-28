@@ -17,6 +17,12 @@ export async function getReviewQueue(reviewerId: string, limit = 25) {
       reviews: { none: {} },
       submittedById: { not: reviewerId },
       task: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } },
+      // A submission auto-escalated to adjudication (e.g. a high-confidence
+      // plagiarism match) is out of ordinary peer review entirely, not just
+      // flagged within it — see checkSubmissionSimilarity. Otherwise it
+      // would sit in both queues at once, and a peer reviewer could approve
+      // it before adjudication ever looked at it.
+      adjudication: null,
     },
     include: { task: { include: { project: true } } },
     orderBy: { submittedAt: "asc" },
@@ -37,12 +43,20 @@ export async function loadSubmissionForReview(submissionId: string, reviewerId: 
     include: {
       task: { include: { project: { include: { rubrics: true } }, goldTask: true } },
       reviews: { include: { scores: true } },
+      adjudication: true,
     },
   });
 
   if (!submission) throw new ReviewError("Submission not found.");
   if (submission.submittedById === reviewerId) {
     throw new ReviewError("You can't review your own submission.");
+  }
+  // Belt-and-suspenders against the queue filter above: blocks a direct link
+  // to a submission that's been pulled into adjudication (e.g. a bookmarked
+  // tab, or one opened before the escalation happened) from being decided
+  // through ordinary peer review instead.
+  if (submission.adjudication) {
+    throw new ReviewError("This submission is under adjudication, not ordinary review.");
   }
 
   return {

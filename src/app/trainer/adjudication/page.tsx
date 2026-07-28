@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { getAdjudicationQueue, getReviewerCalibration } from "@/server/services/adjudication";
+import { getOpenSimilarityFlag } from "@/server/services/plagiarism";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -39,37 +40,42 @@ export default async function AdjudicationPage() {
     getReviewerCalibration(),
   ]);
 
-  const items: AdjudicationItem[] = queue.map((a) => {
-    const payload = a.submission.task.payload as {
-      prompt?: string; responseA?: string; responseB?: string;
-    };
-    const content = a.submission.content as { preferred?: string; justification?: string };
-    return {
-      id: a.id,
-      reason: a.reason,
-      projectName: a.submission.task.project.name,
-      prompt: payload.prompt ?? "",
-      responseA: payload.responseA ?? "",
-      responseB: payload.responseB ?? "",
-      preferred: content.preferred,
-      justification: content.justification,
-      goldAnswer: a.submission.task.goldTask
-        ? String((a.submission.task.goldTask.expectedAnswer as { answer?: string })?.answer ?? "")
-        : null,
-      reviews: a.submission.reviews.map((r) => ({
-        reviewer: `${r.reviewer.firstName} ${r.reviewer.lastName}`,
-        decision: r.decision,
-        feedback: r.feedback,
-        confidence: r.confidence,
-      })),
-    };
-  });
+  const items: AdjudicationItem[] = await Promise.all(
+    queue.map(async (a) => {
+      const payload = a.submission.task.payload as {
+        prompt?: string; responseA?: string; responseB?: string;
+      };
+      const content = a.submission.content as { preferred?: string; justification?: string };
+      const similarityFlag =
+        a.reason === "plagiarism_suspected" ? await getOpenSimilarityFlag(a.submission.id) : null;
+      return {
+        id: a.id,
+        reason: a.reason,
+        projectName: a.submission.task.project.name,
+        prompt: payload.prompt ?? "",
+        responseA: payload.responseA ?? "",
+        responseB: payload.responseB ?? "",
+        preferred: content.preferred,
+        justification: content.justification,
+        goldAnswer: a.submission.task.goldTask
+          ? String((a.submission.task.goldTask.expectedAnswer as { answer?: string })?.answer ?? "")
+          : null,
+        reviews: a.submission.reviews.map((r) => ({
+          reviewer: `${r.reviewer.firstName} ${r.reviewer.lastName}`,
+          decision: r.decision,
+          feedback: r.feedback,
+          confidence: r.confidence,
+        })),
+        similarity: similarityFlag?.similarity ?? null,
+      };
+    })
+  );
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Adjudication"
-        description="Cases reviewers disagreed on, or escalated. Your call is final."
+        description="Cases reviewers disagreed on, escalated, or flagged for suspected plagiarism. Your call is final."
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -85,7 +91,7 @@ export default async function AdjudicationPage() {
         <EmptyState
           icon={CheckCircle2}
           title="Nothing to adjudicate"
-          description="Submissions arrive here when reviewers reach different decisions, or when a reviewer escalates."
+          description="Submissions arrive here when reviewers reach different decisions, when a reviewer escalates, or when a submission is flagged for suspected plagiarism."
         />
       ) : (
         <div className="space-y-5">

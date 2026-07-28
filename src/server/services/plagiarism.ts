@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { openAdjudication } from "@/server/services/adjudication";
 
 const SHINGLE_SIZE = 5;
 const HIGH_SIMILARITY = 0.85;
@@ -89,11 +90,13 @@ export async function checkSubmissionSimilarity(params: {
 
   if (!best || best.similarity < MEDIUM_SIMILARITY) return null;
 
+  const severity = best.similarity >= HIGH_SIMILARITY ? "high" : "medium";
+
   await prisma.riskFlag.create({
     data: {
       userId: params.submittedById,
       signal: "plagiarism_suspected",
-      severity: best.similarity >= HIGH_SIMILARITY ? "high" : "medium",
+      severity,
       details: {
         submissionId: params.submissionId,
         matchedSubmissionId: best.matchedSubmissionId,
@@ -103,6 +106,20 @@ export async function checkSubmissionSimilarity(params: {
       },
     },
   });
+
+  // A near-exact match is not a call for an ordinary peer reviewer — the
+  // same trust problem that makes plagiarism worth detecting also makes a
+  // peer a bad judge of it (they could be the colluding party, or just
+  // unequipped to weigh a fraud signal). High-confidence matches go
+  // straight to adjudication instead, which already enforces separation of
+  // duties: the adjudicator can't be the submitter or a prior reviewer.
+  // getReviewQueue excludes anything with an open adjudication, so this
+  // takes the submission out of ordinary review entirely rather than
+  // leaving it there alongside a warning banner.
+  if (severity === "high") {
+    await openAdjudication({ submissionId: params.submissionId, reason: "plagiarism_suspected" });
+    await prisma.task.update({ where: { id: params.taskId }, data: { status: "ESCALATED" } });
+  }
 
   return best;
 }

@@ -3,6 +3,9 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 const taskSubmissionFindMany = vi.fn();
 const riskFlagCreate = vi.fn();
 const riskFlagFindMany = vi.fn();
+const adjudicationFindUnique = vi.fn();
+const adjudicationCreate = vi.fn();
+const taskUpdate = vi.fn();
 
 vi.mock("@/lib/db/prisma", () => ({
   prisma: {
@@ -11,6 +14,11 @@ vi.mock("@/lib/db/prisma", () => ({
       create: (...a: unknown[]) => riskFlagCreate(...a),
       findMany: (...a: unknown[]) => riskFlagFindMany(...a),
     },
+    adjudication: {
+      findUnique: (...a: unknown[]) => adjudicationFindUnique(...a),
+      create: (...a: unknown[]) => adjudicationCreate(...a),
+    },
+    task: { update: (...a: unknown[]) => taskUpdate(...a) },
   },
 }));
 
@@ -24,6 +32,9 @@ beforeEach(() => {
   taskSubmissionFindMany.mockReset();
   riskFlagCreate.mockReset();
   riskFlagFindMany.mockReset();
+  adjudicationFindUnique.mockReset().mockResolvedValue(null);
+  adjudicationCreate.mockReset().mockResolvedValue({ id: "adj-1" });
+  taskUpdate.mockReset();
 });
 
 describe("checkSubmissionSimilarity", () => {
@@ -99,6 +110,54 @@ describe("checkSubmissionSimilarity", () => {
     expect(call.data.signal).toBe("plagiarism_suspected");
     expect(call.data.severity).toBe("high");
     expect(call.data.details.matchedUserId).toBe("user-b");
+  });
+
+  it("routes a high-severity match straight to adjudication, out of ordinary peer review", async () => {
+    taskSubmissionFindMany.mockResolvedValue([
+      { id: "sub-other", submittedById: "user-b", content: { justification: LONG_JUSTIFICATION } },
+    ]);
+    riskFlagCreate.mockResolvedValue({ id: "flag-1" });
+
+    await checkSubmissionSimilarity({
+      submissionId: "sub-new",
+      taskId: "task-1",
+      submittedById: "user-a",
+      justification: LONG_JUSTIFICATION,
+    });
+
+    expect(adjudicationCreate).toHaveBeenCalledTimes(1);
+    expect(adjudicationCreate.mock.calls[0][0].data).toEqual(
+      expect.objectContaining({ submissionId: "sub-new", reason: "plagiarism_suspected" })
+    );
+    expect(taskUpdate).toHaveBeenCalledWith({ where: { id: "task-1" }, data: { status: "ESCALATED" } });
+  });
+
+  it("leaves a medium-severity match in ordinary peer review — only a high-confidence match escalates", async () => {
+    // Shares its first 19 of 22 words with the original justification (~71%
+    // shingle overlap — inside the medium band, below the 85% "high" bar)
+    // and then diverges completely, unlike the near-verbatim copy above.
+    const original = "the quick brown fox jumps over the lazy dog again and again while the cat watches quietly from the window sill nearby";
+    const partialMatch = "the quick brown fox jumps over the lazy dog again and again while the cat watches quietly from the zzz yyy xxx";
+
+    taskSubmissionFindMany.mockResolvedValue([
+      { id: "sub-other", submittedById: "user-b", content: { justification: original } },
+    ]);
+    riskFlagCreate.mockResolvedValue({ id: "flag-1" });
+
+    const result = await checkSubmissionSimilarity({
+      submissionId: "sub-new",
+      taskId: "task-1",
+      submittedById: "user-a",
+      justification: partialMatch,
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.similarity).toBeGreaterThanOrEqual(0.6);
+    expect(result!.similarity).toBeLessThan(0.85);
+    expect(riskFlagCreate).toHaveBeenCalledTimes(1);
+    expect(riskFlagCreate.mock.calls[0][0].data.severity).toBe("medium");
+    expect(adjudicationCreate).not.toHaveBeenCalled();
+    expect(taskUpdate).not.toHaveBeenCalled();
   });
 
   it("never compares a submission against the same trainer's other work", async () => {
