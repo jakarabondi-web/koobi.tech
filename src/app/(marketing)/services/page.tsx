@@ -31,8 +31,8 @@ export default function ServicesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid gap-4 sm:grid-cols-2">
             {SERVICES.map((s) => (
-              <Card key={s.title}>
-                <CardContent className="flex items-start gap-3 pt-1 pb-5">
+              <Card key={s.title} className="h-full">
+                <CardContent className="flex h-full items-center gap-3 py-5">
                   <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
                     <s.icon className="size-4.5" />
                   </div>

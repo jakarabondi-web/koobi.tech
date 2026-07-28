@@ -49,9 +49,14 @@ export default function ForCompaniesPage() {
           <h2 className="text-2xl font-semibold tracking-tight">What teams build with Traivr</h2>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {USE_CASES.map((u) => (
-              <Card key={u.title}>
-                <CardContent className="flex items-start gap-3 pt-1 pb-5">
-                  <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-success" />
+              <Card key={u.title} className="h-full">
+                {/* items-center (not items-start) so the icon centers against
+                    the text block instead of pinning to its first line — and
+                    h-full + flex-1 on the content so a two-line description
+                    next to a one-line one doesn't leave the shorter card's
+                    text stranded near the top with dead space below it. */}
+                <CardContent className="flex h-full items-center gap-3 py-5">
+                  <CheckCircle2 className="size-5 shrink-0 text-success" />
                   <div>
                     <h3 className="text-sm font-semibold">{u.title}</h3>
                     <p className="mt-1 text-sm text-muted-foreground">{u.desc}</p>
