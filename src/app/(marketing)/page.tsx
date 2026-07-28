@@ -189,8 +189,11 @@ export default async function HomePage() {
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface via-background to-background">
         {/* Live neural mesh — the network of experts feeding a model, made
             literal. Light tone: same blue hue range as the dark version
-            elsewhere, pulled darker so it holds up against this background. */}
-        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} tone="light" opacity={0.8} />
+            elsewhere, pulled darker so it holds up against this background.
+            Denser and much longer linkDistance than other NeuralMesh
+            instances so the web reads as fully interconnected throughout,
+            not a scatter of occasional lines. */}
+        <NeuralMesh density={0.00024} maxNodes={130} linkDistance={210} tone="light" opacity={0.85} />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
