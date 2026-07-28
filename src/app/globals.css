@@ -65,18 +65,20 @@
   --chart-4: var(--accent-pink);
   --chart-5: var(--warning);
 
-  /* Sidebar chrome — a medium-dark slate blue with white text, so the
-     wording actually pops instead of just sitting there in dark-on-light.
-     Darker than the "too dark" 0.32 attempt but still clearly a blue, not
-     charcoal. (.dark below keeps its own dark sidebar values untouched —
-     those are a real dark theme, not this fixed-chrome pattern.) */
-  --sidebar: oklch(0.46 0.045 254);
+  /* Sidebar chrome — matches --navy exactly now, so the dashboard nav reads
+     as the same surface as the marketing site's dark bento cards/bands
+     rather than a lighter, unrelated slate-blue. Active/hover nav items use
+     a translucent "glass" treatment (see dashboard-shell.tsx) instead of a
+     solid accent fill, mirroring the bento cards' glass cells. (.dark below
+     keeps its own dark sidebar values untouched — those are a real dark
+     theme, not this fixed-chrome pattern.) */
+  --sidebar: oklch(0.18 0.04 250);
   --sidebar-foreground: oklch(1 0 0);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.56 0.06 260);
+  --sidebar-accent: oklch(0.26 0.05 254);
   --sidebar-accent-foreground: oklch(1 0 0);
-  --sidebar-border: oklch(0.53 0.05 254);
+  --sidebar-border: oklch(0.24 0.035 250);
   --sidebar-ring: var(--ring);
 }
 

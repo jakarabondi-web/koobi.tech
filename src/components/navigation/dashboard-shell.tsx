@@ -62,8 +62,11 @@ export function DashboardShell({
     <div className="relative flex h-full flex-col overflow-hidden bg-sidebar text-sidebar-foreground">
       {/* Ambient mesh — strongest toward the base of the nav, dissolving
           upward so the brand mark and links stay fully legible. Dark tone
-          (pale lines) to match the sidebar's dark background. */}
-      <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.8} />
+          (pale lines) to match the sidebar's dark background. Opacity
+          pulled down from the earlier lighter sidebar's 0.8 — the same
+          pale lines read as too bright/washed-out against this darker
+          navy, so the mesh needs to sit further back now. */}
+      <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.5} />
 
       <div className="relative z-10 flex h-16 items-center gap-2 px-5">
         <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
@@ -97,9 +100,15 @@ export function DashboardShell({
                     className={cn(
                       "group flex items-center gap-3 rounded-md px-3 py-2 text-sm font-semibold",
                       "transition-all duration-200 ease-out active:scale-[0.97] active:duration-75",
+                      // Translucent "glass" cell instead of a solid accent
+                      // fill — same treatment as the bento cards' glass
+                      // cells (white/6% + a hairline white border) rather
+                      // than an opaque highlight, so an active/hovered nav
+                      // item reads as the same visual language as the rest
+                      // of the dark-navy surfaces.
                       active
-                        ? "bg-sidebar-accent text-sidebar-accent-foreground shadow-sm"
-                        : "text-sidebar-foreground/90 hover:translate-x-0.5 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground hover:shadow-sm"
+                        ? "border border-white/10 bg-white/[0.06] text-sidebar-accent-foreground shadow-sm backdrop-blur"
+                        : "border border-transparent text-sidebar-foreground/90 hover:translate-x-0.5 hover:border-white/10 hover:bg-white/[0.05] hover:text-sidebar-accent-foreground hover:shadow-sm"
                     )}
                   >
                     <item.icon className="size-4 shrink-0 transition-transform duration-200 group-hover:scale-110" />
