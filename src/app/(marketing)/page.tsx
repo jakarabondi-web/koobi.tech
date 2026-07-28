@@ -255,24 +255,24 @@ export default async function HomePage() {
 
       {/* Expert network — the world map again, this time as the subject
           of the section rather than hero backdrop. */}
-      <section className="relative overflow-hidden border-b border-border bg-navy py-20 text-white">
-        <WorldNetworkMap opacity={0.55} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_oklch,var(--navy)_60%,transparent),transparent_55%)]" />
+      <section className="relative overflow-hidden border-b border-border bg-surface py-20">
+        <WorldNetworkMap opacity={0.55} tone="light" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,color-mix(in_oklch,var(--primary)_8%,transparent),transparent_55%)]" />
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-accent-cyan">
+              <span className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary">
                 <Globe2 className="size-3.5" /> 04 · Global network
               </span>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
                 A verified network across every domain
               </h2>
-              <p className="mt-3 max-w-xl text-white/70">
+              <p className="mt-3 max-w-xl text-muted-foreground">
                 Trainers and experts are vetted through identity checks and domain assessments before working on
                 live projects.
               </p>
             </div>
-            <Button variant="outline" className="border-white/25 bg-transparent text-white hover:bg-white/10" asChild>
+            <Button variant="outline" asChild>
               <Link href="/for-companies">Explore the expert network</Link>
             </Button>
           </div>
@@ -280,9 +280,9 @@ export default async function HomePage() {
             {EXPERT_CATEGORIES.map((c) => (
               <div
                 key={c.label}
-                className="flex flex-col items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm"
+                className="flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-6 text-center"
               >
-                <c.icon className="size-5 text-accent-cyan" />
+                <c.icon className="size-5 text-primary" />
                 <span className="text-sm font-medium">{c.label}</span>
               </div>
             ))}
@@ -331,14 +331,14 @@ export default async function HomePage() {
       </section>
 
       {/* Trainer section */}
-      <section className="border-y border-border bg-navy py-20 text-white">
+      <section className="border-y border-border py-20">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8">
           <div>
-            <span className="font-mono text-xs uppercase tracking-widest text-accent-cyan">07 · For experts</span>
+            <span className="font-mono text-xs uppercase tracking-widest text-primary">07 · For experts</span>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
               Get paid to improve the world&apos;s most advanced AI systems.
             </h2>
-            <p className="mt-4 text-white/70">
+            <p className="mt-4 text-muted-foreground">
               Join a network of specialists doing meaningful, well-compensated work that shapes how AI systems
               behave.
             </p>
@@ -350,8 +350,8 @@ export default async function HomePage() {
           </div>
           <ul className="grid gap-3 sm:grid-cols-2">
             {TRAINER_BENEFITS.map((b) => (
-              <li key={b} className="flex items-start gap-2 rounded-lg bg-white/5 p-3 text-sm text-white/85">
-                <Wallet className="mt-0.5 size-4 shrink-0 text-accent-cyan" />
+              <li key={b} className="flex items-start gap-2 rounded-lg border border-border bg-card p-3 text-sm">
+                <Wallet className="mt-0.5 size-4 shrink-0 text-primary" />
                 {b}
               </li>
             ))}

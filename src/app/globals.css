@@ -59,13 +59,17 @@
   --chart-4: var(--accent-pink);
   --chart-5: var(--warning);
 
-  --sidebar: var(--navy);
-  --sidebar-foreground: oklch(0.94 0.008 240);
+  /* Sidebar chrome — was permanently navy regardless of light/dark theme;
+     now a light, faintly blue-tinted surface to match the lightened hero.
+     (.dark below keeps its own dark sidebar values untouched — those are a
+     real dark theme, not this fixed-navy-chrome pattern.) */
+  --sidebar: oklch(0.975 0.01 245);
+  --sidebar-foreground: oklch(0.22 0.025 245);
   --sidebar-primary: var(--accent-violet);
   --sidebar-primary-foreground: oklch(0.98 0.005 245);
-  --sidebar-accent: oklch(0.28 0.06 280);
-  --sidebar-accent-foreground: oklch(0.95 0.008 240);
-  --sidebar-border: oklch(0.29 0.05 280);
+  --sidebar-accent: oklch(0.92 0.03 265);
+  --sidebar-accent-foreground: oklch(0.3 0.05 260);
+  --sidebar-border: oklch(0.91 0.012 245);
   --sidebar-ring: var(--ring);
 }
 

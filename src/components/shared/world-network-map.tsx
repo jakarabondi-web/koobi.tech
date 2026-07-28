@@ -49,9 +49,14 @@ type Arc = { city: City; start: number; duration: number };
 export function WorldNetworkMap({
   className,
   opacity = 1,
+  /** "dark" (default) is tuned for a navy backdrop. "light" darkens and
+   *  saturates the graticule, dots, and arcs so the same map holds up on a
+   *  white/near-white surface instead of washing out. */
+  tone = "dark",
 }: {
   className?: string;
   opacity?: number;
+  tone?: "dark" | "light";
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -66,6 +71,25 @@ export function WorldNetworkMap({
     let height = 0;
     let frame = 0;
     let t = 0;
+
+    // Same blue family either way — light tone is just pulled darker and
+    // more saturated so it doesn't wash out against a white/near-white page.
+    const palette =
+      tone === "light"
+        ? {
+            graticule: "rgba(30, 64, 120, 0.07)",
+            dot: "30, 96, 176",
+            hub: "16, 80, 160",
+            arc: "24, 104, 190",
+            lead: "8, 66, 140",
+          }
+        : {
+            graticule: "rgba(255, 255, 255, 0.05)",
+            dot: "150, 200, 255",
+            hub: "120, 190, 255",
+            arc: "140, 210, 255",
+            lead: "180, 225, 255",
+          };
 
     const project = (lat: number, lon: number) => ({
       x: ((lon + 180) / 360) * width,
@@ -91,7 +115,7 @@ export function WorldNetworkMap({
     };
 
     const drawGraticule = () => {
-      ctx.strokeStyle = "rgba(255,255,255,0.05)";
+      ctx.strokeStyle = palette.graticule;
       ctx.lineWidth = 1;
       for (let lon = -180; lon <= 180; lon += 20) {
         ctx.beginPath();
@@ -121,7 +145,7 @@ export function WorldNetworkMap({
       // Quiet city dots — the arcs are the story, dots just ground them.
       for (const city of CITIES) {
         const p = project(city.lat, city.lon);
-        ctx.fillStyle = `rgba(150, 200, 255, ${0.35 * opacity})`;
+        ctx.fillStyle = `rgba(${palette.dot}, ${0.35 * opacity})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.6, 0, Math.PI * 2);
         ctx.fill();
@@ -129,11 +153,11 @@ export function WorldNetworkMap({
 
       // Hub — the shared pipeline every arc feeds.
       const hubPulse = 3 + Math.sin(now / 400) * 1.2;
-      ctx.fillStyle = `rgba(120, 190, 255, ${0.55 * opacity})`;
+      ctx.fillStyle = `rgba(${palette.hub}, ${0.55 * opacity})`;
       ctx.beginPath();
       ctx.arc(hub.x, hub.y, hubPulse, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = `rgba(120, 190, 255, ${0.25 * opacity})`;
+      ctx.strokeStyle = `rgba(${palette.hub}, ${0.25 * opacity})`;
       ctx.beginPath();
       ctx.arc(hub.x, hub.y, hubPulse + 6, 0, Math.PI * 2);
       ctx.stroke();
@@ -149,7 +173,7 @@ export function WorldNetworkMap({
 
         // Draw the arc path up to `eased` using a quadratic bezier sampled
         // in short segments, and drop a bright pulse at its leading edge.
-        ctx.strokeStyle = `rgba(140, 210, 255, ${0.55 * (1 - progress * 0.3) * opacity})`;
+        ctx.strokeStyle = `rgba(${palette.arc}, ${0.55 * (1 - progress * 0.3) * opacity})`;
         ctx.lineWidth = 1.1;
         ctx.beginPath();
         const steps = 24;
@@ -166,14 +190,14 @@ export function WorldNetworkMap({
         const s = eased;
         const leadX = (1 - s) * (1 - s) * p0.x + 2 * (1 - s) * s * midX + s * s * hub.x;
         const leadY = (1 - s) * (1 - s) * p0.y + 2 * (1 - s) * s * midY + s * s * hub.y;
-        ctx.fillStyle = `rgba(180, 225, 255, ${0.9 * opacity})`;
+        ctx.fillStyle = `rgba(${palette.lead}, ${0.9 * opacity})`;
         ctx.beginPath();
         ctx.arc(leadX, leadY, 2, 0, Math.PI * 2);
         ctx.fill();
 
         // Origin ring — fades in, marking which specialist just went live.
         if (progress < 0.35) {
-          ctx.strokeStyle = `rgba(180, 225, 255, ${(1 - progress / 0.35) * 0.7 * opacity})`;
+          ctx.strokeStyle = `rgba(${palette.lead}, ${(1 - progress / 0.35) * 0.7 * opacity})`;
           ctx.beginPath();
           ctx.arc(p0.x, p0.y, 2 + progress * 20, 0, Math.PI * 2);
           ctx.stroke();
@@ -214,7 +238,7 @@ export function WorldNetworkMap({
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [opacity]);
+  }, [opacity, tone]);
 
   return (
     <canvas
