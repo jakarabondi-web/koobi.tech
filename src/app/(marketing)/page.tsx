@@ -45,35 +45,59 @@ import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 
 /**
- * A small rotating gradient palette for icon badges — rotating the color
- * instead of repeating one flat tint is what makes a grid of icons read as
- * "designed" rather than "the same square, over and over."
+ * Four solid, genuinely distinct brand hues — not blended gradients of the
+ * same two or three colors, which is what made an earlier version of these
+ * badges read as "all one color" even though the classes technically
+ * differed. Paired with alternating shape/size (see IconBadge), so neither
+ * color nor form repeats on consecutive items.
  */
-const ICON_GRADIENTS = [
-  "from-primary to-accent-violet",
-  "from-accent-violet to-accent-pink",
-  "from-accent-cyan to-primary",
-  "from-accent-pink to-accent-cyan",
+const BADGE_COLORS = ["bg-primary", "bg-accent-violet", "bg-accent-cyan", "bg-accent-pink"];
+
+/**
+ * Three alternating shape/size treatments, cycled independently of color
+ * (3 and 4 share no common factor below 12, so a 6-8 item grid rarely
+ * repeats the same color+shape pairing twice). "flow" pins a single shape
+ * for badges that represent stages in one sequence, where alternating
+ * shape would read as inconsistency rather than variety.
+ */
+const BADGE_SHAPES = [
+  { shape: "rounded-full", size: "size-11", iconSize: "size-5" },
+  { shape: "rounded-xl", size: "size-10", iconSize: "size-4.5" },
+  { shape: "rounded-lg border-2 border-current bg-transparent", size: "size-11", iconSize: "size-5" },
 ];
 
 function IconBadge({
   icon: Icon,
   index,
+  variant = "grid",
   className,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   index: number;
+  /** "grid" varies shape per item (a catalog, no implied order). "flow"
+   *  keeps one shape so a sequence of steps still reads as one sequence. */
+  variant?: "grid" | "flow";
   className?: string;
 }) {
+  const color = BADGE_COLORS[index % BADGE_COLORS.length];
+  const { shape, size, iconSize } =
+    variant === "flow" ? BADGE_SHAPES[0] : BADGE_SHAPES[index % BADGE_SHAPES.length];
+  // The third shape is an outline treatment: colored ring + colored icon on
+  // a transparent fill, instead of a white icon on a solid color — real
+  // contrast in *treatment*, not just another hue.
+  const outline = shape.includes("border-current");
+
   return (
     <div
       className={cn(
-        "flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm shadow-primary/20",
-        ICON_GRADIENTS[index % ICON_GRADIENTS.length],
+        "flex shrink-0 items-center justify-center shadow-sm",
+        size,
+        shape,
+        outline ? cn("text-current", color.replace("bg-", "text-")) : cn(color, "text-white"),
         className
       )}
     >
-      <Icon className="size-4.5" />
+      <Icon className={iconSize} />
     </div>
   );
 }
@@ -256,7 +280,7 @@ export default async function HomePage() {
             {CLIENT_STEPS.map((step, i) => (
               <Fragment key={step.title}>
                 <div className="flex items-start gap-4 lg:min-w-0 lg:flex-1 lg:flex-col lg:items-start lg:pr-6">
-                  <IconBadge icon={step.icon} index={i} />
+                  <IconBadge icon={step.icon} index={i} variant="flow" />
                   <div className="lg:mt-4">
                     <h3 className="text-sm font-semibold">{step.title}</h3>
                     <p className="mt-1.5 text-sm text-muted-foreground">{step.desc}</p>

@@ -3,16 +3,19 @@
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils/cn";
+import { LAND_POLYGONS } from "@/components/shared/world-land-polygons";
 
 /**
  * The signature visual: a live cartographic network diagram, not a generic
  * particle field. Traivr's actual business is literal — specialists spread
  * across the globe feed a shared pipeline — so the background draws that
- * directly: real city coordinates, a graticule (the technical, GPS/nav-chart
- * texture that reads "techie" honestly rather than via sci-fi glow), and
- * arcs that continuously fire from a rotating set of expert hubs into one
- * central hub. Domain tags cycle through so it's never just "a city blinked"
- * — it's "a linguist in Manila just contributed."
+ * directly: real continent outlines (simplified from Natural Earth 110m —
+ * see world-land-polygons.ts — so this reads as an actual map, not just an
+ * abstract grid), real city coordinates, a graticule (the technical, GPS/
+ * nav-chart texture that reads "techie" honestly rather than via sci-fi
+ * glow), and arcs that continuously fire from a rotating set of expert hubs
+ * into one central hub. Domain tags cycle through so it's never just "a
+ * city blinked" — it's "a linguist in Manila just contributed."
  *
  * Same performance discipline as NeuralMesh: DPR-aware, pauses off-screen
  * tabs, renders one static frame under prefers-reduced-motion.
@@ -77,14 +80,18 @@ export function WorldNetworkMap({
     const palette =
       tone === "light"
         ? {
-            graticule: "rgba(30, 64, 120, 0.07)",
+            land: "rgba(20, 50, 100, 0.09)",
+            landStroke: "rgba(20, 50, 100, 0.22)",
+            graticule: "rgba(30, 64, 120, 0.06)",
             dot: "30, 96, 176",
             hub: "16, 80, 160",
             arc: "24, 104, 190",
             lead: "8, 66, 140",
           }
         : {
-            graticule: "rgba(255, 255, 255, 0.05)",
+            land: "rgba(255, 255, 255, 0.05)",
+            landStroke: "rgba(180, 210, 255, 0.16)",
+            graticule: "rgba(255, 255, 255, 0.04)",
             dot: "150, 200, 255",
             hub: "120, 190, 255",
             arc: "140, 210, 255",
@@ -104,6 +111,13 @@ export function WorldNetworkMap({
       arcs.push({ city, start: now, duration: 2200 + Math.random() * 1400 });
     };
 
+    // Land outlines and the graticule never move — only the dots and arcs
+    // animate — so they're traced once per resize onto an offscreen canvas
+    // and blitted every frame instead of re-walking ~1,600 polygon points
+    // 60 times a second for a background that hasn't changed.
+    const staticLayer = document.createElement("canvas");
+    const staticCtx = staticLayer.getContext("2d");
+
     const resize = () => {
       const rect = canvas.getBoundingClientRect();
       const dpr = window.devicePixelRatio || 1;
@@ -112,33 +126,58 @@ export function WorldNetworkMap({
       canvas.width = Math.max(1, width * dpr);
       canvas.height = Math.max(1, height * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      staticLayer.width = canvas.width;
+      staticLayer.height = canvas.height;
+      if (staticCtx) {
+        staticCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        drawStaticLayer(staticCtx);
+      }
     };
 
-    const drawGraticule = () => {
-      ctx.strokeStyle = palette.graticule;
-      ctx.lineWidth = 1;
+    const drawStaticLayer = (sctx: CanvasRenderingContext2D) => {
+      sctx.clearRect(0, 0, width, height);
+
+      sctx.fillStyle = palette.land;
+      sctx.strokeStyle = palette.landStroke;
+      sctx.lineWidth = 1;
+      for (const polygon of LAND_POLYGONS) {
+        sctx.beginPath();
+        for (let i = 0; i < polygon.length; i++) {
+          const [lon, lat] = polygon[i];
+          const p = project(lat, lon);
+          if (i === 0) sctx.moveTo(p.x, p.y);
+          else sctx.lineTo(p.x, p.y);
+        }
+        sctx.closePath();
+        sctx.fill();
+        sctx.stroke();
+      }
+
+      sctx.strokeStyle = palette.graticule;
+      sctx.lineWidth = 1;
       for (let lon = -180; lon <= 180; lon += 20) {
-        ctx.beginPath();
+        sctx.beginPath();
         for (let lat = -80; lat <= 85; lat += 5) {
           const p = project(lat, lon);
-          if (lat === -80) ctx.moveTo(p.x, p.y);
-          else ctx.lineTo(p.x, p.y);
+          if (lat === -80) sctx.moveTo(p.x, p.y);
+          else sctx.lineTo(p.x, p.y);
         }
-        ctx.stroke();
+        sctx.stroke();
       }
       for (let lat = -80; lat <= 80; lat += 20) {
         const p0 = project(lat, -180);
         const p1 = project(lat, 180);
-        ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.stroke();
+        sctx.beginPath();
+        sctx.moveTo(p0.x, p0.y);
+        sctx.lineTo(p1.x, p1.y);
+        sctx.stroke();
       }
     };
 
     const draw = (now: number) => {
       ctx.clearRect(0, 0, width, height);
-      drawGraticule();
+      ctx.drawImage(staticLayer, 0, 0, width, height);
 
       const hub = project(HUB.lat, HUB.lon);
 
