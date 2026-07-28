@@ -4,14 +4,35 @@ import { ArrowRight, Wallet, Clock, LineChart, MessageCircle } from "lucide-reac
 
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
+import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
 export const metadata: Metadata = { title: "For experts" };
 
-const BENEFITS = [
-  { icon: Wallet, title: "Transparent, upfront pay", desc: "Every project shows exact compensation before you accept it." },
-  { icon: Clock, title: "Work on your schedule", desc: "Pick up projects that fit your availability — no fixed shifts." },
-  { icon: LineChart, title: "Quality that pays off", desc: "Consistent, high-quality work unlocks better projects and bonuses." },
-  { icon: MessageCircle, title: "Real feedback", desc: "Senior reviewers explain exactly what to improve, task by task." },
+const BENEFITS: FeatureBentoItem[] = [
+  {
+    icon: <Wallet className="size-6" />,
+    title: "Transparent, upfront pay",
+    desc: "Exact compensation shown before you accept any project.",
+    tag: "Pay transparency",
+  },
+  {
+    icon: <Clock className="size-6" />,
+    title: "Work on your schedule",
+    desc: "Pick up projects that fit your availability, no fixed shifts.",
+    tag: "Flexible scheduling",
+  },
+  {
+    icon: <LineChart className="size-6" />,
+    title: "Quality that pays off",
+    desc: "Consistent quality unlocks better projects and bonuses.",
+    tag: "Quality bonuses",
+  },
+  {
+    icon: <MessageCircle className="size-6" />,
+    title: "Real feedback",
+    desc: "Senior reviewers explain what to improve, task by task.",
+    tag: "Reviewer feedback",
+  },
 ];
 
 export default function ForExpertsPage() {
@@ -24,15 +45,7 @@ export default function ForExpertsPage() {
       />
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {BENEFITS.map((b) => (
-              <div key={b.title} className="rounded-xl border border-border bg-card p-5">
-                <b.icon className="size-5 text-primary" />
-                <h3 className="mt-3 text-sm font-semibold">{b.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{b.desc}</p>
-              </div>
-            ))}
-          </div>
+          <FeatureBento items={BENEFITS} />
         </div>
       </section>
       <section className="border-t border-border bg-surface py-16 text-center">

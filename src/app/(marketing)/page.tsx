@@ -5,11 +5,8 @@ import { redirect } from "next/navigation";
 import {
   ArrowRight,
   ShieldCheck,
-  ScanEye,
   ScanSearch,
-  GitCompareArrows,
   ListOrdered,
-  PenLine,
   Languages,
   Code2,
   FlaskConical,
@@ -18,7 +15,6 @@ import {
   Calculator,
   BookOpenText,
   Landmark,
-  CheckCircle2,
   Lock,
   KeyRound,
   FileClock,
@@ -30,6 +26,15 @@ import {
   Target,
   UserCheck,
   PackageCheck,
+  Cpu,
+  Terminal,
+  Workflow,
+  Binary,
+  Database,
+  Fingerprint,
+  Radar,
+  Layers,
+  ClipboardCheck,
 } from "lucide-react";
 
 import { brand } from "@/config/brand";
@@ -38,11 +43,11 @@ import { dashboardPathForSurface } from "@/lib/permissions/roles";
 import { cn } from "@/lib/utils/cn";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
 import { InteractiveHero } from "@/components/marketing/interactive-hero";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
+import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
 /**
  * Five solid, genuinely distinct hues — not blended gradients of the same
@@ -116,15 +121,15 @@ export const metadata: Metadata = {
   title: { absolute: `${brand.name} — Train better AI with verified human expertise` },
 };
 
-const SERVICES = [
-  { icon: GitCompareArrows, title: "RLHF & preference data", desc: "Pairwise and multi-response ranking to build reward models trainers can trust." },
-  { icon: PenLine, title: "Supervised fine-tuning", desc: "Ideal-response writing and prompt creation from vetted domain experts." },
-  { icon: ScanEye, title: "Model evaluations", desc: "Structured, rubric-based scoring across correctness, safety, and tone." },
-  { icon: ShieldCheck, title: "Red teaming", desc: "Adversarial probing and policy testing from trained safety specialists." },
-  { icon: BookOpenText, title: "Expert data creation", desc: "Original prompts, references, and worked examples in specialist domains." },
-  { icon: Languages, title: "Multilingual evaluation", desc: "Native-fluency review across dozens of languages and locales." },
-  { icon: Code2, title: "Code & reasoning tasks", desc: "Code review, output evaluation, and multi-step reasoning checks." },
-  { icon: FlaskConical, title: "Safety & policy testing", desc: "Classification and hallucination detection against your policy rubric." },
+const SERVICES: FeatureBentoItem[] = [
+  { icon: <Cpu className="size-6" />, title: "RLHF & preference data", desc: "Bradley–Terry pairwise ranking, reward-model-ready export.", tag: "Reward modeling" },
+  { icon: <Terminal className="size-6" />, title: "Supervised fine-tuning", desc: "Ideal-response and prompt authoring, versioned per revision.", tag: "SFT" },
+  { icon: <Workflow className="size-6" />, title: "Model evaluations", desc: "Rubric-scored evals against your harness, per-category breakdown.", tag: "Eval harness" },
+  { icon: <Binary className="size-6" />, title: "Red teaming", desc: "Adversarial probes mapped to the OWASP LLM Top 10.", tag: "OWASP LLM Top 10" },
+  { icon: <Database className="size-6" />, title: "Expert data creation", desc: "Original datasets, license-cleared and versioned.", tag: "Dataset authoring" },
+  { icon: <Globe2 className="size-6" />, title: "Multilingual evaluation", desc: "Native-fluency review across 30+ languages.", tag: "i18n / L10n" },
+  { icon: <Code2 className="size-6" />, title: "Code & reasoning tasks", desc: "Code review and multi-step reasoning checks, pass/fail exported.", tag: "SWE-bench style" },
+  { icon: <Fingerprint className="size-6" />, title: "Safety & policy testing", desc: "Safety and policy classification, hallucination detection.", tag: "Trust & safety" },
 ];
 
 const EXPERT_CATEGORIES = [
@@ -145,22 +150,22 @@ const CLIENT_STEPS = [
   { title: "Export production-ready results", desc: "Download or stream client-ready datasets through the API.", icon: PackageCheck },
 ];
 
-const QUALITY_POINTS = [
-  { icon: BadgeCheck, title: "Qualification testing", desc: "Every trainer passes domain assessments before touching live tasks." },
-  { icon: FileClock, title: "Gold-standard tasks", desc: "Hidden benchmark tasks continuously calibrate accuracy." },
-  { icon: ScanEye, title: "Multi-stage review", desc: "Reviewers and lead reviewers check submissions before they ship." },
-  { icon: ListOrdered, title: "Consensus scoring", desc: "Duplicate assignments surface disagreement automatically." },
-  { icon: ShieldCheck, title: "Anomaly detection", desc: "Automated signals flag unusual patterns for human follow-up." },
-  { icon: Scale, title: "Human adjudication", desc: "Lead reviewers resolve edge cases — never a fully automated call." },
+const QUALITY_POINTS: FeatureBentoItem[] = [
+  { icon: <BadgeCheck className="size-6" />, title: "Qualification testing", desc: "Domain assessments gate access to live tasks.", tag: "Access control" },
+  { icon: <Radar className="size-6" />, title: "Gold-standard tasks", desc: "Hidden benchmarks calibrate accuracy continuously.", tag: "Calibration" },
+  { icon: <Layers className="size-6" />, title: "Multi-stage review", desc: "Reviewer and lead-reviewer sign-off before ship.", tag: "Review pipeline" },
+  { icon: <ListOrdered className="size-6" />, title: "Consensus scoring", desc: "Duplicate assignments surface disagreement automatically.", tag: "Consensus" },
+  { icon: <ScanSearch className="size-6" />, title: "Anomaly detection", desc: "Automated signals flag outlier patterns for follow-up.", tag: "Anomaly detection" },
+  { icon: <Scale className="size-6" />, title: "Human adjudication", desc: "Lead reviewers resolve edge cases — never fully automated.", tag: "Adjudication" },
 ];
 
-const SECURITY_POINTS = [
-  { icon: Lock, title: "Role-based access", desc: "Granular, server-enforced permissions across every surface." },
-  { icon: KeyRound, title: "Encryption", desc: "Data encrypted in transit and at rest, with encrypted sensitive fields." },
-  { icon: FileClock, title: "Audit logging", desc: "Every sensitive action is recorded with actor, target, and timestamp." },
-  { icon: Building2, title: "Project isolation", desc: "Tenant data is isolated per organization by default." },
-  { icon: ShieldCheck, title: "Secure workspaces", desc: "Task content is scoped to assigned, qualified workers only." },
-  { icon: CheckCircle2, title: "Designed for SOC 2 readiness", desc: "Built around SOC 2-aligned controls as we pursue formal certification." },
+const SECURITY_POINTS: FeatureBentoItem[] = [
+  { icon: <Lock className="size-6" />, title: "Role-based access", desc: "Server-enforced permissions, every surface.", tag: "RBAC" },
+  { icon: <KeyRound className="size-6" />, title: "Encryption", desc: "In transit and at rest, sensitive fields encrypted.", tag: "Encryption" },
+  { icon: <FileClock className="size-6" />, title: "Audit logging", desc: "Actor, target, timestamp — every sensitive action.", tag: "Audit trail" },
+  { icon: <Building2 className="size-6" />, title: "Project isolation", desc: "Tenant data isolated per organization by default.", tag: "Isolation" },
+  { icon: <ShieldCheck className="size-6" />, title: "Secure workspaces", desc: "Task content scoped to assigned, qualified workers.", tag: "Workspace scoping" },
+  { icon: <ClipboardCheck className="size-6" />, title: "Designed for SOC 2 readiness", desc: "Built around SOC 2-aligned controls as we pursue certification.", tag: "SOC 2-aligned" },
 ];
 
 const TRAINER_BENEFITS = [
@@ -269,16 +274,8 @@ export default async function HomePage() {
               training on one platform.
             </p>
           </div>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            {SERVICES.map((s, i) => (
-              <Card key={s.title} className="overflow-hidden">
-                <CardContent className="px-4 pt-1 pb-5 sm:px-6">
-                  <IconBadge icon={s.icon} index={i} />
-                  <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
-                  <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
-                </CardContent>
-              </Card>
-            ))}
+          <div className="mt-10">
+            <FeatureBento items={SERVICES} />
           </div>
         </div>
       </section>
@@ -391,14 +388,8 @@ export default async function HomePage() {
             Every dataset moves through a structured pipeline before it reaches you — never a single unreviewed
             submission.
           </p>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-            {QUALITY_POINTS.map((q, i) => (
-              <div key={q.title} className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <IconBadge icon={q.icon} index={i} />
-                <h3 className="mt-3 text-sm font-semibold">{q.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{q.desc}</p>
-              </div>
-            ))}
+          <div className="mt-10">
+            <FeatureBento items={QUALITY_POINTS} />
           </div>
         </div>
       </section>
@@ -410,14 +401,8 @@ export default async function HomePage() {
           <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
             Enterprise-grade security by default
           </h2>
-          <div className="mt-10 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
-            {SECURITY_POINTS.map((s, i) => (
-              <div key={s.title} className="rounded-xl border border-border bg-card p-4 sm:p-5">
-                <IconBadge icon={s.icon} index={i} />
-                <h3 className="mt-3 text-sm font-semibold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-muted-foreground">{s.desc}</p>
-              </div>
-            ))}
+          <div className="mt-10">
+            <FeatureBento items={SECURITY_POINTS} />
           </div>
         </div>
       </section>
