@@ -71,22 +71,22 @@ export function InteractiveHero() {
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 shadow-2xl backdrop-blur sm:p-4">
+    <div className="rounded-2xl border border-border bg-surface p-3 shadow-xl shadow-primary/5 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2">
-          <span className="flex size-6 items-center justify-center rounded-md bg-accent-violet/20 text-accent-violet">
+          <span className="flex size-6 items-center justify-center rounded-md bg-accent-violet/15 text-accent-violet">
             <Sparkles className="size-3.5" />
           </span>
-          <p className="text-xs font-medium text-white/70">
+          <p className="text-xs font-medium text-muted-foreground">
             Try a real task · {sample.domain}
           </p>
         </div>
-        <p className="text-[11px] tabular-nums text-white/40">
+        <p className="text-[11px] tabular-nums text-muted-foreground/70">
           {index + 1} / {SAMPLES.length}
         </p>
       </div>
 
-      <div className="rounded-xl bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-4">
         <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Prompt
         </p>
@@ -108,7 +108,11 @@ export function InteractiveHero() {
                 disabled={revealed}
                 aria-label={`Choose response ${side.toUpperCase()}`}
                 className={cn(
-                  "rounded-lg border p-3 text-left transition-colors",
+                  // flex flex-col items-stretch: buttons vertically center
+                  // their content by default once the box is taller than its
+                  // content (as this one is, next to the longer response) —
+                  // without this the label drifts away from the box's top.
+                  "flex flex-col items-stretch rounded-lg border p-3 text-left transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   !revealed && "cursor-pointer border-border hover:border-primary hover:bg-accent/50",
                   revealed && isExpert && "border-success bg-success/10",
@@ -170,9 +174,9 @@ export function InteractiveHero() {
           { value: "340", label: "Verified experts" },
           { value: "94.2%", label: "Reviewer agreement" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg bg-white/5 p-2.5 text-center">
-            <p className="text-base font-semibold text-white">{s.value}</p>
-            <p className="text-[10px] text-white/60">{s.label}</p>
+          <div key={s.label} className="rounded-lg bg-accent/60 p-2.5 text-center">
+            <p className="text-base font-semibold text-foreground">{s.value}</p>
+            <p className="text-[10px] text-muted-foreground">{s.label}</p>
           </div>
         ))}
       </div>

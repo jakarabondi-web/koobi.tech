@@ -120,20 +120,21 @@ export default async function HomePage() {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-navy via-navy to-background">
+      <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-surface via-background to-background">
         {/* Live neural mesh — the network of experts feeding a model, made
-            literal. Sits under a soft wash so headline contrast holds. */}
-        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_55%,transparent),transparent_60%)]" />
+            literal. Light tone: same blue hue range as the dark version
+            elsewhere, pulled darker so it holds up against this background. */}
+        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} tone="light" opacity={0.8} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
-            <Badge variant="outline" className="border-white/20 bg-white/5 text-white/80">
+            <Badge variant="outline" className="border-primary/25 bg-primary/5 text-primary">
               Human expertise for better AI
             </Badge>
-            <h1 className="mt-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            <h1 className="mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Train better AI with verified human expertise.
             </h1>
-            <p className="mt-6 max-w-xl text-lg text-white/70">
+            <p className="mt-6 max-w-xl text-lg text-muted-foreground">
               {brand.name} connects leading AI teams with carefully vetted specialists who create, evaluate, and
               improve high-quality training data.
             </p>
@@ -143,7 +144,7 @@ export default async function HomePage() {
                   Book a demo <ArrowRight className="size-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" className="border-white/25 bg-transparent text-white hover:bg-white/10" asChild>
+              <Button size="lg" variant="outline" asChild>
                 <Link href="/apply">Become an AI trainer</Link>
               </Button>
             </div>

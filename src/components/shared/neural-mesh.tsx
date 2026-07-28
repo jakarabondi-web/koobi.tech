@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils/cn";
  *
  * Honours `prefers-reduced-motion` (renders a static frame) and pauses
  * entirely while the tab is hidden so it costs nothing in the background.
+ *
+ * `tone="light"` swaps the pale, dark-surface palette for a darker, more
+ * saturated one tuned for a white/near-white background — same hue range,
+ * inverted lightness, so it still reads as "the same mesh" on either surface.
  */
 
 type Node = { x: number; y: number; vx: number; vy: number; z: number };
@@ -26,6 +30,13 @@ export function NeuralMesh({
   /** "up" fades the mesh out toward the top, "none" keeps it even. */
   fade = "none",
   opacity = 1,
+  /**
+   * "dark" (default) is tuned for the navy surfaces this started on — pale,
+   * low-saturation lines that read as a soft glow. "light" is for a white/
+   * near-white surface: the same blue hue range, but pulled much darker and
+   * more saturated so the mesh doesn't wash out against a light background.
+   */
+  tone = "dark",
 }: {
   className?: string;
   density?: number;
@@ -33,6 +44,7 @@ export function NeuralMesh({
   linkDistance?: number;
   fade?: "up" | "down" | "none";
   opacity?: number;
+  tone?: "dark" | "light";
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -95,8 +107,10 @@ export function NeuralMesh({
           if (dist >= linkDistance) continue;
           const f = ((fadeAt(a.y) + fadeAt(b.y)) / 2) * opacity;
           const hue = 205 + ((a.z + b.z) / 2) * 40;
-          ctx.strokeStyle = `hsla(${hue}, 52%, 70%, ${(1 - dist / linkDistance) * 0.34 * f})`;
-          ctx.lineWidth = 0.7;
+          const alpha = (1 - dist / linkDistance) * (tone === "light" ? 0.5 : 0.34) * f;
+          ctx.strokeStyle =
+            tone === "light" ? `hsla(${hue}, 62%, 42%, ${alpha})` : `hsla(${hue}, 52%, 70%, ${alpha})`;
+          ctx.lineWidth = tone === "light" ? 0.9 : 0.7;
           ctx.beginPath();
           ctx.moveTo(a.x, a.y);
           ctx.lineTo(b.x, b.y);
@@ -107,7 +121,11 @@ export function NeuralMesh({
       for (const n of nodes) {
         const f = fadeAt(n.y) * opacity;
         const hue = 205 + n.z * 40;
-        ctx.fillStyle = `hsla(${hue}, 58%, ${64 + n.z * 16}%, ${(0.35 + n.z * 0.52) * f})`;
+        const alpha = (0.35 + n.z * 0.52) * f;
+        ctx.fillStyle =
+          tone === "light"
+            ? `hsla(${hue}, 68%, ${32 + n.z * 14}%, ${alpha})`
+            : `hsla(${hue}, 58%, ${64 + n.z * 16}%, ${alpha})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, 1 + n.z * 2, 0, Math.PI * 2);
         ctx.fill();
@@ -145,7 +163,7 @@ export function NeuralMesh({
       observer.disconnect();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [density, maxNodes, linkDistance, fade, opacity]);
+  }, [density, maxNodes, linkDistance, fade, opacity, tone]);
 
   return (
     <canvas
