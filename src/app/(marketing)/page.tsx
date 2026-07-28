@@ -31,10 +31,11 @@ import { brand } from "@/config/brand";
 import { auth } from "@/lib/auth";
 import { dashboardPathForSurface } from "@/lib/permissions/roles";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { InteractiveHero } from "@/components/marketing/interactive-hero";
+import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
-import { LiveStatStrip } from "@/components/marketing/live-stat-strip";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 
 export const metadata: Metadata = {
@@ -120,26 +121,17 @@ export default async function HomePage() {
     <>
       {/* Hero */}
       <section className="relative overflow-hidden border-b border-border bg-gradient-to-b from-navy via-navy to-background">
-        {/* Live network map — not decorative sci-fi glow, but the literal
-            shape of the business: specialists worldwide, arcing into one
-            shared pipeline in real time. */}
-        <WorldNetworkMap opacity={0.9} />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_60%,transparent),transparent_60%)]" />
+        {/* Live neural mesh — the network of experts feeding a model, made
+            literal. Sits under a soft wash so headline contrast holds. */}
+        <NeuralMesh density={0.00016} maxNodes={95} linkDistance={132} />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--navy)_55%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
-            <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-widest text-accent-cyan">
-              <span className="relative flex size-1.5">
-                <span className="absolute inline-flex size-full animate-ping rounded-full bg-accent-cyan opacity-75" />
-                <span className="relative inline-flex size-1.5 rounded-full bg-accent-cyan" />
-              </span>
-              Global expert network · live
-            </div>
-            <h1 className="mt-5 text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl">
-              Train better AI
-              <br />
-              <span className="text-accent-cyan">with verified</span>
-              <br />
-              human expertise.
+            <Badge variant="outline" className="border-white/20 bg-white/5 text-white/80">
+              Human expertise for better AI
+            </Badge>
+            <h1 className="mt-5 text-4xl font-bold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Train better AI with verified human expertise.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-white/70">
               {brand.name} connects leading AI teams with carefully vetted specialists who create, evaluate, and
@@ -155,12 +147,11 @@ export default async function HomePage() {
                 <Link href="/apply">Become an AI trainer</Link>
               </Button>
             </div>
-            <div className="mt-10">
-              <LiveStatStrip />
-            </div>
           </div>
 
-          {/* Live, playable miniature of the actual task workflow */}
+          {/* Live, playable miniature of the actual task workflow — its own
+              stat row already covers tasks/experts/agreement, so the hero
+              doesn't need a second copy of the same numbers next to it. */}
           <div className="mx-auto w-full max-w-md">
             <InteractiveHero />
           </div>
