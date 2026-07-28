@@ -12,6 +12,7 @@ import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { AppealButton } from "@/components/trainer/appeal-button";
 
 export const metadata: Metadata = { title: "Quality" };
 
@@ -23,7 +24,7 @@ export default async function QualityPage() {
   await requireApprovedTrainer(session.user.id);
   const userId = session.user.id;
 
-  const [profile, snapshot, reviews, goldResults, probation] = await Promise.all([
+  const [profile, snapshot, reviews, goldResults, probation, appeals] = await Promise.all([
     prisma.trainerProfile.findUnique({ where: { userId } }),
     prisma.qualitySnapshot.findFirst({
       where: { trainer: { userId } },
@@ -37,7 +38,10 @@ export default async function QualityPage() {
     }),
     prisma.goldTaskResult.findMany({ where: { userId } }),
     getProbationStatus(userId),
+    prisma.qualityAppeal.findMany({ where: { userId }, select: { reviewId: true, status: true } }),
   ]);
+
+  const appealByReviewId = new Map(appeals.filter((a) => a.reviewId).map((a) => [a.reviewId as string, a.status]));
 
   const approved = reviews.filter((r) => r.decision === "APPROVED").length;
   const revisions = reviews.filter((r) => r.decision === "REVISION_REQUESTED").length;
@@ -110,6 +114,9 @@ export default async function QualityPage() {
                       </Badge>
                     </div>
                     {r.feedback ? <p className="text-xs text-muted-foreground">{r.feedback}</p> : null}
+                    {r.decision !== "APPROVED" ? (
+                      <AppealButton reviewId={r.id} existingStatus={appealByReviewId.get(r.id)} />
+                    ) : null}
                   </li>
                 ))}
               </ul>

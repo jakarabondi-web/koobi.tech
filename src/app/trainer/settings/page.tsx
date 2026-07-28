@@ -8,6 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { NotificationPreferences, SensitiveContentToggle } from "@/components/trainer/settings-forms";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
+import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -15,9 +17,10 @@ export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [user, profile] = await Promise.all([
+  const [user, profile, recentLogins] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.user.id } }),
     prisma.trainerProfile.findUnique({ where: { userId: session.user.id } }),
+    recentLoginSummaries(session.user.id),
   ]);
 
   return (
@@ -46,7 +49,20 @@ export default async function SettingsPage() {
           <CardDescription>Require a code from your phone to sign in.</CardDescription>
         </CardHeader>
         <CardContent className="pb-6">
-          <TwoFactorSettings initiallyEnabled={user?.twoFactorEnabled ?? false} />
+          <TwoFactorSettings
+            initiallyEnabled={user?.twoFactorEnabled ?? false}
+            recoveryCodesRemaining={user?.twoFactorRecoveryCodes.length ?? 0}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sessions</CardTitle>
+          <CardDescription>Where you&apos;re currently signed in.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <SessionsPanel recentLogins={recentLogins} />
         </CardContent>
       </Card>
 

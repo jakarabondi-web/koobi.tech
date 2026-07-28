@@ -151,3 +151,67 @@ export async function disable2fa(_prev: DisableState, formData: FormData): Promi
 
   return { status: "success", message: "Two-factor authentication is off." };
 }
+
+export type RegenerateRecoveryCodesState = {
+  status: "idle" | "success" | "error";
+  message?: string;
+  /** Shown exactly once, immediately after regenerating. */
+  recoveryCodes?: string[];
+};
+
+/**
+ * Invalidates every existing recovery code and issues a fresh set of 10.
+ *
+ * Password-gated for the same reason disable2fa is: recovery codes are a
+ * second factor's bypass, so replacing them needs proof of the first factor,
+ * not just an open session. Old codes stop working the instant this runs —
+ * a partially-used set isn't topped back up to 10, it's fully replaced, so
+ * someone who saw an old code (a shoulder-surf, a compromised note) can't
+ * use it after the account holder notices and regenerates.
+ */
+export async function regenerateRecoveryCodes(
+  _prev: RegenerateRecoveryCodesState,
+  formData: FormData
+): Promise<RegenerateRecoveryCodesState> {
+  const session = await auth();
+  if (!session?.user) return { status: "error", message: "Not signed in." };
+
+  const parsed = disableSchema.safeParse({ password: formData.get("password") });
+  if (!parsed.success) return { status: "error", message: parsed.error.issues[0].message };
+
+  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  if (!user?.passwordHash) {
+    return {
+      status: "error",
+      message: "This account has no password set, so recovery codes can't be regenerated from here.",
+    };
+  }
+  if (!user.twoFactorEnabled) {
+    return { status: "error", message: "Two-factor authentication isn't enabled." };
+  }
+
+  const valid = await bcrypt.compare(parsed.data.password, user.passwordHash);
+  if (!valid) return { status: "error", message: "Incorrect password." };
+
+  const { plaintext, hashed } = generateRecoveryCodes();
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { twoFactorRecoveryCodes: hashed },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      actorId: user.id,
+      action: "user.two_factor_recovery_codes_regenerated",
+      entityType: "User",
+      entityId: user.id,
+    },
+  });
+
+  return {
+    status: "success",
+    message: "Recovery codes regenerated. Your old codes no longer work.",
+    recoveryCodes: plaintext,
+  };
+}

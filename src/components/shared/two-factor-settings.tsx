@@ -6,9 +6,11 @@ import { ShieldCheck, ShieldOff, Copy, Check } from "lucide-react";
 import {
   confirmEnroll2fa,
   disable2fa,
+  regenerateRecoveryCodes,
   startEnroll2fa,
   type ConfirmEnrollState,
   type DisableState,
+  type RegenerateRecoveryCodesState,
 } from "@/server/actions/two-factor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 
 const confirmInitial: ConfirmEnrollState = { status: "idle" };
 const disableInitial: DisableState = { status: "idle" };
+const regenerateInitial: RegenerateRecoveryCodesState = { status: "idle" };
 
 function RecoveryCodes({ codes }: { codes: string[] }) {
   const [copied, setCopied] = useState(false);
@@ -123,6 +126,41 @@ function EnrollFlow({ onDone }: { onDone: () => void }) {
   );
 }
 
+function RegenerateFlow({ onDone }: { onDone: () => void }) {
+  const [state, action, pending] = useActionState(regenerateRecoveryCodes, regenerateInitial);
+
+  if (state.status === "success" && state.recoveryCodes) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">{state.message}</p>
+        <RecoveryCodes codes={state.recoveryCodes} />
+        <Button size="sm" onClick={onDone}>
+          Done
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <form action={action} className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        This replaces all of your existing recovery codes — any you saved before will stop working.
+      </p>
+      <Label htmlFor="tfa-regenerate-password">Confirm your password</Label>
+      <Input id="tfa-regenerate-password" name="password" type="password" required autoComplete="current-password" />
+      {state.status === "error" ? <p className="text-sm text-destructive">{state.message}</p> : null}
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={pending}>
+          {pending ? "Regenerating…" : "Regenerate recovery codes"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onDone}>
+          Cancel
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function DisableFlow({ onDone }: { onDone: () => void }) {
   const [state, action, pending] = useActionState(disable2fa, disableInitial);
 
@@ -143,10 +181,30 @@ function DisableFlow({ onDone }: { onDone: () => void }) {
   );
 }
 
-export function TwoFactorSettings({ initiallyEnabled }: { initiallyEnabled: boolean }) {
+export function TwoFactorSettings({
+  initiallyEnabled,
+  recoveryCodesRemaining = 0,
+}: {
+  initiallyEnabled: boolean;
+  /** Omitted for callers that don't have it handy — the count is only shown when known. */
+  recoveryCodesRemaining?: number;
+}) {
   const [enabled, setEnabled] = useState(initiallyEnabled);
   const [enrolling, setEnrolling] = useState(false);
   const [disabling, setDisabling] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
+  const [codesRemaining, setCodesRemaining] = useState(recoveryCodesRemaining);
+
+  if (enabled && regenerating) {
+    return (
+      <RegenerateFlow
+        onDone={() => {
+          setCodesRemaining(10);
+          setRegenerating(false);
+        }}
+      />
+    );
+  }
 
   if (enabled && !disabling) {
     return (
@@ -157,9 +215,20 @@ export function TwoFactorSettings({ initiallyEnabled }: { initiallyEnabled: bool
         <p className="text-sm text-muted-foreground">
           Your account requires a code from your authenticator app to sign in.
         </p>
-        <Button size="sm" variant="outline" onClick={() => setDisabling(true)}>
-          <ShieldOff className="size-4" /> Turn off
-        </Button>
+        <p className="text-sm text-muted-foreground">
+          {codesRemaining} recovery {codesRemaining === 1 ? "code" : "codes"} remaining.{" "}
+          {codesRemaining <= 2 ? (
+            <span className="font-medium text-warning-foreground">Running low — consider regenerating.</span>
+          ) : null}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => setRegenerating(true)}>
+            Regenerate recovery codes
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setDisabling(true)}>
+            <ShieldOff className="size-4" /> Turn off
+          </Button>
+        </div>
       </div>
     );
   }

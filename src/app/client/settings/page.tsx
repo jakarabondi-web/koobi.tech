@@ -7,18 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
+import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Settings" };
 
 export default async function ClientSettingsPage() {
   const tenant = await requireTenant();
 
-  const [org, me] = await Promise.all([
+  const [org, me, recentLogins] = await Promise.all([
     prisma.organization.findUniqueOrThrow({
       where: { id: tenant.organizationId },
       include: { clientProfile: true, _count: { select: { members: true, projects: true } } },
     }),
     prisma.user.findUnique({ where: { id: tenant.userId } }),
+    recentLoginSummaries(tenant.userId),
   ]);
 
   return (
@@ -64,7 +67,20 @@ export default async function ClientSettingsPage() {
           <CardDescription>Require a code from your phone to sign in.</CardDescription>
         </CardHeader>
         <CardContent className="pb-6">
-          <TwoFactorSettings initiallyEnabled={me?.twoFactorEnabled ?? false} />
+          <TwoFactorSettings
+            initiallyEnabled={me?.twoFactorEnabled ?? false}
+            recoveryCodesRemaining={me?.twoFactorRecoveryCodes.length ?? 0}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sessions</CardTitle>
+          <CardDescription>Where you&apos;re currently signed in.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <SessionsPanel recentLogins={recentLogins} />
         </CardContent>
       </Card>
     </div>

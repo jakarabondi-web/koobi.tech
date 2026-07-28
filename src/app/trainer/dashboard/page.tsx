@@ -17,6 +17,7 @@ import { WeeklyTaskChart, type WeeklyTaskPoint } from "@/components/charts/weekl
 import { GateBanner } from "@/components/trainer/gate-banner";
 import { OnboardingProgress } from "@/components/trainer/onboarding-progress";
 import { getTrainerGate } from "@/server/services/trainer-gate";
+import { credentialExpiryStatus, daysUntil } from "@/lib/utils/credential-expiry";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -94,6 +95,7 @@ export default async function TrainerDashboardPage() {
     earnings,
     recentReviews,
     recommendedProjects,
+    identityVerification,
   ] = await Promise.all([
     prisma.trainerProfile.findUnique({ where: { userId } }),
     prisma.projectAssignment.count({ where: { userId, status: "ACTIVE" } }),
@@ -116,7 +118,11 @@ export default async function TrainerDashboardPage() {
       orderBy: { createdAt: "desc" },
       take: 3,
     }),
+    prisma.identityVerification.findUnique({ where: { userId }, select: { status: true, expiresAt: true } }),
   ]);
+
+  const identityExpiresAt = identityVerification?.status === "VERIFIED" ? identityVerification.expiresAt : null;
+  const identityExpiry = credentialExpiryStatus(identityExpiresAt);
 
   const pendingCents = earnings
     .filter((e) => e.status === "PENDING_REVIEW" || e.status === "APPROVED")
@@ -154,6 +160,23 @@ export default async function TrainerDashboardPage() {
             </div>
             <Button variant="outline" size="sm" asChild>
               <Link href="/trainer/profile">Finish profile</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {identityExpiry === "expired" || identityExpiry === "expiring_soon" ? (
+        <Card className={identityExpiry === "expired" ? "border-destructive/40" : "border-warning/40"}>
+          <CardContent className="flex flex-col gap-3 pt-5 pb-5 sm:flex-row sm:items-center sm:justify-between">
+            <p className={`text-sm ${identityExpiry === "expired" ? "text-destructive" : "text-warning-foreground"}`}>
+              {identityExpiry === "expired"
+                ? "Your identity verification has expired. Re-verify to keep working on client tasks."
+                : `Your identity verification expires in ${daysUntil(identityExpiresAt!)} days.`}
+            </p>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/trainer/verification">
+                {identityExpiry === "expired" ? "Re-verify now" : "View details"}
+              </Link>
             </Button>
           </CardContent>
         </Card>

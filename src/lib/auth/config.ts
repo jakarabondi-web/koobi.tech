@@ -22,6 +22,7 @@ export const authConfig: NextAuthConfig = {
       if (user) {
         token.userId = user.id;
         token.roles = (user as { roles?: GlobalRole[] }).roles ?? [];
+        token.sessionVersion = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
       return token;
     },

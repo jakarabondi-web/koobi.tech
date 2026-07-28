@@ -31,6 +31,7 @@ type ResolvedUser = {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  sessionVersion: number;
 };
 
 export type OAuthResolution =
@@ -160,6 +161,7 @@ export async function resolveOAuthSignIn(
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
+      sessionVersion: user.sessionVersion,
     },
   };
 }

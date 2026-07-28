@@ -1,15 +1,17 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ShieldCheck, FileCheck, Globe, UserCheck } from "lucide-react";
+import { ShieldCheck, FileCheck, Globe, UserCheck, CalendarClock } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { credentialExpiryStatus, daysUntil } from "@/lib/utils/credential-expiry";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata: Metadata = { title: "Compliance" };
 
@@ -17,13 +19,22 @@ export default async function CompliancePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [identityCounts, consents, jurisdictionRules, verifiedUsers] = await Promise.all([
+  const [identityCounts, consents, jurisdictionRules, verifiedUsers, verifiedWithExpiry] = await Promise.all([
     prisma.identityVerification.groupBy({ by: ["status"], _count: true }),
     prisma.consentRecord.findMany({ include: { user: true }, orderBy: { acceptedAt: "desc" }, take: 25 }),
     prisma.projectJurisdictionRule.findMany({ include: { project: true } }),
     prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
+    prisma.identityVerification.findMany({
+      where: { status: "VERIFIED", expiresAt: { not: null } },
+      include: { user: { select: { firstName: true, lastName: true, email: true } } },
+      orderBy: { expiresAt: "asc" },
+    }),
   ]);
   const idCount = (s: string) => identityCounts.find((c) => c.status === s)?._count ?? 0;
+
+  const expiringOrExpired = verifiedWithExpiry
+    .map((v) => ({ ...v, expiryStatus: credentialExpiryStatus(v.expiresAt) }))
+    .filter((v) => v.expiryStatus === "expiring_soon" || v.expiryStatus === "expired");
 
   return (
     <div className="space-y-6">
@@ -32,12 +43,44 @@ export default async function CompliancePage() {
         description="Identity verification coverage, consent records, and jurisdiction controls."
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard label="Identity verified" value={String(idCount("VERIFIED"))} icon={UserCheck} />
         <KpiCard label="Verification pending" value={String(idCount("PENDING"))} icon={ShieldCheck} />
         <KpiCard label="Email verified users" value={String(verifiedUsers)} icon={FileCheck} />
         <KpiCard label="Jurisdiction rules" value={String(jurisdictionRules.length)} icon={Globe} />
+        <KpiCard label="Expiring/expired IDs" value={String(expiringOrExpired.length)} icon={CalendarClock} />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Expiring & expired identity verifications</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {expiringOrExpired.length === 0 ? (
+            <EmptyState icon={CalendarClock} title="Nothing expiring"
+              description="Verified trainers whose ID is expiring within 30 days, or has already expired, appear here." />
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Trainer</TableHead><TableHead>Expires</TableHead><TableHead>Status</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {expiringOrExpired.map((v) => (
+                  <TableRow key={v.id}>
+                    <TableCell>{v.user.firstName} {v.user.lastName} <span className="text-muted-foreground">({v.user.email})</span></TableCell>
+                    <TableCell className="text-sm">{v.expiresAt!.toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      {v.expiryStatus === "expired" ? (
+                        <Badge variant="destructive">Expired</Badge>
+                      ) : (
+                        <Badge variant="warning">{daysUntil(v.expiresAt!)} days left</Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">Data handling</p>

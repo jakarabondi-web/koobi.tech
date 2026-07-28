@@ -63,12 +63,18 @@ model User {
   lastLoginIp       String?
   failedLoginCount  Int       @default(0)
   lockedUntil       DateTime?
+  /// Bumped to invalidate every JWT session at once ("sign out everywhere").
+  /// Sessions are stateless (JWT strategy, no server-side session store), so
+  /// this is the only revocation lever available — checked on every request
+  /// in the auth jwt() callback against the value embedded in the token.
+  sessionVersion    Int       @default(0)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   deletedAt         DateTime?
 
   accounts          Account[]
   sessions          Session[]
+  loginEvents       LoginEvent[]
   ssoTickets        SsoTicket[]
   twoFactorChallenges TwoFactorChallenge[]
   roles             UserRole[]
@@ -94,9 +100,26 @@ model User {
   locationSignals   LocationSignal[]
   apiKeys           ApiKey[]
   disputesFiled     Dispute[]
+  qualityAppeals    QualityAppeal[]
 
   @@index([status])
   @@map("users")
+}
+
+/// Informational sign-in log — not the auth mechanism itself (sessions are
+/// stateless JWTs). Exists purely so a user can see "where am I signed in,"
+/// the same way any account-security page shows recent activity.
+model LoginEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("login_events")
 }
 
 enum UserStatus {
@@ -890,6 +913,7 @@ model TaskSubmission {
   versions    SubmissionVersion[]
   reviews     Review[]
   adjudication Adjudication?
+  appeals     QualityAppeal[]
 
   @@index([taskId])
   @@map("task_submissions")
@@ -996,6 +1020,7 @@ model Review {
   submission TaskSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   reviewer   User           @relation("ReviewedBy", fields: [reviewerId], references: [id])
   scores     ReviewScore[]
+  appeals    QualityAppeal[]
 
   @@index([submissionId])
   @@map("reviews")
@@ -1115,7 +1140,12 @@ model QualityAppeal {
   decidedAt    DateTime?
   createdAt    DateTime     @default(now())
 
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  submission TaskSubmission? @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  review     Review?         @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
   @@index([status])
+  @@index([userId])
   @@map("quality_appeals")
 }
 

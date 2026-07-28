@@ -5,6 +5,7 @@ import { ShieldCheck, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { getIdentityProvider } from "@/lib/identity";
+import { credentialExpiryStatus, daysUntil } from "@/lib/utils/credential-expiry";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +81,33 @@ export default async function VerificationPage() {
           {record?.notes ? <p className="text-sm text-muted-foreground">{record.notes}</p> : null}
 
           {record?.status === "VERIFIED" ? (
-            <p className="text-sm text-success">
-              Your identity is verified. Nothing further is needed.
-            </p>
+            (() => {
+              const expiry = credentialExpiryStatus(record.expiresAt);
+              if (expiry === "expired") {
+                return (
+                  <div className="space-y-3">
+                    <p className="text-sm text-destructive">
+                      Your verification expired{record.expiresAt ? ` on ${record.expiresAt.toLocaleDateString()}` : ""}.
+                      Re-verify to keep working on client tasks.
+                    </p>
+                    <VerificationStarter />
+                  </div>
+                );
+              }
+              if (expiry === "expiring_soon" && record.expiresAt) {
+                return (
+                  <p className="text-sm text-warning-foreground">
+                    Your verification expires in {daysUntil(record.expiresAt)} days
+                    ({record.expiresAt.toLocaleDateString()}). We&apos;ll prompt you to re-verify before then.
+                  </p>
+                );
+              }
+              return (
+                <p className="text-sm text-success">
+                  Your identity is verified. Nothing further is needed.
+                </p>
+              );
+            })()
           ) : record?.status === "PENDING" ? (
             <VerificationRefresher />
           ) : (

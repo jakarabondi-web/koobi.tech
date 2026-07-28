@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { headers } from "next/headers";
 
 import { prisma } from "@/lib/db/prisma";
 import type { GlobalRole } from "@/lib/permissions/roles";
@@ -14,6 +15,7 @@ import {
 import { decryptSecret } from "@/lib/security/field-encryption";
 import { isSupportedOAuthAccount } from "@/lib/auth/oauth-providers";
 import { resolveOAuthSignIn } from "@/server/services/oauth-account";
+import { recordSuccessfulLogin } from "@/lib/auth/login-events";
 
 import { authConfig } from "./config";
 
@@ -66,7 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
@@ -125,10 +127,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new EmailUnverifiedError();
         }
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
-        });
+        await recordSuccessfulLogin(user.id, request.headers);
 
         // The password is proven at this point, but a 2FA-enabled account
         // still needs a second factor before a session is minted. There is
@@ -149,6 +148,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: `${user.firstName} ${user.lastName}`,
           image: user.avatarUrl ?? undefined,
           roles,
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -165,7 +165,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "sso-ticket",
       name: "Single sign-on",
       credentials: { ticket: { label: "Ticket", type: "text" } },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const ticket = typeof raw?.ticket === "string" ? raw.ticket : null;
         if (!ticket) return null;
 
@@ -181,10 +181,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         });
         if (!row || row.user.status !== "ACTIVE") return null;
 
-        await prisma.user.update({
-          where: { id: row.userId },
-          data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
-        });
+        await recordSuccessfulLogin(row.userId, request.headers);
 
         return {
           id: row.user.id,
@@ -192,6 +189,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: `${row.user.firstName} ${row.user.lastName}`,
           image: row.user.avatarUrl ?? undefined,
           roles: row.user.roles.map((r) => r.role.key) as GlobalRole[],
+          sessionVersion: row.user.sessionVersion,
         };
       },
     }),
@@ -213,7 +211,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         challenge: { label: "Challenge", type: "text" },
         code: { label: "Code", type: "text" },
       },
-      async authorize(raw) {
+      async authorize(raw, request) {
         const challengeToken = typeof raw?.challenge === "string" ? raw.challenge : null;
         const code = typeof raw?.code === "string" ? raw.code.trim() : null;
         if (!challengeToken || !code) return null;
@@ -257,10 +255,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
         }
 
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date() },
-        });
+        await recordSuccessfulLogin(user.id, request.headers);
 
         return {
           id: user.id,
@@ -268,6 +263,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name: `${user.firstName} ${user.lastName}`,
           image: user.avatarUrl ?? undefined,
           roles: user.roles.map((r) => r.role.key) as GlobalRole[],
+          sessionVersion: user.sessionVersion,
         };
       },
     }),
@@ -335,6 +331,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Auth.js threads this object internally.
       user.id = resolution.user.id;
       (user as { roles?: GlobalRole[] }).roles = resolution.user.roles;
+      (user as { sessionVersion?: number }).sessionVersion = resolution.user.sessionVersion;
+
+      // No Request object reaches this callback (unlike Credentials'
+      // authorize), so the incoming headers are read from the request-scoped
+      // next/headers store instead — this callback only ever runs inside the
+      // OAuth callback route handler's request.
+      await recordSuccessfulLogin(resolution.user.id, await headers());
 
       return true;
     },
@@ -367,6 +370,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.roles = linked.user.roles.map((r) => r.role.key) as GlobalRole[];
         }
       }
+
+      // "Sign out everywhere": on every request that re-decodes an existing
+      // token (params.user is only present at the moment of sign-in, never
+      // on a later request), compare the version embedded in the token
+      // against the account's current value. A mismatch means the account
+      // holder bumped it since this token was issued, so the token is dead
+      // regardless of its expiry. This is a Node-only check — the edge-safe
+      // authConfig used by middleware has no Prisma access, so a revoked
+      // session stays valid for edge routing decisions until the next
+      // Node-runtime auth() call (Server Component/Action) rejects it.
+      const tokenUserId = token.userId;
+      if (!params.user && typeof tokenUserId === "string") {
+        const current = await prisma.user.findUnique({
+          where: { id: tokenUserId },
+          select: { sessionVersion: true, status: true },
+        });
+        if (!current || current.status !== "ACTIVE" || current.sessionVersion !== token.sessionVersion) {
+          return null;
+        }
+      }
+
       return token;
     },
   },

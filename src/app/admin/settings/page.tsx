@@ -11,6 +11,8 @@ import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
+import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Platform settings" };
 
@@ -18,7 +20,10 @@ export default async function AdminSettingsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const me = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const [me, recentLogins] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.user.id } }),
+    recentLoginSummaries(session.user.id),
+  ]);
 
   const identity = getIdentityProvider();
   const payouts = listPayoutProviders();
@@ -49,7 +54,20 @@ export default async function AdminSettingsPage() {
             <span className="text-muted-foreground">Email</span>
             <span>{me?.email}</span>
           </div>
-          <TwoFactorSettings initiallyEnabled={me?.twoFactorEnabled ?? false} />
+          <TwoFactorSettings
+            initiallyEnabled={me?.twoFactorEnabled ?? false}
+            recoveryCodesRemaining={me?.twoFactorRecoveryCodes.length ?? 0}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Sessions</CardTitle>
+          <CardDescription>Where you&apos;re currently signed in.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <SessionsPanel recentLogins={recentLogins} />
         </CardContent>
       </Card>
 

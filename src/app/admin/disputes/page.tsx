@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Scale } from "lucide-react";
+import { Scale, Flag } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions/can";
 import { prisma } from "@/lib/db/prisma";
+import { listOpenAppeals } from "@/server/services/appeals";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
+import { Badge } from "@/components/ui/badge";
+import { AppealDecisionForm } from "@/components/admin/appeal-decision-form";
 
 export const metadata: Metadata = { title: "Disputes" };
 const usd = (c: number | null) => (c === null ? "—" : (c / 100).toLocaleString("en-US", { style: "currency", currency: "USD" }));
@@ -17,10 +21,11 @@ const usd = (c: number | null) => (c === null ? "—" : (c / 100).toLocaleString
 export default async function DisputesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canDecide = can(session.user.roles, "dispute.resolve");
 
   const [disputes, appeals] = await Promise.all([
     prisma.dispute.findMany({ include: { user: true }, orderBy: { createdAt: "desc" } }),
-    prisma.qualityAppeal.findMany({ where: { status: { in: ["OPEN", "UNDER_REVIEW"] } } }),
+    listOpenAppeals(),
   ]);
   const open = disputes.filter((d) => d.status === "OPEN" || d.status === "UNDER_REVIEW");
 
@@ -29,11 +34,55 @@ export default async function DisputesPage() {
       <PageHeader title="Disputes & appeals" description="Payment disputes and quality appeals raised by trainers." />
       <div className="grid gap-4 sm:grid-cols-3">
         <KpiCard label="Open disputes" value={String(open.length)} icon={Scale} />
-        <KpiCard label="Open quality appeals" value={String(appeals.length)} />
+        <KpiCard label="Open quality appeals" value={String(appeals.length)} icon={Flag} />
         <KpiCard label="Total disputes" value={String(disputes.length)} />
       </div>
+
       <Card>
-        <CardContent className="pt-6 pb-6">
+        <CardHeader><CardTitle className="text-base">Quality appeals</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {appeals.length === 0 ? (
+            <EmptyState icon={Flag} title="No open appeals"
+              description="Trainers appealing a review decision will show up here." />
+          ) : (
+            <ul className="space-y-4">
+              {appeals.map((a) => (
+                <li key={a.id} className="space-y-2 rounded-lg border border-border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {a.user.firstName} {a.user.lastName}
+                        {a.submission ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · {a.submission.task.project.name}
+                            {a.submission.task.template ? ` — ${a.submission.task.template.name}` : ""}
+                          </span>
+                        ) : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Appealing: <Badge variant={a.review?.decision === "REJECTED" ? "destructive" : "warning"}>
+                          {a.review?.decision.replace(/_/g, " ").toLowerCase() ?? "—"}
+                        </Badge>
+                      </p>
+                    </div>
+                    <StatusBadge status={a.status} />
+                  </div>
+                  <p className="text-sm">{a.reason}</p>
+                  {a.review?.feedback ? (
+                    <p className="text-xs text-muted-foreground">Original feedback: {a.review.feedback}</p>
+                  ) : null}
+                  {canDecide ? <AppealDecisionForm appealId={a.id} /> : null}
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Payment disputes</CardTitle></CardHeader>
+        <CardContent className="pb-6">
           {disputes.length === 0 ? (
             <EmptyState icon={Scale} title="No disputes"
               description="Payment disputes raised by trainers will appear here for review." />
