@@ -205,7 +205,10 @@ export default async function HomePage() {
             </Badge>
             <h1 className="mt-5 text-4xl font-medium tracking-tight text-foreground sm:text-5xl lg:text-6xl">
               Train better AI with{" "}
-              <span className="text-gradient-brand font-extrabold">verified human expertise</span>.
+              <span className="font-extrabold text-foreground underline decoration-accent-amber decoration-4 underline-offset-8">
+                verified human expertise
+              </span>
+              .
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
               {brand.name} connects leading AI teams with carefully vetted specialists who create, evaluate, and
