@@ -197,11 +197,15 @@ export default async function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_0%,color-mix(in_oklch,var(--primary)_10%,transparent),transparent_60%)]" />
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-28">
           <div>
-            <Badge variant="outline" className="border-primary/25 bg-primary/5 text-primary">
+            <Badge
+              variant="outline"
+              className="border-primary/25 bg-primary/5 font-mono text-[11px] uppercase tracking-widest text-primary"
+            >
               Human expertise for better AI
             </Badge>
-            <h1 className="mt-5 text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Train better AI with verified human expertise.
+            <h1 className="mt-5 text-4xl font-medium tracking-tight text-foreground sm:text-5xl lg:text-6xl">
+              Train better AI with{" "}
+              <span className="text-gradient-brand font-extrabold">verified human expertise</span>.
             </h1>
             <p className="mt-6 max-w-xl text-lg text-muted-foreground">
               {brand.name} connects leading AI teams with carefully vetted specialists who create, evaluate, and

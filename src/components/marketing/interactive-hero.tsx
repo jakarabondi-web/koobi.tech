@@ -71,7 +71,7 @@ export function InteractiveHero() {
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-surface p-3 shadow-xl shadow-primary/5 sm:p-4">
+    <div className="rounded-2xl border-2 border-border bg-surface p-3 shadow-xl shadow-primary/5 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2">
           <span className="flex size-6 items-center justify-center rounded-md bg-accent-violet/15 text-accent-violet">
@@ -86,13 +86,13 @@ export function InteractiveHero() {
         </p>
       </div>
 
-      <div className="rounded-xl border border-border bg-card p-4">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="rounded-xl border-2 border-border/80 bg-card p-4 shadow-sm">
+        <p className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Prompt
         </p>
         <p className="mt-1.5 text-sm font-medium">{sample.prompt}</p>
 
-        <p className="mt-4 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mt-4 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
           Which response is better?
         </p>
 
@@ -112,15 +112,16 @@ export function InteractiveHero() {
                   // their content by default once the box is taller than its
                   // content (as this one is, next to the longer response) —
                   // without this the label drifts away from the box's top.
-                  "flex flex-col items-stretch rounded-lg border p-3 text-left transition-colors",
+                  "flex flex-col items-stretch rounded-lg border-2 p-3 text-left transition-all",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                  !revealed && "cursor-pointer border-border hover:border-primary hover:bg-accent/50",
-                  revealed && isExpert && "border-success bg-success/10",
-                  revealed && !isExpert && "border-border opacity-60"
+                  !revealed &&
+                    "cursor-pointer border-border/70 hover:-translate-y-0.5 hover:border-primary hover:bg-accent/50 hover:shadow-md",
+                  revealed && isExpert && "border-success bg-success/10 shadow-md shadow-success/10",
+                  revealed && !isExpert && "border-border/50 opacity-60"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-semibold text-muted-foreground">
+                  <span className="font-mono text-[11px] font-semibold text-muted-foreground">
                     Response {side.toUpperCase()}
                   </span>
                   {revealed && isExpert ? (
