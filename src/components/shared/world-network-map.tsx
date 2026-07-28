@@ -3,22 +3,21 @@
 import { useEffect, useRef } from "react";
 
 import { cn } from "@/lib/utils/cn";
-import { GLOBE_LAND_DOTS, GLOBE_OCEAN_DOTS } from "@/components/shared/globe-dots";
+import { CONTINENT_RINGS } from "@/components/shared/globe-continents";
+import { GLOBE_LAND_DOTS } from "@/components/shared/globe-dots";
 
 /**
  * The signature visual: a live cartographic network diagram, not a generic
  * particle field. Traivr's actual business is literal — specialists spread
  * across the globe feed a shared pipeline — so the background draws that
- * directly: a dot-matrix world map (real coastlines from Natural Earth
- * 110m, see globe-dots.ts — land dots denser and brighter, ocean dots
- * sparse and faint) with animated great-circle-style connections that fire
- * directly between pairs of real cities, not everything converging on one
- * arbitrary point in the ocean.
+ * directly: real coastline outlines (world-atlas 110m, simplified once into
+ * globe-continents.ts — a dot cloud alone didn't read as an actual map)
+ * filled with a warm indigo tint and dot texture, plus animated
+ * great-circle-style connections that fire directly between pairs of real
+ * cities, not everything converging on one arbitrary point in the ocean.
  *
  * Same performance discipline as NeuralMesh: DPR-aware, pauses off-screen
- * tabs, renders one static frame under prefers-reduced-motion, and batches
- * the ~3,000 dots into two fill() calls (one per tier) rather than one
- * call per dot.
+ * tabs, renders one static frame under prefers-reduced-motion.
  */
 
 type City = { name: string; domain: string; lat: number; lon: number };
@@ -48,9 +47,9 @@ type Arc = { from: City; to: City; start: number; duration: number };
 export function WorldNetworkMap({
   className,
   opacity = 1,
-  /** "dark" (default) is tuned for a navy backdrop: light blue dots and
-   *  connections. "light" darkens and saturates them for a white/near-white
-   *  surface instead. */
+  /** "dark" (default) is tuned for a navy backdrop: warm-indigo land fill
+   *  and light blue connections. "light" darkens and saturates them for a
+   *  white/near-white surface instead. */
   tone = "dark",
 }: {
   className?: string;
@@ -73,15 +72,17 @@ export function WorldNetworkMap({
     const palette =
       tone === "light"
         ? {
-            land: "rgba(20, 62, 122, 0.55)",
-            ocean: "rgba(20, 62, 122, 0.12)",
-            city: "16, 80, 160",
-            arc: "24, 104, 190",
-            lead: "8, 66, 140",
+            land: "rgba(45, 55, 130, 0.16)",
+            dot: "rgba(30, 45, 120, 0.6)",
+            cityGlow: "rgba(90, 70, 190, 0.28)",
+            city: "20, 40, 130",
+            arc: "40, 60, 150",
+            lead: "20, 40, 130",
           }
         : {
-            land: "rgba(195, 220, 255, 0.6)",
-            ocean: "rgba(195, 220, 255, 0.12)",
+            land: "rgba(150, 165, 235, 0.18)",
+            dot: "rgba(205, 215, 255, 0.6)",
+            cityGlow: "rgba(190, 170, 255, 0.35)",
             city: "180, 215, 255",
             arc: "150, 205, 255",
             lead: "205, 230, 255",
@@ -116,31 +117,44 @@ export function WorldNetworkMap({
       ctx.clearRect(0, 0, width, height);
       ctx.globalAlpha = opacity;
 
-      // Ocean — sparse, faint texture so the map reads as a full world,
-      // not just floating continent-shaped dot clusters on empty space.
-      ctx.beginPath();
-      for (const [lon, lat] of GLOBE_OCEAN_DOTS) {
-        const p = project(lat, lon);
-        ctx.moveTo(p.x + 0.6, p.y);
-        ctx.arc(p.x, p.y, 0.6, 0, Math.PI * 2);
+      // Real coastlines — filled continents, warm-indigo tinted, so this
+      // reads as an actual map rather than an implied dot cloud.
+      ctx.fillStyle = palette.land;
+      for (const ring of CONTINENT_RINGS) {
+        ctx.beginPath();
+        ring.forEach(([lon, lat], i) => {
+          const p = project(lat, lon);
+          if (i === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.closePath();
+        ctx.fill();
       }
-      ctx.fillStyle = palette.ocean;
-      ctx.fill();
 
-      // Land — the actual map, denser and brighter than ocean.
+      // Dot texture on top of the fill — keeps the circuit-board feel
+      // without losing the map shape underneath.
+      ctx.fillStyle = palette.dot;
       ctx.beginPath();
       for (const [lon, lat] of GLOBE_LAND_DOTS) {
         const p = project(lat, lon);
-        ctx.moveTo(p.x + 1, p.y);
-        ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
+        ctx.moveTo(p.x + 0.9, p.y);
+        ctx.arc(p.x, p.y, 0.9, 0, Math.PI * 2);
       }
-      ctx.fillStyle = palette.land;
       ctx.fill();
 
       ctx.globalAlpha = 1;
 
+      // Soft glow behind each city hub, then the marker itself on top.
       for (const city of CITIES) {
         const p = project(city.lat, city.lon);
+        const glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 22);
+        glow.addColorStop(0, palette.cityGlow);
+        glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 22, 0, Math.PI * 2);
+        ctx.fill();
+
         ctx.fillStyle = `rgba(${palette.city}, ${0.55 * opacity})`;
         ctx.beginPath();
         ctx.arc(p.x, p.y, 1.8, 0, Math.PI * 2);
