@@ -6,6 +6,8 @@ import { ArrowRight, Check, RotateCcw, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
+const STAT_COLORS = ["text-primary", "text-accent-violet", "text-accent-teal"];
+
 /**
  * A working miniature of the pairwise-comparison task, so a visitor
  * experiences the product in the hero rather than reading about it.
@@ -71,28 +73,31 @@ export function InteractiveHero() {
   }
 
   return (
-    <div className="rounded-2xl border-2 border-border bg-surface p-3 shadow-xl shadow-primary/5 sm:p-4">
-      <div className="mb-3 flex items-center justify-between gap-2 px-1">
+    <div className="relative overflow-hidden rounded-2xl bg-navy p-3 shadow-xl shadow-primary/10 sm:p-4">
+      <div className="pointer-events-none absolute -top-16 -right-16 size-48 rounded-full bg-accent-violet/25 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 -left-16 size-48 rounded-full bg-primary/20 blur-3xl" />
+
+      <div className="relative mb-3 flex items-center justify-between gap-2 px-1">
         <div className="flex items-center gap-2">
           <span className="flex size-6 items-center justify-center rounded-md bg-accent-violet/15 text-accent-violet">
             <Sparkles className="size-3.5" />
           </span>
-          <p className="text-xs font-medium text-muted-foreground">
+          <p className="text-xs font-medium text-white/60">
             Try a real task · {sample.domain}
           </p>
         </div>
-        <p className="text-[11px] tabular-nums text-muted-foreground/70">
+        <p className="text-[11px] tabular-nums text-white/40">
           {index + 1} / {SAMPLES.length}
         </p>
       </div>
 
-      <div className="rounded-xl border-2 border-border/80 bg-card p-4 shadow-sm">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+      <div className="relative rounded-xl border border-white/10 bg-white/[0.04] p-4 backdrop-blur">
+        <p className="font-mono text-[11px] font-medium uppercase tracking-wide text-white/50">
           Prompt
         </p>
-        <p className="mt-1.5 text-sm font-medium">{sample.prompt}</p>
+        <p className="mt-1.5 text-sm font-medium text-white">{sample.prompt}</p>
 
-        <p className="mt-4 font-mono text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+        <p className="mt-4 font-mono text-[11px] font-medium uppercase tracking-wide text-white/50">
           Which response is better?
         </p>
 
@@ -115,13 +120,13 @@ export function InteractiveHero() {
                   "flex flex-col items-stretch rounded-lg border-2 p-3 text-left transition-all",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   !revealed &&
-                    "cursor-pointer border-border/70 hover:-translate-y-0.5 hover:border-primary hover:bg-accent/50 hover:shadow-md",
+                    "cursor-pointer border-white/10 hover:-translate-y-0.5 hover:border-primary hover:bg-white/[0.06] hover:shadow-md",
                   revealed && isExpert && "border-success bg-success/10 shadow-md shadow-success/10",
-                  revealed && !isExpert && "border-border/50 opacity-60"
+                  revealed && !isExpert && "border-white/5 opacity-50"
                 )}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-mono text-[11px] font-semibold text-muted-foreground">
+                  <span className="font-mono text-[11px] font-semibold text-white/60">
                     Response {side.toUpperCase()}
                   </span>
                   {revealed && isExpert ? (
@@ -130,10 +135,10 @@ export function InteractiveHero() {
                     </span>
                   ) : null}
                   {revealed && isChoice && !isExpert ? (
-                    <span className="text-[10px] font-semibold text-muted-foreground">You picked</span>
+                    <span className="text-[10px] font-semibold text-white/50">You picked</span>
                   ) : null}
                 </div>
-                <p className="mt-1.5 text-xs leading-relaxed text-foreground/80">
+                <p className="mt-1.5 text-xs leading-relaxed text-white/80">
                   {side === "a" ? sample.a : sample.b}
                 </p>
               </button>
@@ -142,42 +147,47 @@ export function InteractiveHero() {
         </div>
 
         {revealed ? (
-          <div className="mt-3 rounded-lg border border-border bg-muted/50 p-3">
+          <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.04] p-3">
             <p
               className={cn(
                 "text-xs font-semibold",
-                matched ? "text-success" : "text-warning-foreground"
+                matched ? "text-success" : "text-warning"
               )}
             >
               {matched ? "You agreed with our expert reviewers." : "Our expert reviewers chose differently."}
             </p>
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{sample.rationale}</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/60">{sample.rationale}</p>
             <button
               type="button"
               onClick={next}
-              className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+              className="mt-2.5 inline-flex items-center gap-1.5 text-xs font-medium text-accent-cyan hover:underline"
             >
               <RotateCcw className="size-3" />
               Try another task
             </button>
           </div>
         ) : (
-          <p className="mt-3 text-xs text-muted-foreground">
+          <p className="mt-3 text-xs text-white/50">
             This is what thousands of vetted specialists do on Traivr every day — at scale, with
             multi-stage review behind every judgment.
           </p>
         )}
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="relative mt-3 grid grid-cols-3 gap-2">
         {[
           { value: "12.4k", label: "Tasks / week" },
           { value: "340", label: "Verified experts" },
           { value: "94.2%", label: "Reviewer agreement" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-lg bg-accent/60 p-2.5 text-center">
-            <p className="text-base font-semibold text-foreground">{s.value}</p>
-            <p className="text-[10px] text-muted-foreground">{s.label}</p>
+        ].map((s, i) => (
+          <div
+            key={s.label}
+            className="rounded-lg border border-white/10 bg-white/[0.04] p-2.5 text-center"
+          >
+            <p className={cn("font-mono text-lg font-bold tracking-tight", STAT_COLORS[i % STAT_COLORS.length])}>
+              {s.value}
+            </p>
+            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wide text-white/50">{s.label}</p>
           </div>
         ))}
       </div>
