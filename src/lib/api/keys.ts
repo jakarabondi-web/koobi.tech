@@ -68,3 +68,12 @@ export function bearerFrom(header: string | null): string | null {
   const match = /^Bearer\s+(\S+)$/i.exec(header.trim());
   return match ? match[1] : null;
 }
+
+/**
+ * A webhook signing secret. Unlike API keys, this one *is* stored in the
+ * clear (in Webhook.secret) — the server needs the plaintext to compute an
+ * HMAC on every delivery, not just to verify a presented value once.
+ */
+export function generateWebhookSecret(): string {
+  return `whsec_${randomBytes(SECRET_BYTES).toString("base64url")}`;
+}

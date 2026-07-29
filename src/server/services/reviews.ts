@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma";
 import { krippendorffAlpha, type Rating } from "@/lib/analytics/agreement";
 import { openAdjudication } from "@/server/services/adjudication";
 import { recomputeQualityScore } from "@/server/services/quality";
+import { dispatchWebhookEvent } from "@/server/services/webhooks";
 
 export class ReviewError extends Error {}
 
@@ -184,6 +185,17 @@ export async function submitReview(params: {
   // scoring runs on, so it has to stay current with each one, not just at
   // approval time.
   await recomputeQualityScore(submission.submittedById);
+
+  // Fire-and-forget: a slow or dead client endpoint must not hold up the
+  // reviewer's request. dispatchWebhookEvent never throws — every outcome,
+  // including delivery failure, is recorded in WebhookDelivery instead.
+  void dispatchWebhookEvent(submission.task.project.organizationId, "task.reviewed", {
+    task_id: submission.taskId,
+    external_ref: submission.task.externalRef,
+    submission_id: submission.id,
+    decision: params.decision,
+    project_id: submission.task.projectId,
+  });
 
   // Escalation goes straight to a lead reviewer. Disagreement between
   // reviewers is detected here too, so a conflict never sits unnoticed.

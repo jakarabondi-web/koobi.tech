@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Webhook } from "lucide-react";
 
 import { prisma } from "@/lib/db/prisma";
 import { requireTenant } from "@/server/services/tenant";
 import { PageHeader } from "@/components/shared/page-header";
-import { EmptyState } from "@/components/shared/empty-state";
 import { ApiKeyManager } from "@/components/client/api-key-manager";
+import { WebhookManager } from "@/components/client/webhook-manager";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -118,31 +117,17 @@ export default async function ClientApiPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Webhooks</CardTitle>
-          <CardDescription>Not yet implemented — poll the export endpoint in the meantime.</CardDescription>
+          <CardDescription>
+            Delivered inline, best-effort — a delivery that fails isn&apos;t retried, so treat this as
+            a push notification, not a guarantee. <code className="font-mono text-xs">task.reviewed</code>{" "}
+            is the only event live today.
+          </CardDescription>
         </CardHeader>
         <CardContent className="pb-6">
-          {webhooks.length === 0 ? (
-            <EmptyState
-              icon={Webhook}
-              title="No webhooks configured"
-              description="Webhooks will notify your systems when exports are ready or task status changes."
-            />
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow><TableHead>URL</TableHead><TableHead>Events</TableHead><TableHead>Active</TableHead></TableRow>
-              </TableHeader>
-              <TableBody>
-                {webhooks.map((w) => (
-                  <TableRow key={w.id}>
-                    <TableCell className="font-mono text-xs">{w.url}</TableCell>
-                    <TableCell className="text-xs">{w.events.join(", ")}</TableCell>
-                    <TableCell>{w.isActive ? <Badge variant="success">Active</Badge> : <Badge variant="outline">Off</Badge>}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <WebhookManager
+            canManage={tenant.isOrgAdmin}
+            webhooks={webhooks.map((w) => ({ id: w.id, url: w.url, events: w.events, isActive: w.isActive }))}
+          />
         </CardContent>
       </Card>
     </div>
