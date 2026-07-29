@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, FileCheck2 } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
@@ -17,6 +17,11 @@ import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Trainer detail" };
 const usd = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+
+const CONSENT_LABELS: Record<string, string> = {
+  terms_of_service: "Terms of service",
+  independent_contractor_agreement: "Independent contractor agreement",
+};
 
 export default async function TrainerDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
@@ -34,6 +39,7 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
       assessmentAttempts: { include: { assessment: true }, orderBy: { startedAt: "desc" } },
       locationSignals: { orderBy: { observedAt: "desc" }, take: 5 },
       roles: { include: { role: true } },
+      consentRecords: { orderBy: { acceptedAt: "desc" } },
     },
   });
   if (!user) notFound();
@@ -85,6 +91,42 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Consent & agreements</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {user.consentRecords.length === 0 ? (
+            <EmptyState
+              icon={FileCheck2}
+              title="No consent on record"
+              description="This account predates the terms-acceptance checkbox, or hasn't completed registration."
+            />
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agreement</TableHead>
+                  <TableHead>Version</TableHead>
+                  <TableHead>Accepted</TableHead>
+                  <TableHead>IP address</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {user.consentRecords.map((c) => (
+                  <TableRow key={c.id}>
+                    <TableCell>{CONSENT_LABELS[c.type] ?? c.type}</TableCell>
+                    <TableCell className="font-mono text-xs">{c.version}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">
+                      {c.acceptedAt.toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-mono text-xs text-muted-foreground">{c.ipAddress ?? "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Assessment history</CardTitle></CardHeader>
