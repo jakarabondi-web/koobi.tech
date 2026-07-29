@@ -35,6 +35,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: Role }) {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   if (state.status === "success") {
     // No email was sent, so saying "check your inbox" would strand the person
@@ -93,6 +94,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: Role }) {
   const accountValid = /\S+@\S+\.\S+/.test(email) && password.length >= 8;
   const canAdvance = [true, nameValid, accountValid, true][step];
   const strength = passwordStrength(password);
+  const canSubmit = termsAccepted;
 
   return (
     <div className="space-y-6">
@@ -128,6 +130,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: Role }) {
         <input type="hidden" name="lastName" value={lastName} />
         <input type="hidden" name="email" value={email} />
         <input type="hidden" name="password" value={password} />
+        <input type="hidden" name="termsAccepted" value={termsAccepted ? "true" : "false"} />
 
         <div key={step} className="animate-in fade-in slide-in-from-right-2 duration-300">
           {step === 0 ? (
@@ -254,17 +257,39 @@ export function RegisterForm({ defaultRole }: { defaultRole: Role }) {
                 <ReviewRow label="Email" value={email} />
               </div>
               {state.formError ? <p className="text-sm text-destructive">{state.formError}</p> : null}
-              <p className="text-xs text-muted-foreground">
-                By creating an account you agree to our{" "}
-                <Link href="/legal/terms" className="underline">
-                  Terms
-                </Link>{" "}
-                and{" "}
-                <Link href="/legal/privacy" className="underline">
-                  Privacy Policy
-                </Link>
-                .
-              </p>
+              <label className="flex items-start gap-2.5 rounded-lg border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 size-4 shrink-0 rounded border-input accent-primary"
+                  aria-invalid={!termsAccepted && state.status === "error"}
+                />
+                <span>
+                  {role === "TRAINER" ? (
+                    <>
+                      I have read and agree to the{" "}
+                      <Link href="/legal/terms" className="font-medium text-foreground underline" target="_blank">
+                        Independent Contractor Agreement and Terms of Service
+                      </Link>
+                      . I understand I am engaged as an independent contractor, not an employee, and am
+                      responsible for my own taxes and work arrangements.
+                    </>
+                  ) : (
+                    <>
+                      I have read and agree to the{" "}
+                      <Link href="/legal/terms" className="font-medium text-foreground underline" target="_blank">
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/legal/privacy" className="font-medium text-foreground underline" target="_blank">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </>
+                  )}
+                </span>
+              </label>
             </div>
           ) : null}
         </div>
@@ -288,7 +313,7 @@ export function RegisterForm({ defaultRole }: { defaultRole: Role }) {
               Continue <ArrowRight className="size-4" />
             </Button>
           ) : (
-            <Button type="submit" variant="violet" disabled={pending}>
+            <Button type="submit" variant="violet" disabled={pending || !canSubmit}>
               {pending ? "Creating account…" : "Create account"}
             </Button>
           )}

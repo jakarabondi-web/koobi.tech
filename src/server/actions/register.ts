@@ -13,6 +13,10 @@ const registerSchema = z.object({
   email: z.string().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   role: z.enum(["TRAINER", "CLIENT_ADMIN"]),
+  // Enforced server-side too, not just via the disabled submit button — a
+  // request built without JS (or with the button re-enabled by hand)
+  // shouldn't be able to skip agreeing to the contractor/terms language.
+  termsAccepted: z.literal("true", "You must accept the terms to continue"),
 });
 
 export type RegisterState = {
@@ -36,15 +40,23 @@ export async function registerUser(_prev: RegisterState, formData: FormData): Pr
     email: formData.get("email"),
     password: formData.get("password"),
     role: formData.get("role"),
+    termsAccepted: formData.get("termsAccepted"),
   });
 
   if (!parsed.success) {
     const errors: RegisterState["errors"] = {};
+    let formError: string | undefined;
     for (const issue of parsed.error.issues) {
       const key = issue.path[0] as keyof z.infer<typeof registerSchema>;
+      // No dedicated inline slot for this one in the form — it surfaces as
+      // a form-level error instead, right next to the checkbox it's about.
+      if (key === "termsAccepted") {
+        formError = issue.message;
+        continue;
+      }
       errors[key] = issue.message;
     }
-    return { status: "error", errors };
+    return { status: "error", errors, formError };
   }
 
   const { firstName, lastName, email, password, role } = parsed.data;
@@ -74,7 +86,15 @@ export async function registerUser(_prev: RegisterState, formData: FormData): Pr
       status: "PENDING",
       roles: { create: { roleId: roleRow.id } },
       ...(role === "TRAINER" ? { trainerProfile: { create: {} } } : {}),
-      consentRecords: { create: { type: "terms_of_service", version: "v1" } },
+      consentRecords: {
+        create: [
+          { type: "terms_of_service", version: "v1" },
+          // Trainers are independent contractors, not employees — that
+          // consent is distinct from the general platform terms and is
+          // recorded separately so it's independently auditable.
+          ...(role === "TRAINER" ? [{ type: "independent_contractor_agreement", version: "v1" }] : []),
+        ],
+      },
     },
   });
 
