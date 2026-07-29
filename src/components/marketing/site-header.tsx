@@ -34,12 +34,11 @@ export function SiteHeader() {
             <Link
               key={link.href}
               href={link.href}
-              className="group relative rounded-md px-3 py-2 text-sm font-semibold text-foreground/70 transition-all duration-200 hover:-translate-y-0.5 hover:text-primary"
+              className="group relative rounded-md px-3 py-2 text-base font-bold text-foreground/80 transition-all duration-200 hover:-translate-y-0.5 hover:text-foreground"
             >
               {link.label}
-              {/* Underline sweeps in from the center on hover instead of a
-                  flat background-color swap — a clearer "something just
-                  happened" signal than a subtle tint change. */}
+              {/* Underline sweeps in from the center on hover — no color
+                  change, just the underline and a slight lift. */}
               <span className="pointer-events-none absolute inset-x-3 -bottom-0.5 h-0.5 origin-center scale-x-0 rounded-full bg-gradient-brand transition-transform duration-300 ease-out group-hover:scale-x-100" />
             </Link>
           ))}
