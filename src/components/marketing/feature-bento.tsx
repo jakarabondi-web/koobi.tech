@@ -32,7 +32,17 @@ export type FeatureBentoItem = {
 
 const COLORS = ICON_BADGE_COLORS;
 
-export function FeatureBento({ items }: { items: FeatureBentoItem[] }) {
+export function FeatureBento({
+  items,
+  /** Column count at the lg breakpoint — defaults to 4. Smaller item counts
+   *  (e.g. 3 resources) should pass a matching column count so the row
+   *  fills the full width instead of leaving a visibly empty trailing
+   *  cell. */
+  columns = 4,
+}: {
+  items: FeatureBentoItem[];
+  columns?: 2 | 3 | 4;
+}) {
   const [open, setOpen] = useState<Set<number>>(new Set());
 
   function toggle(i: number) {
@@ -48,7 +58,14 @@ export function FeatureBento({ items }: { items: FeatureBentoItem[] }) {
     <div className="relative overflow-hidden rounded-3xl bg-navy p-6 sm:p-8">
       <div className="pointer-events-none absolute -top-24 -right-24 size-72 rounded-full bg-accent-violet/25 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-24 -left-24 size-72 rounded-full bg-primary/20 blur-3xl" />
-      <div className="relative grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div
+        className={cn(
+          "relative grid grid-cols-2 gap-4",
+          columns === 2 && "lg:grid-cols-2",
+          columns === 3 && "lg:grid-cols-3",
+          columns === 4 && "lg:grid-cols-4"
+        )}
+      >
         {items.map((item, i) => {
           const isOpen = open.has(i);
           return (
