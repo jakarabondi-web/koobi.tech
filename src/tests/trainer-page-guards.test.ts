@@ -21,6 +21,8 @@ const APPLICANT_ACCESSIBLE = new Set([
   "verification/simulate",
   "assessments",
   "assessments/[id]/attempt/[attemptId]",
+  "readiness",
+  "readiness/[taskId]",
   "notifications",
   "profile",
   "settings",

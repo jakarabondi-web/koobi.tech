@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Clock, ShieldCheck, FileText, AlertTriangle, CheckCircle2, PauseCircle } from "lucide-react";
+import { Clock, ShieldCheck, FileText, AlertTriangle, CheckCircle2, PauseCircle, Sparkles } from "lucide-react";
 
 import type { TrainerGateState } from "@/lib/permissions/gating";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ const STYLES: Record<
   identity_processing: { icon: Clock, ring: "border-info/40 bg-info/10", iconTone: "text-foreground" },
   under_review: { icon: Clock, ring: "border-info/40 bg-info/10", iconTone: "text-foreground" },
   more_info_required: { icon: AlertTriangle, ring: "border-warning/50 bg-warning/10", iconTone: "text-warning-foreground" },
+  readiness_required: { icon: Sparkles, ring: "border-primary/40 bg-primary/5", iconTone: "text-primary" },
   waitlisted: { icon: PauseCircle, ring: "border-warning/50 bg-warning/10", iconTone: "text-warning-foreground" },
   approved: { icon: CheckCircle2, ring: "border-success/40 bg-success/10", iconTone: "text-success" },
   rejected: { icon: AlertTriangle, ring: "border-destructive/40 bg-destructive/10", iconTone: "text-destructive" },

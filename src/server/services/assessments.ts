@@ -4,7 +4,14 @@ import { shuffle } from "@/lib/utils/shuffle";
 export class AssessmentError extends Error {}
 
 /** Auto-gradable questions drawn per attempt, out of the full domain bank. */
-const MCQ_PER_ATTEMPT = 3;
+const MCQ_PER_ATTEMPT = 12;
+
+/**
+ * Screener questions drawn per attempt. The screener is a single,
+ * domain-agnostic assessment (stage SCREENER) every applicant takes once —
+ * a fast, low-stakes filter before the real qualification exam unlocks.
+ */
+const SCREENER_MCQ_PER_ATTEMPT = 5;
 
 /**
  * Draws this attempt's question set from the assessment's full bank: a
@@ -16,14 +23,19 @@ const MCQ_PER_ATTEMPT = 3;
  * to be served in full, every time, is what makes a fixed set of questions
  * something people share instead of study for.
  */
-function drawQuestionPool(questions: { id: string; type: string }[]): string[] {
+function drawQuestionPool(questions: { id: string; type: string }[], stage: "SCREENER" | "QUALIFICATION"): string[] {
   const autoGradable = questions.filter((q) => q.type === "MULTIPLE_CHOICE" || q.type === "RANKING");
   const written = questions.filter((q) => q.type === "WRITTEN_RESPONSE");
 
+  const perAttempt = stage === "SCREENER" ? SCREENER_MCQ_PER_ATTEMPT : MCQ_PER_ATTEMPT;
   const shuffled = shuffle(autoGradable);
-  const sample = shuffled.slice(0, Math.min(MCQ_PER_ATTEMPT, shuffled.length));
+  const sample = shuffled.slice(0, Math.min(perAttempt, shuffled.length));
 
-  return [...sample, ...written].map((q) => q.id);
+  // The screener is auto-graded MC only — written questions belong to the
+  // qualification exam, where a human reviews them.
+  const includedWritten = stage === "SCREENER" ? [] : written;
+
+  return [...sample, ...includedWritten].map((q) => q.id);
 }
 
 /**
@@ -38,6 +50,16 @@ export async function startAttempt(params: { userId: string; assessmentId: strin
     include: { questions: { orderBy: { order: "asc" } } },
   });
   if (!assessment || !assessment.isActive) throw new AssessmentError("Assessment unavailable.");
+
+  if (assessment.stage === "QUALIFICATION") {
+    const passedScreener = await prisma.assessmentAttempt.findFirst({
+      where: { userId: params.userId, status: "PASSED", assessment: { stage: "SCREENER" } },
+      select: { id: true },
+    });
+    if (!passedScreener) {
+      throw new AssessmentError("Pass the screening quiz before starting the qualification exam.");
+    }
+  }
 
   const existing = await prisma.assessmentAttempt.findFirst({
     where: { userId: params.userId, assessmentId: params.assessmentId, status: "IN_PROGRESS" },
@@ -88,7 +110,7 @@ export async function startAttempt(params: { userId: string; assessmentId: strin
       expiresAt: assessment.timeLimitMins
         ? new Date(Date.now() + assessment.timeLimitMins * 60_000)
         : null,
-      selectedQuestionIds: drawQuestionPool(assessment.questions),
+      selectedQuestionIds: drawQuestionPool(assessment.questions, assessment.stage),
     },
   });
 
@@ -210,8 +232,18 @@ export async function listAssessmentsForUser(userId: string) {
   ]);
 
   const attemptedIds = new Set(attempts.map((t) => t.assessmentId));
+  // The screener is domain-agnostic and always shown; qualification exams
+  // are scoped to the domain the applicant applied under, same as before.
   const relevant = assessments.filter(
-    (a) => a.domain === application?.domain || a.domain === "General assistant" || attemptedIds.has(a.id)
+    (a) =>
+      a.stage === "SCREENER" ||
+      a.domain === application?.domain ||
+      a.domain === "General assistant" ||
+      attemptedIds.has(a.id)
+  );
+
+  const screenerPassed = attempts.some(
+    (t) => t.status === "PASSED" && assessments.find((a) => a.id === t.assessmentId)?.stage === "SCREENER"
   );
 
   return relevant.map((a) => {
@@ -221,6 +253,10 @@ export async function listAssessmentsForUser(userId: string) {
       assessment: a,
       attempt: best,
       attemptsUsed: mine.filter((t) => t.status !== "IN_PROGRESS").length,
+      // The qualification exam can't be started until the screener is
+      // passed — surfaced here so the UI can grey it out with a reason
+      // instead of letting the trainee hit the server error.
+      locked: a.stage === "QUALIFICATION" && !screenerPassed,
     };
   });
 }

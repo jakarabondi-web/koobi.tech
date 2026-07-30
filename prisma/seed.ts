@@ -29,6 +29,7 @@ const SEED_IDS = {
   assessmentEducation: "da5549b5-1a5c-4c39-a3aa-7683e6f843ff",
   assessmentWriting: "9594079a-2a39-40d4-a44e-1a90f66349bf",
   assessmentResearch: "8fc66bc1-00de-487d-a08a-bc639248d0d6",
+  assessmentScreener: "5f6e6b1a-2a1a-4a2a-9a2a-1a2a3a4a5a6a",
 } as const;
 
 async function ensureRoles() {
@@ -96,19 +97,121 @@ async function upsertUser(params: {
   return user;
 }
 
+/**
+ * Adds the domain exam's second written-response question if it isn't
+ * already there. Separate from the upsert's `create` block on purpose: an
+ * upsert's `create` only ever runs the first time a row is made, so an
+ * assessment seeded before this question existed would never pick it up on
+ * a later `npm run db:seed` otherwise.
+ */
+async function ensureSecondWrittenQuestion(assessmentId: string, prompt: string) {
+  const exists = await prisma.assessmentQuestion.findFirst({ where: { assessmentId, order: 22 } });
+  if (exists) return;
+  await prisma.assessmentQuestion.create({
+    data: { assessmentId, type: "WRITTEN_RESPONSE", prompt, points: 4, order: 22 },
+  });
+}
+
 async function ensureAssessments() {
-  // --- Qualification assessments (industry practice test after signup) ---
+  // --- Screener (fast, low-stakes filter every applicant takes once,
+  // regardless of domain, before the real qualification exam unlocks) ---
   await prisma.assessment.upsert({
-    where: { id: SEED_IDS.assessmentSoftware },
+    where: { id: SEED_IDS.assessmentScreener },
     update: {},
+    create: {
+      id: SEED_IDS.assessmentScreener,
+      title: "Trainer screening quiz",
+      domain: "General",
+      stage: "SCREENER",
+      description:
+        "A quick check of the basics — judging accuracy over confidence, following instructions, and spotting made-up information — before you take the full qualification exam for your domain.",
+      timeLimitMins: 5,
+      passThreshold: 0.7,
+      maxAttempts: 3,
+      cooldownHours: 24,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model states a fact with total confidence but the fact turns out to be wrong. What matters more when scoring: that it was confident, or that it was wrong?",
+            options: ["That it was confident", "That it was wrong", "Neither, confidence and correctness don't affect scoring", "Only the length of the answer matters"],
+            correctAnswer: "That it was wrong",
+            points: 1,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user explicitly asks for an answer in exactly two sentences. The model replies with one long, excellent paragraph. How should instruction following be scored here?",
+            options: ["Full marks — the content is excellent", "Lower — it ignored the explicit format instruction", "Ignore the instruction, only content matters", "Full marks if the paragraph happens to be short"],
+            correctAnswer: "Lower — it ignored the explicit format instruction",
+            points: 1,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model cites a specific study, author, and year to support a claim, but no such study actually exists. What is this called?",
+            options: ["A stylistic choice", "A hallucination", "A safety violation", "A formatting issue"],
+            correctAnswer: "A hallucination",
+            points: 1,
+          },
+          {
+            order: 4,
+            type: "MULTIPLE_CHOICE",
+            prompt: "Two responses both answer a question correctly. One is calm and direct; the other refuses part of the question because it superficially sounds risky, even though the request was benign. Which is the stronger response?",
+            options: ["The one that refused part of it, out of caution", "The one that engaged with the actual benign request", "They're equal", "Whichever is longer"],
+            correctAnswer: "The one that engaged with the actual benign request",
+            points: 1,
+          },
+          {
+            order: 5,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A model is asked a question it genuinely cannot know the answer to (e.g. something requiring live data it doesn't have). What's the best response?",
+            options: ["Make a confident, specific-sounding guess", "Say plainly that it doesn't have that information", "Change the subject", "Answer a different, easier question instead"],
+            correctAnswer: "Say plainly that it doesn't have that information",
+            points: 1,
+          },
+          {
+            order: 6,
+            type: "MULTIPLE_CHOICE",
+            prompt: "You're reviewing a response and you personally would have answered differently, but the response is accurate, follows instructions, and is well-reasoned. What should you do?",
+            options: ["Mark it down for not matching your own approach", "Judge it on its own merits, not against your personal preference", "Always prefer the shorter of the two", "Escalate every disagreement to a manager"],
+            correctAnswer: "Judge it on its own merits, not against your personal preference",
+            points: 1,
+          },
+          {
+            order: 7,
+            type: "MULTIPLE_CHOICE",
+            prompt: "A response contradicts itself — stating one thing early on and the opposite later — without acknowledging the change. How should this be treated?",
+            options: ["As a positive, since it shows both sides", "As a flaw, since the reader can't tell which claim to trust", "As irrelevant to scoring", "As acceptable if the final statement is correct"],
+            correctAnswer: "As a flaw, since the reader can't tell which claim to trust",
+            points: 1,
+          },
+          {
+            order: 8,
+            type: "MULTIPLE_CHOICE",
+            prompt: "The user states a hard constraint (e.g. a strict budget, a required format, an explicit exclusion). A response is otherwise excellent but violates that constraint. How should it be scored?",
+            options: ["Full marks — the rest of the answer is strong", "Docked — violating an explicit constraint is a real failure, not a minor detail", "Ignore constraints entirely when scoring", "Full marks if the violation is small"],
+            correctAnswer: "Docked — violating an explicit constraint is a real failure, not a minor detail",
+            points: 1,
+          },
+        ],
+      },
+    },
+  });
+
+  // --- Qualification assessments (industry practice test after signup) ---
+  const swAssessment = await prisma.assessment.upsert({
+    where: { id: SEED_IDS.assessmentSoftware },
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentSoftware,
       title: "Software engineering evaluation qualification",
       domain: "Software engineering",
       description:
         "Checks that you can judge technical answers on accuracy and usefulness rather than length or tone.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -382,18 +485,20 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(swAssessment.id, `A model claims a fix resolves a memory leak, but the explanation given only addresses a symptom, not the leak's actual root cause. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const generalAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentGeneral },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentGeneral,
       title: "General evaluation qualification",
       domain: "General assistant",
       description:
         "Core rubric reasoning: factual accuracy, calibration, safety, and instruction following.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       questions: {
         create: [
@@ -659,6 +764,8 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(generalAssessment.id, `A model gives a technically correct but very long response to a question the user flagged as time-sensitive. Write the feedback you would give, and explain how you would score it.`);
+
 
   // Domain assessments below. Each mirrors the Software engineering /
   // General assistant pattern above: they test judgment of an AI response
@@ -666,16 +773,16 @@ async function ensureAssessments() {
   // safety) rather than asking the trainee to personally practice medicine,
   // law, or finance — the qualification is for evaluating model outputs,
   // not for giving advice, so the questions never do either.
-  await prisma.assessment.upsert({
+  const mathAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentMathematics },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentMathematics,
       title: "Mathematics evaluation qualification",
       domain: "Mathematics",
       description: "Checks that you can judge mathematical reasoning for correctness, not just the final answer.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -952,18 +1059,20 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(mathAssessment.id, `A model solving an optimization problem finds a local minimum and presents it as the global minimum without checking for others. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const medAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentMedicine },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentMedicine,
       title: "Medicine evaluation qualification",
       domain: "Medicine",
       description:
         "Checks that you can judge a medical-context AI response for calibration and safety — this is an evaluation qualification, not a clinical exam.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -1239,18 +1348,20 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(medAssessment.id, `A model answers a caregiver's medication-timing question correctly for an adult, but the caregiver mentioned the patient is a child and the model never adjusted for that. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const lawAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentLaw },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentLaw,
       title: "Law evaluation qualification",
       domain: "Law",
       description:
         "Checks that you can judge a legal-context AI response for calibration and appropriate caveats — this is an evaluation qualification, not a legal exam.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -1526,17 +1637,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(lawAssessment.id, `A model summarizing a contract states a termination clause allows exit 'at any time,' when the clause actually requires 30 days' written notice. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const financeAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentFinance },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentFinance,
       title: "Finance evaluation qualification",
       domain: "Finance",
       description: "Checks that you can judge a finance-context AI response for accuracy, caveats, and overclaiming.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -1812,17 +1925,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(financeAssessment.id, `A model recommends a specific portfolio allocation without ever asking about the user's risk tolerance or time horizon. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const scienceAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentScience },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentScience,
       title: "Science evaluation qualification",
       domain: "Science",
       description: "Checks that you can judge a science-context AI response for factual accuracy and appropriate uncertainty.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -2098,17 +2213,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(scienceAssessment.id, `A model explaining a study's findings states the result as broadly generalizable, when the study's sample was actually narrow and non-representative. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const engAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentEngineering },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentEngineering,
       title: "Engineering evaluation qualification",
       domain: "Engineering",
       description: "Checks that you can judge an engineering-context AI response for correctness against stated constraints.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -2384,17 +2501,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(engAssessment.id, `A model proposes a fix for a vibration issue that would work, but it requires a part substitution the user explicitly said wasn't available to them. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const linguisticsAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentLinguistics },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentLinguistics,
       title: "Linguistics evaluation qualification",
       domain: "Linguistics",
       description: "Checks that you can judge whether a linguistics-context AI response used the correct analytical framework.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -2670,17 +2789,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(linguisticsAssessment.id, `A model explaining a grammatical error in a learner's sentence identifies the wrong part of speech as the source of the error. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const eduAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentEducation },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentEducation,
       title: "Education evaluation qualification",
       domain: "Education",
       description: "Checks that you can judge whether an AI response is pedagogically appropriate for its stated audience.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -2956,17 +3077,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(eduAssessment.id, `A model grading a student's essay gives detailed feedback on grammar but never addresses whether the essay's central argument was actually supported. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const writingAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentWriting },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentWriting,
       title: "Writing evaluation qualification",
       domain: "Writing",
       description: "Checks that you can judge an AI response for craft and for whether it actually fulfilled the brief.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -3242,17 +3365,19 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(writingAssessment.id, `A model asked to write in a specific author's voice produces technically polished prose that doesn't actually resemble that voice. Write the feedback you would give, and explain how you would score it.`);
 
-  await prisma.assessment.upsert({
+
+  const researchAssessment = await prisma.assessment.upsert({
     where: { id: SEED_IDS.assessmentResearch },
-    update: {},
+    update: { passThreshold: 0.8, timeLimitMins: 25 },
     create: {
       id: SEED_IDS.assessmentResearch,
       title: "Research evaluation qualification",
       domain: "Research",
       description: "Checks that you can judge whether an AI response accurately represents its sources and evidence.",
-      timeLimitMins: 15,
-      passThreshold: 0.75,
+      timeLimitMins: 25,
+      passThreshold: 0.8,
       maxAttempts: 2,
       cooldownHours: 72,
       questions: {
@@ -3528,6 +3653,431 @@ async function ensureAssessments() {
       },
     },
   });
+  await ensureSecondWrittenQuestion(researchAssessment.id, `A model's literature review groups several studies as being in agreement, when two of them actually reached opposite conclusions. Write the feedback you would give, and explain how you would score it.`);
+
+}
+
+/**
+ * Readiness Program content: 3 universal evaluation skills (Calibration,
+ * Instruction Following, Hallucination Detection), each with one calibration
+ * task per domain — a trainee picks the better of two candidate responses,
+ * then immediately sees the correct choice and why. Completing every task
+ * for the applicant's domain is a hard gate after approval (see
+ * src/lib/permissions/gating.ts) and is what actually populates UserSkill
+ * levels, rather than leaving that schema unused.
+ */
+const READINESS_TASKS: {
+  domain: string;
+  skill: string;
+  title: string;
+  prompt: string;
+  responseA: string;
+  responseB: string;
+  correctChoice: string;
+  guidance: string;
+}[] = [
+    {
+      domain: `Software engineering`,
+      skill: `Calibration`,
+      title: `Calibration — Software engineering`,
+      prompt: `A user shows a stack trace with a single NullPointerException line and asks what's causing it.`,
+      responseA: `This is definitely caused by a race condition in your thread pool configuration — you need to add a mutex around the initialization block.`,
+      responseB: `From just this line I can see a null reference somewhere in that call, but I can't pin down the root cause without seeing where the variable is assigned. Can you share the few lines before it, or check whether that object is initialized before this path runs?`,
+      correctChoice: "B",
+      guidance: `A single stack trace line is thin evidence — B correctly hedges and asks for the missing context instead of inventing a confident, specific root cause.`,
+    },
+    {
+      domain: `Software engineering`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Software engineering`,
+      prompt: `The user asks: 'Give me just the regex pattern to validate a US zip code, nothing else.'`,
+      responseA: `^\\d{5}(-\\d{4})?$`,
+      responseB: `Sure! Zip code validation is a common need. Here's a pattern that handles both 5-digit and 9-digit (ZIP+4) formats: ^\\d{5}(-\\d{4})?$ — let me know if you'd like a version for Canadian postal codes too!`,
+      correctChoice: "A",
+      guidance: `The user explicitly asked for only the pattern; B adds unrequested preamble and follow-up chatter, violating the stated constraint even though the regex itself is correct.`,
+    },
+    {
+      domain: `Software engineering`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Software engineering`,
+      prompt: `What does Python's built-in \`list.dedupe()\` method do?`,
+      responseA: `Python's \`list\` type does not have a built-in \`dedupe()\` method. To remove duplicates you can use \`list(dict.fromkeys(your_list))\` to preserve order, or \`list(set(your_list))\` if order doesn't matter.`,
+      responseB: `\`list.dedupe()\` removes duplicate elements from the list in place while preserving the original order, returning \`None\` like other in-place list methods.`,
+      correctChoice: "A",
+      guidance: `There is no \`dedupe()\` method on Python lists; B confidently describes a fabricated API instead of checking that it exists.`,
+    },
+    {
+      domain: `General assistant`,
+      skill: `Calibration`,
+      title: `Calibration — General assistant`,
+      prompt: `The user asks: 'Will it rain in my city next Tuesday?' with no location given and no tools available.`,
+      responseA: `Yes, next Tuesday will bring light rain in the afternoon, clearing up by evening.`,
+      responseB: `I don't have access to real-time weather data or even know your location, so I can't give you a forecast. You'd want to check a weather app or site like a local forecast service for next Tuesday.`,
+      correctChoice: "B",
+      guidance: `With no location and no forecasting capability, any specific weather claim is unfounded; B correctly declines rather than fabricating confident specifics.`,
+    },
+    {
+      domain: `General assistant`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — General assistant`,
+      prompt: `The user says: 'Summarize this in exactly 3 bullet points, no more, no less.'`,
+      responseA: `- The report covers Q1 revenue growth.
+- It highlights a drop in customer churn.
+- Costs rose slightly due to hiring.
+- Overall outlook is cautiously positive.`,
+      responseB: `- The report covers Q1 revenue growth.
+- It highlights a drop in customer churn and notes costs rose slightly due to hiring.
+- Overall outlook is cautiously positive.`,
+      correctChoice: "B",
+      guidance: `The user gave an exact count constraint; A gives four bullets, failing the explicit instruction, while B correctly consolidates into exactly three.`,
+    },
+    {
+      domain: `General assistant`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — General assistant`,
+      prompt: `Who won the Nobel Prize in Literature in 2023?`,
+      responseA: `The 2023 Nobel Prize in Literature was awarded to Norwegian author Jon Fosse, recognized for his innovative plays and prose.`,
+      responseB: `The 2023 Nobel Prize in Literature was awarded to Annie Ernaux for her courageous exploration of memory and personal history.`,
+      correctChoice: "A",
+      guidance: `Annie Ernaux won in 2022, not 2023; B states a real fact attached to the wrong year, which is a subtler but still ungrounded hallucination than an invented name.`,
+    },
+    {
+      domain: `Mathematics`,
+      skill: `Calibration`,
+      title: `Calibration — Mathematics`,
+      prompt: `A user gives three data points (2,4), (3,9), (4,16) and asks what function generated them, expecting a definitive answer.`,
+      responseA: `These points fit y = x^2 exactly, and given the perfect fit across all three points I'm confident that's the underlying rule, though with only three points other functions could coincidentally match too — worth testing a fourth point if you have one.`,
+      responseB: `This is unambiguously y = x^2 with no other possibility, proven by these three data points.`,
+      correctChoice: "A",
+      guidance: `Three points cannot uniquely determine a function — infinitely many curves pass through them — so A's appropriate hedge about coincidental fits is correct, while B's claim of proof overstates what three points can establish.`,
+    },
+    {
+      domain: `Mathematics`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Mathematics`,
+      prompt: `The user asks: 'Solve this system of equations using substitution, and show each step.' They provide x + y = 10 and 2x - y = 5.`,
+      responseA: `x = 5, y = 5.`,
+      responseB: `From x + y = 10, y = 10 - x. Substituting into 2x - y = 5 gives 2x - (10 - x) = 5, so 3x - 10 = 5, so 3x = 15, so x = 5. Then y = 10 - 5 = 5.`,
+      correctChoice: "B",
+      guidance: `The user explicitly requested the substitution method with each step shown; A gives only the final answer and skips both the requested method and the work, ignoring the instruction.`,
+    },
+    {
+      domain: `Mathematics`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Mathematics`,
+      prompt: `What is the value of the Feigenbaum constant, and who proved it is irrational?`,
+      responseA: `The Feigenbaum constant is approximately 4.6692. It was proven irrational in 1987 by Nikolai Petrov using a novel continued-fraction expansion technique.`,
+      responseB: `The Feigenbaum constant is approximately 4.6692. As far as I know, it has not been proven whether it is rational or irrational — that remains an open question in mathematics.`,
+      correctChoice: "B",
+      guidance: `Whether the Feigenbaum constant is irrational is genuinely an open problem; A invents a specific proof, mathematician, and year that do not exist.`,
+    },
+    {
+      domain: `Medicine`,
+      skill: `Calibration`,
+      title: `Calibration — Medicine`,
+      prompt: `A user describes a single episode of mild lower back pain after gardening and asks if it's something serious.`,
+      responseA: `Based on this description, that's almost certainly a minor muscle strain from the gardening activity, and no further evaluation is likely needed.`,
+      responseB: `A single episode of mild back pain after physical activity like gardening is commonly just a muscle strain, but I can't rule things out from a text description alone. If it doesn't improve in a few days, worsens, or comes with numbness, weakness, or bladder/bowel changes, that would warrant seeing a clinician.`,
+      correctChoice: "B",
+      guidance: `One data point (a text description) is thin evidence for ruling out anything; B appropriately hedges and gives red-flag criteria rather than issuing a confident diagnosis A cannot actually verify.`,
+    },
+    {
+      domain: `Medicine`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Medicine`,
+      prompt: `The user asks: 'List the contraindications for ibuprofen only — don't include dosing information.'`,
+      responseA: `Contraindications include active GI bleeding, severe renal impairment, known NSAID hypersensitivity, and third-trimester pregnancy. Typical adult dosing is 200-400mg every 4-6 hours as needed, not exceeding 1200mg/day OTC.`,
+      responseB: `Contraindications include active GI bleeding or peptic ulcer disease, severe renal impairment, known NSAID hypersensitivity, third-trimester pregnancy, and use around the time of CABG surgery.`,
+      correctChoice: "B",
+      guidance: `The user explicitly excluded dosing information; A includes it anyway, violating the stated constraint, while B stays within the requested scope.`,
+    },
+    {
+      domain: `Medicine`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Medicine`,
+      prompt: `Is there a well-established drug interaction between metformin and grapefruit juice?`,
+      responseA: `Yes, a 2019 study published in the Journal of Clinical Pharmacology found grapefruit juice increases metformin plasma concentration by 340%, requiring dose reduction.`,
+      responseB: `Metformin isn't among the drugs commonly flagged for a significant grapefruit interaction — that concern is more associated with certain statins, calcium channel blockers, and some other drug classes. I'd still suggest checking with a pharmacist for anything specific to a person's regimen.`,
+      correctChoice: "B",
+      guidance: `There's no well-established metformin-grapefruit interaction; A fabricates a specific study, journal, and statistic to support a claim that isn't actually established.`,
+    },
+    {
+      domain: `Law`,
+      skill: `Calibration`,
+      title: `Calibration — Law`,
+      prompt: `A user in an unspecified location asks: 'Can my landlord enter my apartment without notice?'`,
+      responseA: `No, your landlord is legally prohibited from ever entering without 24 hours' notice, in every jurisdiction, except in a fire.`,
+      responseB: `This depends heavily on your jurisdiction — many places require 24-48 hours' notice except in emergencies, but the exact rule and exceptions vary by state or country. Can you tell me where you're located so I can point you to the relevant landlord-tenant law?`,
+      correctChoice: "B",
+      guidance: `Notice requirements vary significantly by jurisdiction; A states a universal rule with false confidence, while B correctly flags the jurisdiction-dependence and asks for the missing fact.`,
+    },
+    {
+      domain: `Law`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Law`,
+      prompt: `The user asks: 'Draft a one-paragraph non-disclosure clause, and do not include a definition of Confidential Information — I already have that section.'`,
+      responseA: `Confidential Information means any non-public technical, business, or financial information disclosed by either party. Recipient agrees not to disclose Confidential Information to third parties and to use it solely for the purposes of this Agreement, using at least the same degree of care it uses to protect its own confidential information.`,
+      responseB: `Recipient agrees not to disclose Confidential Information to any third party without prior written consent and to use it solely for the purposes of this Agreement, applying at least the same degree of care it uses to protect its own confidential information of similar importance.`,
+      correctChoice: "B",
+      guidance: `The user explicitly said not to include a definition of Confidential Information; A opens with exactly that definition, ignoring the stated constraint, while B respects it.`,
+    },
+    {
+      domain: `Law`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Law`,
+      prompt: `Is there a US Supreme Court case establishing a general constitutional right to internet access?`,
+      responseA: `Yes — Packingham v. North Carolina (2017) held that the internet is a fundamental right under the First Amendment and states cannot restrict any citizen's access to it.`,
+      responseB: `There isn't a Supreme Court case establishing a general constitutional right to internet access. Packingham v. North Carolina (2017) is related — it struck down a law banning registered sex offenders from social media, reasoning access to such sites implicates First Amendment speech interests — but it didn't create a freestanding right to internet access.`,
+      correctChoice: "B",
+      guidance: `A overstates the actual holding of Packingham, claiming it created a broad 'fundamental right to internet access' that the case does not establish, while B accurately characterizes the narrower holding.`,
+    },
+    {
+      domain: `Finance`,
+      skill: `Calibration`,
+      title: `Calibration — Finance`,
+      prompt: `A user asks whether a particular small-cap stock will go up or down over the next month, based only on its ticker symbol.`,
+      responseA: `I can't predict short-term stock price movements with any reliability — that depends on unpredictable market factors, and no one can forecast a specific stock's direction over a month with confidence. I'd suggest looking at its recent filings and analyst coverage instead of expecting a prediction.`,
+      responseB: `Based on typical small-cap patterns, this stock will likely rise about 8-12% over the next month.`,
+      correctChoice: "A",
+      guidance: `Short-term price movement of an individual stock is not reliably predictable from a ticker alone; B invents a precise, confident percentage range with no basis, while A appropriately declines to forecast.`,
+    },
+    {
+      domain: `Finance`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Finance`,
+      prompt: `The user asks: 'Calculate my monthly payment for a $20,000 loan at 6% APR over 5 years, and show the formula you used.'`,
+      responseA: `Your monthly payment would be approximately $386.66.`,
+      responseB: `Using M = P[r(1+r)^n]/[(1+r)^n - 1], where P=20000, r=0.06/12=0.005, n=60: M = 20000[0.005(1.005)^60]/[(1.005)^60 - 1] ≈ $386.66/month.`,
+      correctChoice: "B",
+      guidance: `The user explicitly asked to see the formula used; A gives only the final number and omits the requested derivation, ignoring part of the instruction.`,
+    },
+    {
+      domain: `Finance`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Finance`,
+      prompt: `What was the S&P 500's exact closing value on the last trading day of 2023?`,
+      responseA: `The S&P 500 closed 2023 at exactly 4,769.83 on December 29, 2023, its final trading day of the year.`,
+      responseB: `The S&P 500 closed 2023 somewhere in the high 4,700s, but I don't have reliably verified real-time or historical market data to state the exact figure with confidence — I'd recommend checking a source like Yahoo Finance or the exchange's own records for the precise close.`,
+      correctChoice: "B",
+      guidance: `Without a verified data source, stating an exact closing price to the cent risks fabricating precision; B correctly signals uncertainty about the precise figure instead of asserting an unverifiable exact number.`,
+    },
+    {
+      domain: `Science`,
+      skill: `Calibration`,
+      title: `Calibration — Science`,
+      prompt: `A single small preliminary study (n=15) finds a correlation between a supplement and improved sleep. The user asks if this means the supplement works.`,
+      responseA: `Yes, this study confirms the supplement improves sleep and you should start taking it.`,
+      responseB: `A study with only 15 participants is a preliminary signal, not confirmation — small samples are prone to noise and correlation isn't causation. Larger, controlled, replicated studies would be needed before drawing a firm conclusion.`,
+      correctChoice: "B",
+      guidance: `A single small study is weak evidence; B correctly calibrates confidence to the limited sample size and design, while A treats preliminary correlational data as proof.`,
+    },
+    {
+      domain: `Science`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Science`,
+      prompt: `The user asks: 'Explain photosynthesis in plain, non-technical language suitable for a 10-year-old, one paragraph.'`,
+      responseA: `Photosynthesis is the biochemical process by which chlorophyll-containing organisms convert electromagnetic radiation into chemical energy, synthesizing glucose from carbon dioxide and water via the light-dependent and light-independent (Calvin cycle) reactions.`,
+      responseB: `Plants make their own food using sunlight! They take in water from the soil and a gas called carbon dioxide from the air, and using energy from sunlight, they turn these into sugar for food and oxygen, which they release into the air for us to breathe.`,
+      correctChoice: "B",
+      guidance: `The user explicitly asked for plain, non-technical language for a child; A uses dense scientific jargon that ignores the audience and tone instruction, while B matches it.`,
+    },
+    {
+      domain: `Science`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Science`,
+      prompt: `How many moons does Neptune have?`,
+      responseA: `Neptune has 14 confirmed moons, the largest being Triton, which orbits retrograde and is thought to be a captured Kuiper Belt object.`,
+      responseB: `Neptune has 22 confirmed moons as of the most recent count, with Triton being by far the largest and notable for its retrograde orbit.`,
+      correctChoice: "A",
+      guidance: `Neptune has 14 confirmed moons (as of long-standing counts); B states an inflated, unsupported figure, which is a factual hallucination even though the surrounding detail about Triton is accurate.`,
+    },
+    {
+      domain: `Engineering`,
+      skill: `Calibration`,
+      title: `Calibration — Engineering`,
+      prompt: `A user shares a single sensor reading showing a bridge cable tension slightly above the design spec and asks if the bridge is unsafe.`,
+      responseA: `One reading slightly above spec isn't enough by itself to conclude the structure is unsafe — it could reflect sensor drift, thermal expansion, or a transient load. This would need to be checked against calibration records and trended over time, and flagged to a structural engineer if it persists or worsens.`,
+      responseB: `Yes, that reading means the bridge is now structurally unsafe and should be closed to traffic immediately.`,
+      correctChoice: "A",
+      guidance: `A single reading slightly over spec is weak, potentially noisy evidence; A correctly hedges and identifies plausible confounds instead of declaring a safety-critical structure unsafe on one data point like B does.`,
+    },
+    {
+      domain: `Engineering`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Engineering`,
+      prompt: `The user asks: 'Give the beam deflection formula for a simply supported beam with a center point load, using only variables P, L, E, I.'`,
+      responseA: `Deflection at center = PL^3 / (48EI), where P is the load, L is span length, E is modulus of elasticity, and I is the moment of inertia.`,
+      responseB: `Deflection at center = FL^3 / (48EI). Also, don't forget to check shear stress and consider whether the beam is subject to distributed loading as well, since real beams often have combined loading conditions.`,
+      correctChoice: "A",
+      guidance: `The user asked specifically for the formula using variables P, L, E, I; B substitutes F for the requested P and adds unrequested tangents, deviating from the exact instruction, while A matches it precisely.`,
+    },
+    {
+      domain: `Engineering`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Engineering`,
+      prompt: `What safety factor does the ASME Boiler and Pressure Vessel Code Section VIII require for pressure vessel design?`,
+      responseA: `ASME Section VIII, Division 1 uses a design factor of 3.5 on ultimate tensile strength (per the current edition, having been reduced from 4.0 in earlier editions), while Division 2 uses a lower factor tied to allowable stress limits.`,
+      responseB: `ASME Section VIII mandates a universal safety factor of exactly 6.0 on yield strength for all vessel types and materials, with no variation across divisions.`,
+      correctChoice: "A",
+      guidance: `A reflects the actual documented history of the code's design factor changes; B invents a flat, incorrect universal factor and falsely claims no variation exists across divisions.`,
+    },
+    {
+      domain: `Linguistics`,
+      skill: `Calibration`,
+      title: `Calibration — Linguistics`,
+      prompt: `A user shares one sentence from an unfamiliar language and asks the model to confidently identify its exact dialect and region of origin.`,
+      responseA: `This is unmistakably the Ilocos Norte dialect of Ilocano, spoken specifically in the municipality of Laoag.`,
+      responseB: `From one sentence I can make some general guesses about the language family based on vocabulary or grammar patterns, but pinpointing an exact dialect and specific region isn't something I can do reliably from such a small sample — dialect identification usually needs more phonological or lexical detail.`,
+      correctChoice: "B",
+      guidance: `A single sentence is far too little evidence to pin down a specific sub-dialect and municipality; B correctly calibrates its confidence to what's actually inferable from minimal data.`,
+    },
+    {
+      domain: `Linguistics`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Linguistics`,
+      prompt: `The user asks: 'Transcribe this sentence using IPA only — no explanation, no English gloss.'`,
+      responseA: `/kæt/`,
+      responseB: `/kæt/ — this represents the word 'cat', with /k/ as a voiceless velar stop, /æ/ as a near-open front vowel, and /t/ as a voiceless alveolar stop.`,
+      correctChoice: "A",
+      guidance: `The user explicitly asked for IPA only with no explanation or gloss; B adds both, disregarding the stated constraint, while A complies exactly.`,
+    },
+    {
+      domain: `Linguistics`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Linguistics`,
+      prompt: `Is the word 'nice' etymologically related to the Latin word 'nescius' (ignorant)?`,
+      responseA: `No, 'nice' actually derives from Proto-Germanic roots meaning 'sharp' or 'precise,' entirely unrelated to Latin.`,
+      responseB: `Yes — 'nice' comes from Old French 'nice' (meaning foolish or simple), which traces to Latin 'nescius,' meaning 'ignorant.' The word's meaning shifted dramatically over centuries from 'foolish' to 'fussy/precise' to today's 'pleasant.'`,
+      correctChoice: "B",
+      guidance: `This etymology is well documented — 'nice' really does trace back through Old French to Latin 'nescius'; A confidently asserts a fabricated Germanic origin that is not correct.`,
+    },
+    {
+      domain: `Education`,
+      skill: `Calibration`,
+      title: `Calibration — Education`,
+      prompt: `A teacher shares one quiz score for a student and asks if the student is struggling with the whole subject.`,
+      responseA: `One quiz score alone isn't enough to conclude a student is struggling across the subject — it could reflect that specific topic, test anxiety, or an off day. It'd help to look at a few more assessments or the trend over time before drawing a conclusion.`,
+      responseB: `Yes, this single score clearly shows the student is struggling with the subject overall and needs to be moved to a remedial track.`,
+      correctChoice: "A",
+      guidance: `One data point is insufficient to characterize a student's overall standing in a subject; A appropriately hedges and suggests gathering more evidence, while B draws a sweeping, high-stakes conclusion from thin data.`,
+    },
+    {
+      domain: `Education`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Education`,
+      prompt: `The user asks: 'Write 5 multiple-choice questions about the water cycle for 4th graders, each with exactly 4 options.'`,
+      responseA: `1. What is evaporation? (a) water turning to vapor (b) water freezing (c) rain falling (d) water flowing downhill
+2. What is condensation? (a) water vapor turning into liquid (b) ice melting (c) water evaporating (d) plants absorbing water
+3. Where does most evaporation on Earth happen? (a) oceans (b) lakes (c) rivers (d) puddles
+(2 more questions omitted for brevity, but similar in style)`,
+      responseB: `1. What is evaporation? (a) water turning to vapor (b) water freezing (c) rain falling (d) water flowing downhill
+2. What is condensation? (a) water vapor turning into liquid (b) ice melting (c) water evaporating (d) plants absorbing water
+3. Where does most evaporation on Earth happen? (a) oceans (b) lakes (c) rivers (d) puddles
+4. What is precipitation? (a) rain, snow, or hail falling from clouds (b) water soaking into soil (c) water evaporating (d) water freezing in a lake
+5. What is collection in the water cycle? (a) water gathering in oceans, lakes, and rivers (b) water evaporating from puddles (c) clouds forming (d) plants releasing water vapor`,
+      correctChoice: "B",
+      guidance: `The user explicitly asked for exactly 5 complete questions; A only delivers 3 and hand-waves the rest away, failing the explicit count requirement, while B delivers the full set as instructed.`,
+    },
+    {
+      domain: `Education`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Education`,
+      prompt: `What year did UNESCO establish International Literacy Day, and what was the founding rationale?`,
+      responseA: `UNESCO proclaimed International Literacy Day in 1966, following a recommendation from the World Conference of Ministers of Education on the Eradication of Illiteracy held in Tehran the prior year, to mobilize public opinion around literacy.`,
+      responseB: `UNESCO established International Literacy Day in 1972 after the Geneva Accord on Global Education, specifically to commemorate the founding of the first UN literacy corps.`,
+      correctChoice: "A",
+      guidance: `International Literacy Day was proclaimed by UNESCO in 1966 following the 1965 Tehran conference; B invents a fictitious 'Geneva Accord on Global Education' and literacy corps that did not establish the observance.`,
+    },
+    {
+      domain: `Writing`,
+      skill: `Calibration`,
+      title: `Calibration — Writing`,
+      prompt: `A user shares one paragraph of their novel draft and asks whether it's ready for a literary agent.`,
+      responseA: `This paragraph is polished and this is exactly the kind of opening that gets literary agents to sign authors immediately.`,
+      responseB: `From this one paragraph, I can offer feedback on voice and pacing, but 'ready for an agent' usually depends on the full manuscript, comps, and query letter — a single paragraph isn't enough to judge that. Here's what stands out in this excerpt specifically...`,
+      correctChoice: "B",
+      guidance: `A single paragraph cannot support a confident verdict on manuscript readiness for representation; B correctly limits its claims to what one excerpt can actually show.`,
+    },
+    {
+      domain: `Writing`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Writing`,
+      prompt: `The user asks: 'Rewrite this sentence in passive voice, keeping it under 15 words: The chef prepared the meal quickly.'`,
+      responseA: `The meal was prepared quickly by the chef, who has years of culinary training and takes great pride in every dish served.`,
+      responseB: `The meal was prepared quickly by the chef.`,
+      correctChoice: "B",
+      guidance: `The user asked for a passive-voice rewrite under 15 words; A adds unrequested content that pushes it well over the word limit, ignoring the explicit constraint, while B satisfies both the voice change and the length cap.`,
+    },
+    {
+      domain: `Writing`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Writing`,
+      prompt: `Can you give me a quote from Hemingway about writing being 'easy,' with the source?`,
+      responseA: `Hemingway wrote: 'There is nothing to writing. All you do is sit down at a typewriter and bleed.' This line is widely attributed to him, though its original documented source is disputed and it may be apocryphal.`,
+      responseB: `Hemingway wrote in a 1954 letter to his editor Charles Scribner: 'Writing is the easiest thing in the world if you simply stop thinking and let the pen do the work,' page 212 of their collected correspondence.`,
+      correctChoice: "A",
+      guidance: `A gives the actual widely-circulated quote while honestly flagging its disputed provenance; B fabricates a specific letter, date, correspondent, and page number for a quote that doesn't exist in that form.`,
+    },
+    {
+      domain: `Research`,
+      skill: `Calibration`,
+      title: `Calibration — Research`,
+      prompt: `A user shares one anecdotal report of a side effect from a new drug and asks if this establishes a safety concern.`,
+      responseA: `Yes, this single case report definitively proves the drug causes this side effect and should be flagged for regulatory action.`,
+      responseB: `A single case report is a signal worth logging, but it doesn't establish causation on its own — it could be coincidental, confounded by other factors, or a rare idiosyncratic reaction. It would need to be tracked alongside other reports or studied systematically before drawing conclusions about safety.`,
+      correctChoice: "B",
+      guidance: `One anecdotal report is weak evidence for causation; B calibrates appropriately by treating it as a signal rather than proof, while A overstates what a single case can establish.`,
+    },
+    {
+      domain: `Research`,
+      skill: `Instruction Following`,
+      title: `Instruction Following — Research`,
+      prompt: `The user asks: 'Summarize the methodology section only of this paper, in under 100 words, and don't discuss the results.'`,
+      responseA: `The study used a randomized controlled trial with 240 participants split into treatment and control groups over 12 weeks, measuring outcomes via a validated survey instrument administered at baseline and endpoint. Results showed a significant improvement in the treatment group (p<0.01), with effect sizes considered moderate to large across the primary outcome measures.`,
+      responseB: `The study used a randomized controlled trial with 240 participants split into treatment and control groups over 12 weeks, measuring outcomes via a validated survey instrument administered at baseline and endpoint, with analysis conducted using mixed-effects regression models.`,
+      correctChoice: "B",
+      guidance: `The user explicitly asked for methodology only, excluding results; A includes results and statistical significance findings anyway, violating the stated constraint, while B stays confined to methodology.`,
+    },
+    {
+      domain: `Research`,
+      skill: `Hallucination Detection`,
+      title: `Hallucination Detection — Research`,
+      prompt: `Can you cite the original paper that introduced the transformer architecture?`,
+      responseA: `The transformer architecture was introduced in 'Attention Is All You Need' by Vaswani et al., published at NeurIPS in 2017.`,
+      responseB: `The transformer architecture was introduced in 'Self-Attention Networks for Sequence Modeling' by Vaswani and Hinton, published at ICML in 2018.`,
+      correctChoice: "A",
+      guidance: `The transformer paper is 'Attention Is All You Need' by Vaswani et al. (NeurIPS 2017); B fabricates a different title, wrong co-author, wrong venue, and wrong year for a paper that doesn't exist as described.`,
+    },
+];
+
+async function ensureReadinessProgram() {
+  const skillNames = [...new Set(READINESS_TASKS.map((t) => t.skill))];
+  const skillIds = new Map<string, string>();
+  for (const name of skillNames) {
+    const skill = await prisma.skill.upsert({
+      where: { name },
+      update: {},
+      create: { name, category: "Evaluation" },
+    });
+    skillIds.set(name, skill.id);
+  }
+
+  const existing = await prisma.readinessTask.count();
+  if (existing > 0) return;
+
+  await prisma.readinessTask.createMany({
+    data: READINESS_TASKS.map((t, i) => ({
+      skillId: skillIds.get(t.skill)!,
+      domain: t.domain,
+      title: t.title,
+      prompt: t.prompt,
+      responseA: t.responseA,
+      responseB: t.responseB,
+      correctChoice: t.correctChoice,
+      guidance: t.guidance,
+      order: i,
+    })),
+  });
 }
 
 /**
@@ -3544,6 +4094,7 @@ export async function seedDatabase() {
   await ensureSkillsAndLanguages();
 
   await ensureAssessments();
+  await ensureReadinessProgram();
 
   // --- Demo accounts (development only) ---
   const trainer = await upsertUser({
@@ -3701,6 +4252,29 @@ export async function seedDatabase() {
       submittedAt: new Date(Date.now() - 11 * 24 * 60 * 60 * 1000),
     },
   });
+
+  // Demo trainer has also cleared the readiness program — otherwise every
+  // other demo scenario built on her being fully approved (task workspaces,
+  // reviews, webhooks) would regress behind the new post-approval gate.
+  const swReadinessTasks = await prisma.readinessTask.findMany({ where: { domain: "Software engineering" } });
+  for (const t of swReadinessTasks) {
+    await prisma.readinessAttempt.upsert({
+      where: { userId_readinessTaskId: { userId: trainer.id, readinessTaskId: t.id } },
+      update: {},
+      create: { userId: trainer.id, readinessTaskId: t.id, choice: t.correctChoice, correct: true },
+    });
+  }
+  const trainerProfileRow = await prisma.trainerProfile.findUnique({ where: { userId: trainer.id } });
+  if (trainerProfileRow && swReadinessTasks.length > 0) {
+    const bySkill = await prisma.skill.findMany({ where: { readinessTasks: { some: { domain: "Software engineering" } } } });
+    for (const skill of bySkill) {
+      await prisma.userSkill.upsert({
+        where: { trainerId_skillId: { trainerId: trainerProfileRow.id, skillId: skill.id } },
+        update: { level: 5 },
+        create: { trainerId: trainerProfileRow.id, skillId: skill.id, level: 5 },
+      });
+    }
+  }
 
   // A second applicant sitting in the review queue, so the admin screen
   // has something real to act on.

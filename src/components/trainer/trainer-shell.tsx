@@ -18,6 +18,7 @@ import {
   MessageCircleQuestion,
   ClipboardCheck,
   Scale,
+  Sparkles,
 } from "lucide-react";
 
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
@@ -76,7 +77,10 @@ function buildNavSections(counts: {
       : []),
     {
       label: "Assessments",
-      items: [{ href: "/trainer/assessments", label: "My assessments", icon: GraduationCap }],
+      items: [
+        { href: "/trainer/assessments", label: "My assessments", icon: GraduationCap },
+        { href: "/trainer/readiness", label: "Readiness program", icon: Sparkles },
+      ],
     },
     {
       label: "Quality & earnings",

@@ -19,7 +19,7 @@ function attempt(status: string, score: number | null, overrides: Partial<Record
     status,
     score,
     submittedAt: status === "AVAILABLE" || status === "IN_PROGRESS" ? null : new Date(),
-    assessment: { title: "Legal reasoning", domain: "Legal", passThreshold: 0.8 },
+    assessment: { title: "Legal reasoning", domain: "Legal", passThreshold: 0.8, stage: "QUALIFICATION" },
     ...overrides,
   };
 }
@@ -101,8 +101,12 @@ describe("application approval requires real evidence, not trust", () => {
   it("prefers the attempt matching the domain applied for, over a more recent unrelated one", async () => {
     identityFindUnique.mockResolvedValue(null);
     attemptFindMany.mockResolvedValue([
-      attempt("PASSED", 0.92, { assessment: { title: "Software eng.", domain: "Software Engineering", passThreshold: 0.75 } }),
-      attempt("FAILED", 0.6, { assessment: { title: "Legal reasoning", domain: "Legal", passThreshold: 0.8 } }),
+      attempt("PASSED", 0.92, {
+        assessment: { title: "Software eng.", domain: "Software Engineering", passThreshold: 0.75, stage: "QUALIFICATION" },
+      }),
+      attempt("FAILED", 0.6, {
+        assessment: { title: "Legal reasoning", domain: "Legal", passThreshold: 0.8, stage: "QUALIFICATION" },
+      }),
     ]);
 
     const readiness = await getApplicantReadiness("user-1", "Legal");

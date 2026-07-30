@@ -11,7 +11,7 @@ import type { TrainerGateState } from "@/lib/permissions/gating";
 
 export type OnboardingStepStatus = "done" | "current" | "upcoming";
 
-export type OnboardingStepKey = "application" | "assessment" | "identity" | "review" | "approved";
+export type OnboardingStepKey = "application" | "assessment" | "identity" | "review" | "readiness" | "approved";
 
 export type OnboardingStep = {
   key: OnboardingStepKey;
@@ -48,6 +48,12 @@ const STEPS: { key: OnboardingStepKey; label: string; description: string; href?
     description: "Our team checks everything over.",
   },
   {
+    key: "readiness",
+    label: "Readiness",
+    description: "Complete a short set of calibration tasks so we know what you're strongest at.",
+    href: "/trainer/readiness",
+  },
+  {
     key: "approved",
     label: "Approved",
     description: "Browse projects and start accepting paid work.",
@@ -62,7 +68,8 @@ const STAGE_POSITION: Record<TrainerGateState["stage"], number | null> = {
   identity_required: 2,
   identity_processing: 2,
   under_review: 3,
-  approved: 4,
+  readiness_required: 4,
+  approved: 5,
   // Terminal outcomes. A progress bar implies a road still ahead, so these
   // deliberately render no stepper at all — the banner carries the message.
   rejected: null,

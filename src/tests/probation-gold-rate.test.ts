@@ -3,6 +3,8 @@ import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 const applicationFindUnique = vi.fn();
 const identityFindUnique = vi.fn();
 const assessmentAttemptFindFirst = vi.fn();
+const readinessTaskFindMany = vi.fn();
+const readinessAttemptCount = vi.fn();
 const projectJurisdictionRuleFindMany = vi.fn();
 const locationSignalFindFirst = vi.fn();
 const projectAssignmentFindUnique = vi.fn();
@@ -18,6 +20,8 @@ vi.mock("@/lib/db/prisma", () => ({
     application: { findUnique: (...a: unknown[]) => applicationFindUnique(...a) },
     identityVerification: { findUnique: (...a: unknown[]) => identityFindUnique(...a) },
     assessmentAttempt: { findFirst: (...a: unknown[]) => assessmentAttemptFindFirst(...a) },
+    readinessTask: { findMany: (...a: unknown[]) => readinessTaskFindMany(...a) },
+    readinessAttempt: { count: (...a: unknown[]) => readinessAttemptCount(...a) },
     projectJurisdictionRule: { findMany: (...a: unknown[]) => projectJurisdictionRuleFindMany(...a) },
     locationSignal: { findFirst: (...a: unknown[]) => locationSignalFindFirst(...a) },
     projectAssignment: { findUnique: (...a: unknown[]) => projectAssignmentFindUnique(...a) },
@@ -33,12 +37,16 @@ const { assignNextTask, getProbationStatus, PROBATION_TASK_THRESHOLD, PROBATION_
   "@/server/services/assignment"
 );
 
-const APPROVED_APPLICATION = { status: "APPROVED", reviewerMessage: null };
+const APPROVED_APPLICATION = { status: "APPROVED", reviewerMessage: null, domain: "Software engineering" };
 
 beforeEach(() => {
   applicationFindUnique.mockReset().mockResolvedValue(APPROVED_APPLICATION);
   identityFindUnique.mockReset().mockResolvedValue({ status: "VERIFIED" });
   assessmentAttemptFindFirst.mockReset().mockResolvedValue({ id: "attempt-1" });
+  // No readiness-program content configured for this domain in these tests —
+  // isReadinessComplete treats an empty task set as nothing to block on.
+  readinessTaskFindMany.mockReset().mockResolvedValue([]);
+  readinessAttemptCount.mockReset().mockResolvedValue(0);
   projectJurisdictionRuleFindMany.mockReset().mockResolvedValue([]);
   locationSignalFindFirst.mockReset().mockResolvedValue(null);
   projectAssignmentFindUnique.mockReset().mockResolvedValue({ status: "ACTIVE" });

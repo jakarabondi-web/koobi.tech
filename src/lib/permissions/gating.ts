@@ -4,8 +4,9 @@ import type { ApplicationStatus, IdentityStatus } from "@prisma/client";
  * Access gates that sit *between* "signed in" and "can do paid work".
  *
  * A trainer progresses: registered → email verified → application submitted
- * → assessment passed → identity verified → approved by an operations
- * manager → can see and accept assignments.
+ * → screener passed → qualification exam passed → identity verified →
+ * approved by an operations manager → readiness program completed → can
+ * see and accept assignments.
  *
  * These are checked server-side wherever assignment data is read. UI copy
  * derives from the same source so what the trainer is told always matches
@@ -22,6 +23,7 @@ export type TrainerGateState = {
     | "identity_processing"
     | "under_review"
     | "more_info_required"
+    | "readiness_required"
     | "approved"
     | "rejected"
     | "waitlisted"
@@ -37,8 +39,10 @@ export function evaluateTrainerGate(input: {
   application: { status: ApplicationStatus; reviewerMessage: string | null } | null;
   identityStatus: IdentityStatus | null;
   hasPassedAssessment: boolean;
+  /** Has the trainer finished every calibration task in the readiness program for their domain? */
+  readinessComplete: boolean;
 }): TrainerGateState {
-  const { application, identityStatus, hasPassedAssessment } = input;
+  const { application, identityStatus, hasPassedAssessment, readinessComplete } = input;
 
   if (!application || application.status === "DRAFT") {
     return {
@@ -109,7 +113,7 @@ export function evaluateTrainerGate(input: {
       stage: "assessment_required",
       title: "Complete your qualification assessment",
       message:
-        "Pass a short assessment in your area of expertise to continue. You can take it whenever you're ready.",
+        "Pass a quick screening quiz, then a qualification exam in your area of expertise, to continue. You can take them whenever you're ready.",
       actionHref: "/trainer/assessments",
       actionLabel: "Start assessment",
     };
@@ -144,6 +148,17 @@ export function evaluateTrainerGate(input: {
   }
 
   if (application.status === "APPROVED") {
+    if (!readinessComplete) {
+      return {
+        canAccessAssignments: false,
+        stage: "readiness_required",
+        title: "Complete your readiness program",
+        message:
+          "You're approved — one last step. Work through a short set of calibration tasks so we can see what you're strongest at and get you ranked before you start paid work.",
+        actionHref: "/trainer/readiness",
+        actionLabel: "Start readiness program",
+      };
+    }
     return {
       canAccessAssignments: true,
       stage: "approved",

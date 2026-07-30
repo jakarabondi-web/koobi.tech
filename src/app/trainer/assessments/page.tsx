@@ -30,7 +30,7 @@ export default async function AssessmentsPage() {
         <EmptyState icon={GraduationCap} title="No assessments available" description="Check back shortly." />
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {items.map(({ assessment, attempt, attemptsUsed }) => {
+          {items.map(({ assessment, attempt, attemptsUsed, locked }) => {
             const passed = attempt?.status === "PASSED";
             const underReview = attempt?.status === "UNDER_REVIEW";
             const exhausted = attemptsUsed >= assessment.maxAttempts && !passed && !underReview;
@@ -42,7 +42,13 @@ export default async function AssessmentsPage() {
                       <h3 className="text-sm font-semibold">{assessment.title}</h3>
                       <p className="text-xs text-muted-foreground">{assessment.domain}</p>
                     </div>
-                    {attempt ? <StatusBadge status={attempt.status} /> : <Badge variant="outline">Available</Badge>}
+                    {attempt ? (
+                      <StatusBadge status={attempt.status} />
+                    ) : locked ? (
+                      <Badge variant="outline">Locked</Badge>
+                    ) : (
+                      <Badge variant="outline">Available</Badge>
+                    )}
                   </div>
 
                   <p className="text-sm text-muted-foreground">{assessment.description}</p>
@@ -75,6 +81,10 @@ export default async function AssessmentsPage() {
                   ) : exhausted ? (
                     <p className="text-sm text-muted-foreground">
                       No attempts remaining. Contact support if you&apos;d like this reviewed.
+                    </p>
+                  ) : locked ? (
+                    <p className="text-sm text-muted-foreground">
+                      Pass the screening quiz first to unlock this exam.
                     </p>
                   ) : (
                     <BeginAssessmentButton

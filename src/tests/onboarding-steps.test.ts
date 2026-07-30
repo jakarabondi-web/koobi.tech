@@ -16,9 +16,10 @@ describe("onboarding stepper", () => {
       application: null,
       identityStatus: null,
       hasPassedAssessment: false,
+      readinessComplete: false,
     });
     expect(gate.stage).toBe("application_not_started");
-    expect(shape(gate)).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming"]);
+    expect(shape(gate)).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming", "upcoming"]);
   });
 
   it("advances to the assessment once the application is in", () => {
@@ -26,8 +27,9 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: null,
       hasPassedAssessment: false,
+      readinessComplete: false,
     });
-    expect(shape(gate)).toEqual(["done", "current", "upcoming", "upcoming", "upcoming"]);
+    expect(shape(gate)).toEqual(["done", "current", "upcoming", "upcoming", "upcoming", "upcoming"]);
   });
 
   it("advances to identity once the assessment is passed", () => {
@@ -35,9 +37,10 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: "NOT_STARTED",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     expect(gate.stage).toBe("identity_required");
-    expect(shape(gate)).toEqual(["done", "done", "current", "upcoming", "upcoming"]);
+    expect(shape(gate)).toEqual(["done", "done", "current", "upcoming", "upcoming", "upcoming"]);
   });
 
   it("stays on identity, but says documents are being reviewed, while pending", () => {
@@ -45,11 +48,12 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: "PENDING",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     expect(gate.stage).toBe("identity_processing");
     expect(gate.title).toMatch(/reviewing your documents/i);
     // Still the identity step — submitted is not the same as verified.
-    expect(shape(gate)).toEqual(["done", "done", "current", "upcoming", "upcoming"]);
+    expect(shape(gate)).toEqual(["done", "done", "current", "upcoming", "upcoming", "upcoming"]);
   });
 
   it("does not tell someone who already submitted to go and verify again", () => {
@@ -57,11 +61,13 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: "PENDING",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     const notStarted = evaluateTrainerGate({
       application: submitted,
       identityStatus: "NOT_STARTED",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     expect(notStarted.actionLabel).toBe("Verify identity");
     expect(pending.actionLabel).not.toBe("Verify identity");
@@ -72,19 +78,34 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: "VERIFIED",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     expect(gate.stage).toBe("under_review");
-    expect(shape(gate)).toEqual(["done", "done", "done", "current", "upcoming"]);
+    expect(shape(gate)).toEqual(["done", "done", "done", "current", "upcoming", "upcoming"]);
   });
 
-  it("marks everything done once approved", () => {
+  it("requires the readiness program once approved but not yet complete", () => {
     const gate = evaluateTrainerGate({
       application: { status: "APPROVED", reviewerMessage: null },
       identityStatus: "VERIFIED",
       hasPassedAssessment: true,
+      readinessComplete: false,
+    });
+    expect(gate.stage).toBe("readiness_required");
+    expect(gate.canAccessAssignments).toBe(false);
+    expect(gate.actionHref).toBe("/trainer/readiness");
+    expect(shape(gate)).toEqual(["done", "done", "done", "done", "current", "upcoming"]);
+  });
+
+  it("marks everything done once approved and readiness is complete", () => {
+    const gate = evaluateTrainerGate({
+      application: { status: "APPROVED", reviewerMessage: null },
+      identityStatus: "VERIFIED",
+      hasPassedAssessment: true,
+      readinessComplete: true,
     });
     expect(gate.canAccessAssignments).toBe(true);
-    expect(shape(gate)).toEqual(["done", "done", "done", "done", "done"]);
+    expect(shape(gate)).toEqual(["done", "done", "done", "done", "done", "done"]);
   });
 
   it("sends someone back to the application when more info is asked for", () => {
@@ -92,8 +113,9 @@ describe("onboarding stepper", () => {
       application: { status: "ADDITIONAL_INFO_REQUIRED", reviewerMessage: "Add a work sample." },
       identityStatus: "VERIFIED",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
-    expect(shape(gate)).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming"]);
+    expect(shape(gate)).toEqual(["current", "upcoming", "upcoming", "upcoming", "upcoming", "upcoming"]);
   });
 
   it("renders no stepper for decided or paused applications", () => {
@@ -102,6 +124,7 @@ describe("onboarding stepper", () => {
         application: { status, reviewerMessage: null },
         identityStatus: "VERIFIED",
         hasPassedAssessment: true,
+        readinessComplete: false,
       });
       expect(onboardingSteps(gate)).toBeNull();
     }
@@ -112,6 +135,7 @@ describe("onboarding stepper", () => {
       application: submitted,
       identityStatus: "NOT_STARTED",
       hasPassedAssessment: true,
+      readinessComplete: false,
     });
     const steps = onboardingSteps(gate)!;
     expect(steps.filter((s) => s.href)).toHaveLength(1);

@@ -83,6 +83,7 @@ model User {
   identityVerification IdentityVerification?
   application       Application?
   assessmentAttempts AssessmentAttempt[]
+  readinessAttempts ReadinessAttempt[]
   projectApplications ProjectApplication[]
   taskAssignments   TaskAssignment[]
   submissions       TaskSubmission[]        @relation("SubmittedBy")
@@ -409,8 +410,52 @@ model Skill {
   name     String      @unique
   category String?
   users    UserSkill[]
+  readinessTasks ReadinessTask[]
 
   @@map("skills")
+}
+
+/**
+ * A short calibration exercise in the mandatory post-approval Readiness
+ * Program: a trainee judges a pair of candidate responses, then sees the
+ * correct choice plus a guidance explanation immediately after submitting —
+ * this teaches the platform's judgment standard rather than only testing it.
+ * Scored per skill to build the trainer's UserSkill levels.
+ */
+model ReadinessTask {
+  id           String   @id @default(uuid())
+  skillId      String
+  domain       String
+  title        String
+  prompt       String
+  responseA    String
+  responseB    String
+  correctChoice String  // "A" | "B"
+  guidance     String
+  order        Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  skill    Skill              @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  attempts ReadinessAttempt[]
+
+  @@map("readiness_tasks")
+}
+
+model ReadinessAttempt {
+  id              String   @id @default(uuid())
+  userId          String
+  readinessTaskId String
+  choice          String   // "A" | "B"
+  correct         Boolean
+  completedAt     DateTime @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readinessTask ReadinessTask @relation(fields: [readinessTaskId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, readinessTaskId])
+  @@index([userId])
+  @@map("readiness_attempts")
 }
 
 model UserSkill {
@@ -612,17 +657,27 @@ enum AssessmentAttemptStatus {
   EXPIRED
 }
 
+enum AssessmentStage {
+  /// Short, low-stakes filter every applicant takes once, regardless of
+  /// domain, before the real qualification exam unlocks.
+  SCREENER
+  /// The domain-specific exam that actually satisfies the trainer gate's
+  /// "assessment passed" requirement.
+  QUALIFICATION
+}
+
 model Assessment {
-  id            String   @id @default(uuid())
+  id            String          @id @default(uuid())
   title         String
   domain        String
   description   String?
+  stage         AssessmentStage @default(QUALIFICATION)
   timeLimitMins Int?
-  passThreshold Float    @default(0.8)
-  maxAttempts   Int      @default(2)
-  cooldownHours Int      @default(72)
-  isActive      Boolean  @default(true)
-  createdAt     DateTime @default(now())
+  passThreshold Float           @default(0.8)
+  maxAttempts   Int             @default(2)
+  cooldownHours Int             @default(72)
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
 
   questions AssessmentQuestion[]
   attempts  AssessmentAttempt[]

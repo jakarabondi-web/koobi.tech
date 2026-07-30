@@ -4,6 +4,7 @@ import type { AssessmentAttemptStatus, IdentityStatus, VerificationCheckResult }
 import { prisma } from "@/lib/db/prisma";
 import { evaluateTrainerGate, type TrainerGateState } from "@/lib/permissions/gating";
 import { surfaceForRoles, type GlobalRole } from "@/lib/permissions/roles";
+import { isReadinessComplete } from "@/server/services/readiness";
 
 /**
  * Single source of truth for whether a trainer may access paid work.
@@ -17,13 +18,24 @@ export async function getTrainerGate(userId: string): Promise<TrainerGateState> 
       select: { status: true, reviewerMessage: true },
     }),
     prisma.identityVerification.findUnique({ where: { userId }, select: { status: true } }),
-    prisma.assessmentAttempt.findFirst({ where: { userId, status: "PASSED" }, select: { id: true } }),
+    // A passed screener doesn't count here — only the domain qualification
+    // exam satisfies "assessment passed" for the gate.
+    prisma.assessmentAttempt.findFirst({
+      where: { userId, status: "PASSED", assessment: { stage: "QUALIFICATION" } },
+      select: { id: true },
+    }),
   ]);
+
+  // Readiness only matters once the applicant is otherwise approved — skip
+  // the query for everyone still earlier in the funnel.
+  const readinessComplete =
+    application?.status === "APPROVED" ? await isReadinessComplete(userId) : false;
 
   return evaluateTrainerGate({
     application,
     identityStatus: identity?.status ?? null,
     hasPassedAssessment: Boolean(passedAttempt),
+    readinessComplete,
   });
 }
 
@@ -121,12 +133,18 @@ export async function getApplicantReadiness(
         { submittedAt: { sort: "desc", nulls: "last" } },
         { startedAt: { sort: "desc", nulls: "last" } },
       ],
-      include: { assessment: { select: { title: true, domain: true, passThreshold: true } } },
+      include: { assessment: { select: { title: true, domain: true, passThreshold: true, stage: true } } },
     }),
   ]);
 
-  const passedAttempt = attempts.find((a) => a.status === "PASSED");
+  // A passed screener alone doesn't qualify someone — same rule as the
+  // trainer gate.
+  const passedAttempt = attempts.find((a) => a.status === "PASSED" && a.assessment.stage === "QUALIFICATION");
+  // Prefer the domain qualification exam over the screener when picking what
+  // to show a reviewer — that's the score their approval decision hinges on.
   const latest =
+    (applicationDomain &&
+      attempts.find((a) => a.assessment.domain === applicationDomain && a.assessment.stage === "QUALIFICATION")) ||
     (applicationDomain && attempts.find((a) => a.assessment.domain === applicationDomain)) ||
     attempts[0];
   const identityStatus = identity?.status ?? "NOT_STARTED";
