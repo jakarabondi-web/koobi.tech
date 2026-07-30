@@ -25,12 +25,12 @@ export function isSupportedFormat(format: string): format is ExportFormat {
   return (SUPPORTED_FORMATS as readonly string[]).includes(format);
 }
 
-function toJsonl(items: { content: unknown }[]): string {
+export function toJsonl(items: { content: unknown }[]): string {
   return items.map((item) => JSON.stringify(item.content)).join("\n");
 }
 
 /** RFC 4180: quote when the value contains a comma, quote, or newline. */
-function csvCell(value: unknown): string {
+export function csvCell(value: unknown): string {
   const text =
     value === null || value === undefined
       ? ""
@@ -40,7 +40,7 @@ function csvCell(value: unknown): string {
   return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-function toCsv(items: { content: unknown }[]): string {
+export function toCsv(items: { content: unknown }[]): string {
   // Header is the union of top-level keys in first-seen order, so rows with
   // differing shapes still land in one coherent table instead of failing.
   const columns: string[] = [];
