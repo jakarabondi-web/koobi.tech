@@ -225,19 +225,25 @@ function ResponseControl({
       ) : null}
 
       {field.kind === "select" ? (
-        <select
-          id={id}
-          name={id}
-          disabled={readOnly}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="mt-2 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-        >
-          <option value="">Choose…</option>
-          {field.options.map((opt) => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
+        readOnly ? (
+          // A disabled <select> silently ignores a programmatic `.value`
+          // assignment in Chromium, so the read-only view renders the
+          // chosen option as text instead of a disabled control.
+          <p className="mt-2 text-sm">{value || "—"}</p>
+        ) : (
+          <select
+            id={id}
+            name={id}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="mt-2 h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+          >
+            <option value="">Choose…</option>
+            {field.options.map((opt) => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
+          </select>
+        )
       ) : null}
 
       {field.kind === "rating" ? (
