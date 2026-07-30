@@ -4,10 +4,12 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db/prisma";
 import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { can } from "@/lib/permissions/can";
 import { loadSubmissionForReview, ReviewError } from "@/server/services/reviews";
 import { getOpenSimilarityFlag } from "@/server/services/plagiarism";
+import { parseCustomSchema } from "@/lib/tasks/custom-schema";
 import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
 import { ReviewWorkspace, type ReviewSubmission } from "@/components/tasks/review-workspace";
@@ -42,6 +44,32 @@ export default async function ReviewSubmissionPage({
     flags?: Record<string, boolean>;
   };
 
+  // CUSTOM submissions carry schema-defined responses instead of the
+  // pairwise shape — resolve keys to labels via the project's template so
+  // the reviewer sees the same field names the trainer did.
+  let custom: ReviewSubmission["custom"];
+  if (loaded.task.project.taskType === "CUSTOM") {
+    const template = await prisma.taskTemplate.findFirst({
+      where: { projectId: loaded.task.project.id },
+      orderBy: { createdAt: "asc" },
+    });
+    const schema = template ? parseCustomSchema(template.schema) : null;
+    if (schema) {
+      const rawPayload = loaded.task.payload as Record<string, unknown>;
+      const responses = (loaded.content as { responses?: Record<string, unknown> }).responses ?? {};
+      const show = (v: unknown) =>
+        v === undefined || v === null || v === ""
+          ? "—"
+          : typeof v === "object"
+            ? JSON.stringify(v, null, 2)
+            : String(v);
+      custom = {
+        inputs: schema.inputFields.map((f) => ({ label: f.label, value: show(rawPayload[f.key]) })),
+        responses: schema.responseFields.map((f) => ({ label: f.label, value: show(responses[f.key]) })),
+      };
+    }
+  }
+
   const submission: ReviewSubmission = {
     id: loaded.id,
     version: loaded.version,
@@ -56,6 +84,7 @@ export default async function ReviewSubmissionPage({
     flags: content.flags,
     goldAnswer: loaded.goldAnswer ? String(loaded.goldAnswer) : null,
     similarityFlag,
+    custom,
   };
 
   return (

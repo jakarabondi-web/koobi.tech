@@ -719,6 +719,10 @@ enum TaskType {
   CODE_REVIEW
   CODE_OUTPUT_EVALUATION
   MULTI_TURN_EVALUATION
+  /// Client-defined task shape. The project's TaskTemplate row carries the
+  /// schema (see src/lib/tasks/custom-schema.ts): which payload fields the
+  /// trainer is shown, and which response fields are collected.
+  CUSTOM
 }
 
 model Project {

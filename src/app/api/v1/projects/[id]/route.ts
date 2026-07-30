@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
 import { serializeProject } from "@/lib/api/serializers";
+import { parseCustomSchema } from "@/lib/tasks/custom-schema";
 import {
   apiError,
   apiOk,
@@ -29,16 +30,24 @@ export async function GET(request: Request, { params }: Params) {
   // distinguishing them would let a key enumerate other organizations' ids.
   if (!project) return apiError(404, "not_found", "Project not found.");
 
-  const counts = await prisma.task.groupBy({
-    by: ["status"],
-    where: { projectId: project.id },
-    _count: { _all: true },
-  });
+  const [counts, template] = await Promise.all([
+    prisma.task.groupBy({
+      by: ["status"],
+      where: { projectId: project.id },
+      _count: { _all: true },
+    }),
+    project.taskType === "CUSTOM"
+      ? prisma.taskTemplate.findFirst({ where: { projectId: project.id }, orderBy: { createdAt: "asc" } })
+      : null,
+  ]);
+
+  const customSchema = template ? parseCustomSchema(template.schema) : null;
 
   return apiOk({
     data: {
       ...serializeProject(project),
       task_status_counts: Object.fromEntries(counts.map((c) => [c.status, c._count._all])),
+      ...(customSchema ? { custom_schema: customSchema } : {}),
     },
   });
 }

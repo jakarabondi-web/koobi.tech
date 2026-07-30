@@ -1,5 +1,8 @@
+import type { Project } from "@prisma/client";
+
 import { prisma } from "@/lib/db/prisma";
 import { parseImport, type ParsedTask, type RowError } from "@/lib/tasks/import-parser";
+import { customRequiredFields, parseCustomSchema } from "@/lib/tasks/custom-schema";
 
 export class ImportError extends Error {
   /**
@@ -13,6 +16,25 @@ export class ImportError extends Error {
     super(message);
     this.rowErrors = rowErrors;
   }
+}
+
+/**
+ * The input-field keys a CUSTOM project's rows must carry, from its
+ * template. Built-in task types return undefined (their required fields are
+ * a static table in the parser). A CUSTOM project without a valid template
+ * cannot accept tasks at all — there'd be nothing to show a trainer.
+ */
+async function customFieldsFor(project: Project): Promise<string[] | undefined> {
+  if (project.taskType !== "CUSTOM") return undefined;
+  const template = await prisma.taskTemplate.findFirst({
+    where: { projectId: project.id },
+    orderBy: { createdAt: "asc" },
+  });
+  const schema = template ? parseCustomSchema(template.schema) : null;
+  if (!schema) {
+    throw new ImportError("This custom project has no task schema yet — define one before importing tasks.");
+  }
+  return customRequiredFields(schema);
 }
 
 export type ImportPreview = {
@@ -44,7 +66,8 @@ export async function previewImport(params: {
   const project = await prisma.project.findUnique({ where: { id: params.projectId } });
   if (!project) throw new ImportError("Project not found.");
 
-  const parsed = parseImport(params.content, params.format, project.taskType);
+  const customFields = await customFieldsFor(project);
+  const parsed = parseImport(params.content, params.format, project.taskType, customFields);
 
   // Re-importing the same file must not duplicate work, so refs already in
   // the project are reported as skips rather than errors.
@@ -111,7 +134,8 @@ export async function commitImport(params: {
   const project = await prisma.project.findUnique({ where: { id: params.projectId } });
   if (!project) throw new ImportError("Project not found.");
 
-  const parsed = parseImport(params.content, params.format, project.taskType);
+  const customFields = await customFieldsFor(project);
+  const parsed = parseImport(params.content, params.format, project.taskType, customFields);
   if (parsed.tasks.length === 0) {
     throw new ImportError("Nothing to import — every row failed validation.", parsed.errors);
   }

@@ -46,6 +46,15 @@ export type ReviewSubmission = {
   goldAnswer: string | null;
   /** Set when the justification closely matches another trainer's submission on this same task. */
   similarityFlag?: { severity: string; similarity: number | null } | null;
+  /**
+   * Present for CUSTOM projects: the task's inputs and the trainer's
+   * responses, already resolved to label/value pairs via the project's
+   * template. When set, these render in place of the pairwise blocks.
+   */
+  custom?: {
+    inputs: Array<{ label: string; value: string }>;
+    responses: Array<{ label: string; value: string }>;
+  };
 };
 
 export function ReviewWorkspace({ submission }: { submission: ReviewSubmission }) {
@@ -96,40 +105,68 @@ export function ReviewWorkspace({ submission }: { submission: ReviewSubmission }
           </div>
         ) : null}
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Prompt</p>
-          <p className="mt-1.5 text-sm">{submission.prompt}</p>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          {(["A", "B"] as const).map((side) => (
-            <div key={side}
-              className={cn("rounded-xl border p-4",
-                submission.preferred === side ? "border-primary bg-accent" : "border-border bg-card")}>
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-semibold text-muted-foreground">Response {side}</span>
-                {submission.preferred === side ? <Badge>Trainer picked</Badge> : null}
+        {submission.custom ? (
+          <>
+            {submission.custom.inputs.map((input) => (
+              <div key={input.label} className="rounded-xl border border-border bg-card p-5">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {input.label}
+                </p>
+                <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed">{input.value}</p>
               </div>
-              <p className="mt-2 text-sm leading-relaxed">
-                {side === "A" ? submission.responseA : submission.responseB}
-              </p>
+            ))}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-sm font-medium">Trainer&apos;s responses</p>
+              <div className="mt-3 space-y-3">
+                {submission.custom.responses.map((response) => (
+                  <div key={response.label}>
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {response.label}
+                    </p>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{response.value}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
+          </>
+        ) : (
+          <>
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Prompt</p>
+              <p className="mt-1.5 text-sm">{submission.prompt}</p>
+            </div>
 
-        <div className="rounded-xl border border-border bg-card p-5">
-          <p className="text-sm font-medium">Trainer&apos;s justification</p>
-          <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
-            {submission.justification || "No justification provided."}
-          </p>
-          {submission.flags && Object.values(submission.flags).some(Boolean) ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {Object.entries(submission.flags)
-                .filter(([, v]) => v)
-                .map(([k]) => <Badge key={k} variant="warning">{k} flagged</Badge>)}
+            <div className="grid gap-4 md:grid-cols-2">
+              {(["A", "B"] as const).map((side) => (
+                <div key={side}
+                  className={cn("rounded-xl border p-4",
+                    submission.preferred === side ? "border-primary bg-accent" : "border-border bg-card")}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-muted-foreground">Response {side}</span>
+                    {submission.preferred === side ? <Badge>Trainer picked</Badge> : null}
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed">
+                    {side === "A" ? submission.responseA : submission.responseB}
+                  </p>
+                </div>
+              ))}
             </div>
-          ) : null}
-        </div>
+
+            <div className="rounded-xl border border-border bg-card p-5">
+              <p className="text-sm font-medium">Trainer&apos;s justification</p>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">
+                {submission.justification || "No justification provided."}
+              </p>
+              {submission.flags && Object.values(submission.flags).some(Boolean) ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {Object.entries(submission.flags)
+                    .filter(([, v]) => v)
+                    .map(([k]) => <Badge key={k} variant="warning">{k} flagged</Badge>)}
+                </div>
+              ) : null}
+            </div>
+          </>
+        )}
 
         {submission.goldAnswer ? (
           <div className="rounded-xl border border-info/40 bg-info/10 p-5">

@@ -7,6 +7,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { can } from "@/lib/permissions/can";
 import { requiredFieldsFor, sampleFor } from "@/lib/tasks/import-parser";
+import { customRequiredFields, parseCustomSchema } from "@/lib/tasks/custom-schema";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,16 @@ export default async function AdminImportPage({ params }: { params: Promise<{ id
   });
   if (!project) notFound();
 
+  let customFields: string[] | undefined;
+  if (project.taskType === "CUSTOM") {
+    const template = await prisma.taskTemplate.findFirst({
+      where: { projectId: project.id },
+      orderBy: { createdAt: "asc" },
+    });
+    const schema = template ? parseCustomSchema(template.schema) : null;
+    customFields = schema ? customRequiredFields(schema) : undefined;
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <Button variant="ghost" size="sm" asChild>
@@ -47,9 +58,9 @@ export default async function AdminImportPage({ params }: { params: Promise<{ id
           <TaskImporter
             projectId={project.id}
             taskType={project.taskType}
-            requiredFields={requiredFieldsFor(project.taskType)}
-            sampleJsonl={sampleFor(project.taskType, "jsonl")}
-            sampleCsv={sampleFor(project.taskType, "csv")}
+            requiredFields={requiredFieldsFor(project.taskType, customFields)}
+            sampleJsonl={sampleFor(project.taskType, "jsonl", customFields)}
+            sampleCsv={sampleFor(project.taskType, "csv", customFields)}
           />
         </CardContent>
       </Card>

@@ -51,7 +51,13 @@ const REQUIRED_FIELDS: Partial<Record<TaskType, string[]>> = {
   MULTI_TURN_EVALUATION: ["conversation"],
 };
 
-export function requiredFieldsFor(taskType: TaskType): string[] {
+/**
+ * `customFields` carries the input-field keys of a CUSTOM project's template
+ * — the one task type whose required fields are defined by the client, not
+ * this table. Passing them for a built-in type is ignored.
+ */
+export function requiredFieldsFor(taskType: TaskType, customFields?: string[]): string[] {
+  if (taskType === "CUSTOM") return customFields ?? [];
   return REQUIRED_FIELDS[taskType] ?? ["prompt"];
 }
 
@@ -112,8 +118,13 @@ function readField(row: RawRow, field: string): unknown {
   return row[snakeCase(field)];
 }
 
-function normalizeRow(row: RawRow, taskType: TaskType, line: number): ParsedTask | RowError {
-  const required = requiredFieldsFor(taskType);
+function normalizeRow(
+  row: RawRow,
+  taskType: TaskType,
+  line: number,
+  customFields?: string[]
+): ParsedTask | RowError {
+  const required = requiredFieldsFor(taskType, customFields);
 
   const missing = required.filter((f) => {
     const v = readField(row, f);
@@ -175,7 +186,7 @@ function isRowError(v: ParsedTask | RowError): v is RowError {
 }
 
 /** Parses JSONL — one JSON object per line, blank lines ignored. */
-export function parseJsonl(content: string, taskType: TaskType): ParseResult {
+export function parseJsonl(content: string, taskType: TaskType, customFields?: string[]): ParseResult {
   const tasks: ParsedTask[] = [];
   const errors: RowError[] = [];
   const duplicateRefs: string[] = [];
@@ -207,7 +218,7 @@ export function parseJsonl(content: string, taskType: TaskType): ParseResult {
       continue;
     }
 
-    const result = normalizeRow(parsed as RawRow, taskType, line);
+    const result = normalizeRow(parsed as RawRow, taskType, line, customFields);
     if (isRowError(result)) {
       errors.push(result);
       continue;
@@ -228,7 +239,7 @@ export function parseJsonl(content: string, taskType: TaskType): ParseResult {
 }
 
 /** Parses CSV with a header row. */
-export function parseCsv(content: string, taskType: TaskType): ParseResult {
+export function parseCsv(content: string, taskType: TaskType, customFields?: string[]): ParseResult {
   const tasks: ParsedTask[] = [];
   const errors: RowError[] = [];
   const duplicateRefs: string[] = [];
@@ -266,7 +277,7 @@ export function parseCsv(content: string, taskType: TaskType): ParseResult {
       row[h] = cells[idx];
     });
 
-    const result = normalizeRow(row, taskType, line);
+    const result = normalizeRow(row, taskType, line, customFields);
     if (isRowError(result)) {
       errors.push(result);
       continue;
@@ -286,13 +297,20 @@ export function parseCsv(content: string, taskType: TaskType): ParseResult {
   return { tasks, errors, duplicateRefs };
 }
 
-export function parseImport(content: string, format: "jsonl" | "csv", taskType: TaskType): ParseResult {
-  return format === "csv" ? parseCsv(content, taskType) : parseJsonl(content, taskType);
+export function parseImport(
+  content: string,
+  format: "jsonl" | "csv",
+  taskType: TaskType,
+  customFields?: string[]
+): ParseResult {
+  return format === "csv"
+    ? parseCsv(content, taskType, customFields)
+    : parseJsonl(content, taskType, customFields);
 }
 
 /** A minimal, valid example file for the given task type, shown in the UI. */
-export function sampleFor(taskType: TaskType, format: "jsonl" | "csv"): string {
-  const fields = requiredFieldsFor(taskType);
+export function sampleFor(taskType: TaskType, format: "jsonl" | "csv", customFields?: string[]): string {
+  const fields = requiredFieldsFor(taskType, customFields);
   const example: Record<string, string> = {};
   for (const f of fields) example[f] = `<${f}>`;
 

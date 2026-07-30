@@ -11,6 +11,7 @@ const DEMO_PASSWORD = "Traivr!Demo2026";
 // and seed data that doesn't match that shape hides bugs in id validation.
 const SEED_IDS = {
   projectPairwise: "11111111-1111-4111-8111-111111111111",
+  projectCustom: "44444444-4444-4444-8444-444444444444",
   assessmentSoftware: "22222222-2222-4222-8222-222222222222",
   assessmentGeneral: "33333333-3333-4333-8333-333333333333",
   // One per entry in DOMAINS (application-form.tsx) other than Software
@@ -3934,6 +3935,96 @@ export async function seedDatabase() {
           flags: { safety: i === 0, factuality: false, citation: false },
         },
         durationSeconds: 120 + i * 45,
+      },
+    });
+  }
+
+  // --- Custom task-type demo project ---
+  // Exercises the client-defined schema path end to end: a template drives
+  // the import validation, the trainer workspace, and the review display.
+  const customProject = await prisma.project.upsert({
+    where: { id: SEED_IDS.projectCustom },
+    update: {},
+    create: {
+      id: SEED_IDS.projectCustom,
+      organizationId: org.id,
+      name: "Support reply grading — custom schema",
+      description: "Client-defined task shape: grade a support reply and suggest an improved version.",
+      domain: "Customer support",
+      taskType: "CUSTOM",
+      status: "ACTIVE",
+      payPerTaskCents: 220,
+      estimatedHoursPerWeek: 6,
+      languages: ["en"],
+      positionsAvailable: 6,
+      qualityThreshold: 0.85,
+      securityLevel: "standard",
+      startDate: new Date(),
+    },
+  });
+
+  const customTemplateExists = await prisma.taskTemplate.findFirst({
+    where: { projectId: customProject.id },
+  });
+  if (!customTemplateExists) {
+    await prisma.taskTemplate.create({
+      data: {
+        projectId: customProject.id,
+        name: "Support reply grading — task schema",
+        taskType: "CUSTOM",
+        schema: {
+          instructions:
+            "Read the customer's ticket and the agent's reply. Rate the reply's overall quality, categorise the main problem if there is one, note whether it resolves the customer's actual question, and write a short improved version.",
+          inputFields: [
+            { key: "ticket", label: "Customer ticket" },
+            { key: "reply", label: "Agent reply" },
+          ],
+          responseFields: [
+            { key: "quality", label: "Reply quality", kind: "rating", max: 5, required: true },
+            {
+              key: "main_issue",
+              label: "Main issue",
+              kind: "select",
+              required: true,
+              options: ["None — reply is fine", "Doesn't answer the question", "Tone problem", "Factually wrong", "Too vague"],
+            },
+            { key: "resolves", label: "Resolves the customer's question", kind: "boolean", required: true },
+            { key: "improved_reply", label: "Improved reply", kind: "textarea", required: true, minLength: 40 },
+          ],
+        },
+      },
+    });
+
+    const customTask = await prisma.task.create({
+      data: {
+        projectId: customProject.id,
+        externalRef: "support-grade-001",
+        payload: {
+          ticket:
+            "I was charged twice for my subscription this month. Order #58291. Can you refund the duplicate charge?",
+          reply:
+            "Thanks for reaching out! We appreciate your patience. Billing issues can sometimes occur. Please don't hesitate to contact us again if you have any other questions.",
+        },
+        status: "ASSIGNED",
+      },
+    });
+    await prisma.taskAssignment.create({
+      data: {
+        taskId: customTask.id,
+        userId: trainer.id,
+        dueAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      },
+    });
+    await prisma.task.create({
+      data: {
+        projectId: customProject.id,
+        externalRef: "support-grade-002",
+        payload: {
+          ticket: "How do I export my data before my account closes on Friday?",
+          reply:
+            "Go to Settings → Privacy → Export data. The export runs in the background and you'll get an email with a download link, usually within an hour. Start it today so there's time to re-run it if anything fails before Friday.",
+        },
+        status: "UNASSIGNED",
       },
     });
   }
