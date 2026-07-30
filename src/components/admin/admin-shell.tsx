@@ -11,6 +11,7 @@ import {
   ClipboardCheck,
   BarChart3,
   GraduationCap,
+  Medal,
   Wallet,
   Receipt,
   Scale,
@@ -59,6 +60,7 @@ function buildNavSections(counts: { pendingApplications: number; payoutQueue: nu
       items: [
         { href: "/admin/quality", label: "Quality dashboard", icon: BarChart3 },
         { href: "/admin/assessments", label: "Assessments", icon: GraduationCap },
+        { href: "/admin/trainers/readiness", label: "Readiness rankings", icon: Medal },
       ],
     },
     {

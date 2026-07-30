@@ -17,7 +17,12 @@ export async function getTrainerGate(userId: string): Promise<TrainerGateState> 
       select: { status: true, reviewerMessage: true },
     }),
     prisma.identityVerification.findUnique({ where: { userId }, select: { status: true } }),
-    prisma.assessmentAttempt.findFirst({ where: { userId, status: "PASSED" }, select: { id: true } }),
+    // Qualification exams only — a passed readiness exam is a skill signal,
+    // not a substitute for the onboarding bar.
+    prisma.assessmentAttempt.findFirst({
+      where: { userId, status: "PASSED", assessment: { kind: "QUALIFICATION" } },
+      select: { id: true },
+    }),
   ]);
 
   return evaluateTrainerGate({
@@ -116,7 +121,8 @@ export async function getApplicantReadiness(
   const [identity, attempts] = await Promise.all([
     prisma.identityVerification.findUnique({ where: { userId } }),
     prisma.assessmentAttempt.findMany({
-      where: { userId },
+      // Same scoping as the gate: readiness attempts don't qualify anyone.
+      where: { userId, assessment: { kind: "QUALIFICATION" } },
       orderBy: [
         { submittedAt: { sort: "desc", nulls: "last" } },
         { startedAt: { sort: "desc", nulls: "last" } },

@@ -29,6 +29,8 @@ const SEED_IDS = {
   assessmentEducation: "da5549b5-1a5c-4c39-a3aa-7683e6f843ff",
   assessmentWriting: "9594079a-2a39-40d4-a44e-1a90f66349bf",
   assessmentResearch: "8fc66bc1-00de-487d-a08a-bc639248d0d6",
+  readinessSoftware: "e1a6b1c2-7f43-4b7e-9d21-8a0f3c5d6e70",
+  readinessGeneral: "f2b7c2d3-8a54-4c8f-8e32-9b1a4d6e7f81",
 } as const;
 
 async function ensureRoles() {
@@ -107,7 +109,7 @@ async function ensureAssessments() {
       domain: "Software engineering",
       description:
         "Checks that you can judge technical answers on accuracy and usefulness rather than length or tone.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -392,7 +394,7 @@ async function ensureAssessments() {
       domain: "General assistant",
       description:
         "Core rubric reasoning: factual accuracy, calibration, safety, and instruction following.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       questions: {
@@ -674,7 +676,7 @@ async function ensureAssessments() {
       title: "Mathematics evaluation qualification",
       domain: "Mathematics",
       description: "Checks that you can judge mathematical reasoning for correctness, not just the final answer.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -962,7 +964,7 @@ async function ensureAssessments() {
       domain: "Medicine",
       description:
         "Checks that you can judge a medical-context AI response for calibration and safety — this is an evaluation qualification, not a clinical exam.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -1249,7 +1251,7 @@ async function ensureAssessments() {
       domain: "Law",
       description:
         "Checks that you can judge a legal-context AI response for calibration and appropriate caveats — this is an evaluation qualification, not a legal exam.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -1535,7 +1537,7 @@ async function ensureAssessments() {
       title: "Finance evaluation qualification",
       domain: "Finance",
       description: "Checks that you can judge a finance-context AI response for accuracy, caveats, and overclaiming.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -1821,7 +1823,7 @@ async function ensureAssessments() {
       title: "Science evaluation qualification",
       domain: "Science",
       description: "Checks that you can judge a science-context AI response for factual accuracy and appropriate uncertainty.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -2107,7 +2109,7 @@ async function ensureAssessments() {
       title: "Engineering evaluation qualification",
       domain: "Engineering",
       description: "Checks that you can judge an engineering-context AI response for correctness against stated constraints.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -2393,7 +2395,7 @@ async function ensureAssessments() {
       title: "Linguistics evaluation qualification",
       domain: "Linguistics",
       description: "Checks that you can judge whether a linguistics-context AI response used the correct analytical framework.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -2679,7 +2681,7 @@ async function ensureAssessments() {
       title: "Education evaluation qualification",
       domain: "Education",
       description: "Checks that you can judge whether an AI response is pedagogically appropriate for its stated audience.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -2965,7 +2967,7 @@ async function ensureAssessments() {
       title: "Writing evaluation qualification",
       domain: "Writing",
       description: "Checks that you can judge an AI response for craft and for whether it actually fulfilled the brief.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -3251,7 +3253,7 @@ async function ensureAssessments() {
       title: "Research evaluation qualification",
       domain: "Research",
       description: "Checks that you can judge whether an AI response accurately represents its sources and evidence.",
-      timeLimitMins: 15,
+      timeLimitMins: 25,
       passThreshold: 0.75,
       maxAttempts: 2,
       cooldownHours: 72,
@@ -3522,6 +3524,255 @@ async function ensureAssessments() {
             type: "WRITTEN_RESPONSE",
             prompt:
               "Describe how you would check whether a research summary accurately represents its cited sources, including how you'd spot suspected citation misuse.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  // --- Readiness exams (post-approval skill profiling) ---
+  // Every question carries a skillArea; graded responses roll up into the
+  // trainer's per-skill profile, tier, and ranking. Kind READINESS keeps
+  // these out of the qualification gate.
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.readinessSoftware },
+    update: {},
+    create: {
+      id: SEED_IDS.readinessSoftware,
+      kind: "READINESS",
+      title: "Software engineering readiness",
+      domain: "Software engineering",
+      description:
+        "Maps your evaluation strengths across the dimensions technical work is scored on. Your results shape which projects you're matched with.",
+      timeLimitMins: 30,
+      passThreshold: 0.6,
+      maxAttempts: 3,
+      cooldownHours: 24,
+      questionsPerAttempt: 12,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Technical accuracy",
+            prompt:
+              "A model states that Python's list.sort() returns a new sorted list. How should you treat the underlying claim?",
+            options: [
+              "Accept it — it sounds right",
+              "Flag it as incorrect — sort() sorts in place and returns None",
+              "Ignore it, it's not central",
+              "Ask the user to clarify",
+            ],
+            correctAnswer: "Flag it as incorrect — sort() sorts in place and returns None",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Technical accuracy",
+            prompt:
+              "A response claims an O(n log n) algorithm is 'constant time for practical inputs.' How do you score the claim?",
+            options: [
+              "Correct — big inputs are rare",
+              "Incorrect — that misstates the complexity class",
+              "Style issue only",
+              "Depends on the language",
+            ],
+            correctAnswer: "Incorrect — that misstates the complexity class",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Instruction following",
+            prompt:
+              "The user asks for a fix 'without adding new dependencies.' The response solves it by importing a new library. How should this affect the score?",
+            options: [
+              "No effect — it works",
+              "Lower it — the response violated an explicit constraint",
+              "Raise it — the library is cleaner",
+              "Only matters if the library is large",
+            ],
+            correctAnswer: "Lower it — the response violated an explicit constraint",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Instruction following",
+            prompt:
+              "A prompt asks for the answer 'in one sentence.' The response is a correct three-paragraph explanation. What's the right read?",
+            options: [
+              "Best possible — more detail is better",
+              "Partial — correct content but ignored the format instruction",
+              "Fail outright regardless of content",
+              "Equivalent to a one-sentence answer",
+            ],
+            correctAnswer: "Partial — correct content but ignored the format instruction",
+            points: 2,
+          },
+          {
+            order: 5,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Safety judgment",
+            prompt:
+              "A request is benign on its surface but the only plausible use is harmful. The model answers the literal question helpfully. How should safety factor in?",
+            options: [
+              "Irrelevant — it answered accurately",
+              "It should lower the score — the response missed the harmful intent",
+              "Raise it — helpfulness is the goal",
+              "Only matters if the user is flagged",
+            ],
+            correctAnswer: "It should lower the score — the response missed the harmful intent",
+            points: 2,
+          },
+          {
+            order: 6,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Safety judgment",
+            prompt:
+              "A response over-refuses a clearly legitimate question (e.g. how to kill a process in Linux). How is that scored on safety?",
+            options: [
+              "Perfect — refusing is always safe",
+              "It's a failure — unnecessary refusal is its own error",
+              "Neutral",
+              "Depends on the operating system",
+            ],
+            correctAnswer: "It's a failure — unnecessary refusal is its own error",
+            points: 2,
+          },
+          {
+            order: 7,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Calibration",
+            prompt:
+              "Response A hedges on a genuinely uncertain claim; Response B states it with full confidence and happens to be right. Which is better calibrated?",
+            options: [
+              "B — it was correct",
+              "A — appropriate hedging on real uncertainty is better calibrated",
+              "They're equal",
+              "Neither is calibrated",
+            ],
+            correctAnswer: "A — appropriate hedging on real uncertainty is better calibrated",
+            points: 2,
+          },
+          {
+            order: 8,
+            type: "RANKING",
+            skillArea: "Calibration",
+            prompt:
+              "Order these responses to a factual question from best to worst: (1) correct + states its one caveat, (2) correct + no caveats, (3) confidently wrong.",
+            options: ["1, 2, 3", "2, 1, 3", "1, 3, 2", "3, 2, 1"],
+            correctAnswer: "1, 2, 3",
+            points: 2,
+          },
+          {
+            order: 9,
+            type: "WRITTEN_RESPONSE",
+            skillArea: "Reasoning transparency",
+            prompt:
+              "A model reaches the correct final answer to a multi-step problem but its shown reasoning contains a step that contradicts the answer. How would you score it, and why? Explain how you'd weigh a correct answer against flawed shown work.",
+            points: 4,
+          },
+        ],
+      },
+    },
+  });
+
+  await prisma.assessment.upsert({
+    where: { id: SEED_IDS.readinessGeneral },
+    update: {},
+    create: {
+      id: SEED_IDS.readinessGeneral,
+      kind: "READINESS",
+      title: "General evaluation readiness",
+      domain: "General assistant",
+      description:
+        "Skill profiling across the core dimensions all evaluation work shares — accuracy, instruction following, safety, and calibration.",
+      timeLimitMins: 25,
+      passThreshold: 0.6,
+      maxAttempts: 3,
+      cooldownHours: 24,
+      questionsPerAttempt: 10,
+      questions: {
+        create: [
+          {
+            order: 1,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Technical accuracy",
+            prompt:
+              "A response contains one clear factual error inside an otherwise strong answer. How should the error weigh?",
+            options: [
+              "Ignore it — the rest is good",
+              "It materially lowers the score — a confident falsehood is a real defect",
+              "Only matters if the user notices",
+              "Round up because effort was high",
+            ],
+            correctAnswer: "It materially lowers the score — a confident falsehood is a real defect",
+            points: 2,
+          },
+          {
+            order: 2,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Instruction following",
+            prompt:
+              "The prompt sets a persona and a length limit. The response ignores both but is otherwise excellent. Best assessment?",
+            options: [
+              "Top score — quality is what counts",
+              "Partial — ignoring explicit constraints is a real deduction",
+              "Zero — nothing else matters",
+              "Not gradable",
+            ],
+            correctAnswer: "Partial — ignoring explicit constraints is a real deduction",
+            points: 2,
+          },
+          {
+            order: 3,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Safety judgment",
+            prompt:
+              "Two responses are equally accurate. One adds an unrequested but material safety caveat about a genuinely risky step. How should that caveat count?",
+            options: [
+              "Against it — it's a distraction",
+              "For it — flagging real, material risk is good evaluation-relevant behavior",
+              "No effect",
+              "Only if the user asked for warnings",
+            ],
+            correctAnswer: "For it — flagging real, material risk is good evaluation-relevant behavior",
+            points: 2,
+          },
+          {
+            order: 4,
+            type: "MULTIPLE_CHOICE",
+            skillArea: "Calibration",
+            prompt:
+              "You're unsure whether a claim in a response is true. What best reflects good evaluation practice?",
+            options: [
+              "Assume correct to keep throughput up",
+              "Verify before scoring; if unverifiable, note the uncertainty rather than guessing",
+              "Always mark unverifiable claims wrong",
+              "Skip the question",
+            ],
+            correctAnswer: "Verify before scoring; if unverifiable, note the uncertainty rather than guessing",
+            points: 2,
+          },
+          {
+            order: 5,
+            type: "RANKING",
+            skillArea: "Instruction following",
+            prompt:
+              "Rank by how well each follows 'answer yes or no, then one sentence why': (1) 'Yes. Because X.' (2) 'Yes.' (3) a paragraph never stating yes/no.",
+            options: ["1, 2, 3", "2, 1, 3", "1, 3, 2", "3, 1, 2"],
+            correctAnswer: "1, 2, 3",
+            points: 2,
+          },
+          {
+            order: 6,
+            type: "WRITTEN_RESPONSE",
+            skillArea: "Reasoning transparency",
+            prompt:
+              "Explain how you decide between two responses that reach the same correct conclusion but show very different amounts of reasoning. When does more shown reasoning help, and when is it just padding?",
             points: 4,
           },
         ],

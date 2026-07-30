@@ -3,25 +3,26 @@ import { shuffle } from "@/lib/utils/shuffle";
 
 export class AssessmentError extends Error {}
 
-/** Auto-gradable questions drawn per attempt, out of the full domain bank. */
-const MCQ_PER_ATTEMPT = 3;
-
 /**
  * Draws this attempt's question set from the assessment's full bank: a
- * random sample of the auto-gradable questions, plus every written-response
- * question (there's rarely more than one, and free-text answers resist
- * naive answer-sharing far better than a fixed multiple-choice key does).
+ * random sample of the auto-gradable questions (`questionsPerAttempt`,
+ * clamped to the bank), plus every written-response question (there's
+ * rarely more than one, and free-text answers resist naive answer-sharing
+ * far better than a fixed multiple-choice key does).
  *
  * Fixed at start and stored on the attempt — the whole bank existing only
  * to be served in full, every time, is what makes a fixed set of questions
  * something people share instead of study for.
  */
-function drawQuestionPool(questions: { id: string; type: string }[]): string[] {
+function drawQuestionPool(
+  questions: { id: string; type: string }[],
+  questionsPerAttempt: number
+): string[] {
   const autoGradable = questions.filter((q) => q.type === "MULTIPLE_CHOICE" || q.type === "RANKING");
   const written = questions.filter((q) => q.type === "WRITTEN_RESPONSE");
 
   const shuffled = shuffle(autoGradable);
-  const sample = shuffled.slice(0, Math.min(MCQ_PER_ATTEMPT, shuffled.length));
+  const sample = shuffled.slice(0, Math.min(Math.max(questionsPerAttempt, 1), shuffled.length));
 
   return [...sample, ...written].map((q) => q.id);
 }
@@ -88,7 +89,7 @@ export async function startAttempt(params: { userId: string; assessmentId: strin
       expiresAt: assessment.timeLimitMins
         ? new Date(Date.now() + assessment.timeLimitMins * 60_000)
         : null,
-      selectedQuestionIds: drawQuestionPool(assessment.questions),
+      selectedQuestionIds: drawQuestionPool(assessment.questions, assessment.questionsPerAttempt),
     },
   });
 
@@ -205,7 +206,12 @@ export async function submitAttempt(params: {
 export async function listAssessmentsForUser(userId: string) {
   const [application, assessments, attempts] = await Promise.all([
     prisma.application.findUnique({ where: { userId }, select: { domain: true } }),
-    prisma.assessment.findMany({ where: { isActive: true }, orderBy: { title: "asc" } }),
+    // Qualification only — readiness exams live on /trainer/readiness,
+    // after approval, and would be confusing noise during onboarding.
+    prisma.assessment.findMany({
+      where: { isActive: true, kind: "QUALIFICATION" },
+      orderBy: { title: "asc" },
+    }),
     prisma.assessmentAttempt.findMany({ where: { userId }, orderBy: { startedAt: "desc" } }),
   ]);
 

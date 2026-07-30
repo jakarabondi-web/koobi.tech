@@ -40,6 +40,7 @@ export async function finishAssessment(_prev: ActionState, formData: FormData): 
   try {
     const result = await submitAttempt({ userId: session.user.id, attemptId, answers });
     revalidatePath("/trainer/assessments");
+    revalidatePath("/trainer/readiness");
     revalidatePath("/trainer/dashboard");
     return {
       status: "success",

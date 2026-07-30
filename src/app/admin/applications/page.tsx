@@ -47,6 +47,23 @@ function AssessmentEvidence({ readiness }: { readiness: ApplicantReadiness }) {
 }
 
 /**
+ * The application-form judgment screener, as a fraction rather than a
+ * percentage — "1/2" says exactly which stakes are involved in a way
+ * "50%" doesn't at n=2. Applications submitted before the screener
+ * existed have no score and show a dash, not a zero.
+ */
+function ScreenerEvidence({ score }: { score: number | null }) {
+  if (score == null) return <Badge variant="outline">—</Badge>;
+  const outOf = 2;
+  const correct = Math.round(score * outOf);
+  return (
+    <Badge variant={correct === outOf ? "success" : correct === 0 ? "destructive" : "outline"}>
+      {correct}/{outOf}
+    </Badge>
+  );
+}
+
+/**
  * What the reviewer sees for identity: the overall status, plus which
  * specific check failed when it isn't a clean VERIFIED — "face match
  * failed" tells a reviewer something "Not verified" does not.
@@ -158,6 +175,7 @@ export default async function ApplicationsPage() {
                   </dl>
 
                   <div className="mt-3 flex flex-wrap gap-3">
+                    <ScreenerEvidence score={a.screenerScore} />
                     <AssessmentEvidence readiness={a.readiness} />
                     <IdentityEvidence readiness={a.readiness} />
                   </div>
@@ -181,6 +199,7 @@ export default async function ApplicationsPage() {
             <Table>
               <TableHeader><TableRow>
                 <TableHead>Applicant</TableHead><TableHead>Domain</TableHead>
+                <TableHead>Screener</TableHead>
                 <TableHead>Assessment</TableHead><TableHead>Identity</TableHead>
                 <TableHead>Submitted</TableHead>
                 <TableHead>Status</TableHead><TableHead className="text-right">Decision</TableHead>
@@ -198,6 +217,7 @@ export default async function ApplicationsPage() {
                       ) : null}
                     </TableCell>
                     <TableCell className="text-sm">{a.domain ?? "—"}</TableCell>
+                    <TableCell><ScreenerEvidence score={a.screenerScore} /></TableCell>
                     <TableCell><AssessmentEvidence readiness={a.readiness} /></TableCell>
                     <TableCell><IdentityEvidence readiness={a.readiness} /></TableCell>
                     <TableCell className="text-xs text-muted-foreground">

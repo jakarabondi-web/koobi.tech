@@ -589,6 +589,12 @@ model Application {
   /// application is declined.
   reviewerMessage String?
   notes       String?
+  /// Answers to the short judgment screener embedded in the application
+  /// form, keyed by screener question id. Graded server-side on submit.
+  screenerAnswers Json?
+  /// 0–1 across the screener questions. Shown to reviewers as an early
+  /// signal — it does not hard-block submission on its own.
+  screenerScore   Float?
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
 
@@ -612,8 +618,16 @@ enum AssessmentAttemptStatus {
   EXPIRED
 }
 
+/// QUALIFICATION exams gate access (part of onboarding); READINESS exams
+/// run after approval and feed the trainer's per-skill profile and tier.
+enum AssessmentKind {
+  QUALIFICATION
+  READINESS
+}
+
 model Assessment {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
+  kind          AssessmentKind @default(QUALIFICATION)
   title         String
   domain        String
   description   String?
@@ -621,6 +635,9 @@ model Assessment {
   passThreshold Float    @default(0.8)
   maxAttempts   Int      @default(2)
   cooldownHours Int      @default(72)
+  /// Auto-gradable questions drawn from the bank per attempt. Clamped to
+  /// the bank size at draw time.
+  questionsPerAttempt Int @default(10)
   isActive      Boolean  @default(true)
   createdAt     DateTime @default(now())
 
@@ -646,6 +663,10 @@ model AssessmentQuestion {
   correctAnswer Json?
   points       Int          @default(1)
   order        Int          @default(0)
+  /// Skill dimension this question measures (readiness exams), e.g.
+  /// "Instruction following". Null on qualification questions — those
+  /// measure a single pass/fail bar, not a profile.
+  skillArea    String?
 
   assessment Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   responses  AssessmentResponse[]

@@ -6,6 +6,7 @@ import { CheckCircle2 } from "lucide-react";
 import { submitApplication, type ActionState } from "@/server/actions/applications";
 import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
 import { COUNTRIES } from "@/lib/constants/countries";
+import { SCREENER_QUESTIONS } from "@/lib/constants/screener";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -124,6 +125,29 @@ export function ApplicationForm({
             defaultValue={defaults.hoursPerWeek ?? 10}
           />
         </div>
+      </div>
+
+      <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4">
+        <div>
+          <p className="text-sm font-medium">Quick judgment check</p>
+          <p className="text-xs text-muted-foreground">
+            Two short questions about how you&apos;d approach evaluation work. There are no trick
+            questions — answer as you actually would.
+          </p>
+        </div>
+        {SCREENER_QUESTIONS.map((q, index) => (
+          <fieldset key={q.id} className="space-y-2">
+            <legend className="text-sm">
+              {index + 1}. {q.prompt}
+            </legend>
+            {q.options.map((option) => (
+              <label key={option} className="flex items-start gap-2 text-sm">
+                <input type="radio" name={q.id} value={option} required className="mt-1" />
+                <span>{option}</span>
+              </label>
+            ))}
+          </fieldset>
+        ))}
       </div>
 
       {state.status === "error" && state.message ? (

@@ -11,6 +11,8 @@ import { assertReadyForApplicationApproval, GateError } from "@/server/services/
 import { sendEmail } from "@/lib/email/client";
 import { countWords, MIN_BACKGROUND_WORDS } from "@/lib/utils/word-count";
 import { COUNTRIES } from "@/lib/constants/countries";
+import { SCREENER_QUESTIONS } from "@/lib/constants/screener";
+import { gradeScreener } from "@/server/services/screener-key";
 import {
   applicationApprovedEmail,
   applicationMoreInfoEmail,
@@ -51,6 +53,21 @@ export async function submitApplication(_prev: ActionState, formData: FormData):
     return { status: "error", message: parsed.error.issues[0]?.message ?? "Check your details." };
   }
 
+  // The screener is answered inline with the application; every question
+  // must be answered, and it's graded here — the key never leaves the
+  // server. The score informs the reviewer rather than hard-blocking:
+  // an auto-reject on two questions would be a harsher bar than the
+  // reviewer applies anywhere else in this flow.
+  const screenerAnswers: Record<string, string> = {};
+  for (const q of SCREENER_QUESTIONS) {
+    const answer = formData.get(q.id);
+    if (typeof answer !== "string" || !answer) {
+      return { status: "error", message: "Answer both judgment questions before submitting." };
+    }
+    screenerAnswers[q.id] = answer;
+  }
+  const screenerScore = gradeScreener(screenerAnswers);
+
   const { domain, headline, country, hoursPerWeek } = parsed.data;
 
   await prisma.$transaction([
@@ -61,8 +78,17 @@ export async function submitApplication(_prev: ActionState, formData: FormData):
         domain,
         status: "SUBMITTED",
         submittedAt: new Date(),
+        screenerAnswers,
+        screenerScore,
       },
-      update: { domain, status: "SUBMITTED", submittedAt: new Date(), reviewerMessage: null },
+      update: {
+        domain,
+        status: "SUBMITTED",
+        submittedAt: new Date(),
+        reviewerMessage: null,
+        screenerAnswers,
+        screenerScore,
+      },
     }),
     prisma.trainerProfile.upsert({
       where: { userId: session.user.id },

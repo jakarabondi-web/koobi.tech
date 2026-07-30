@@ -76,7 +76,10 @@ function buildNavSections(counts: {
       : []),
     {
       label: "Assessments",
-      items: [{ href: "/trainer/assessments", label: "My assessments", icon: GraduationCap }],
+      items: [
+        { href: "/trainer/assessments", label: "My assessments", icon: GraduationCap },
+        { href: "/trainer/readiness", label: "Readiness program", icon: Medal },
+      ],
     },
     {
       label: "Quality & earnings",

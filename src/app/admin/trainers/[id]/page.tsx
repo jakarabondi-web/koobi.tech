@@ -6,6 +6,8 @@ import { ArrowLeft, FileCheck2 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { getTrainerGate } from "@/server/services/trainer-gate";
+import { getSkillProfile, TIER_LABELS } from "@/server/services/readiness";
+import { Progress } from "@/components/ui/progress";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -45,6 +47,7 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
   if (!user) notFound();
 
   const gate = await getTrainerGate(id);
+  const skillProfile = await getSkillProfile(id);
   const lifetime = user.earnings.reduce((s, e) => s + e.baseCents + e.bonusCents + e.adjustmentCents, 0);
 
   return (
@@ -124,6 +127,43 @@ export default async function TrainerDetailPage({ params }: { params: Promise<{ 
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Readiness skill profile</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {skillProfile.skills.length === 0 ? (
+            <EmptyState
+              title="No readiness data yet"
+              description="Skill scores appear once this trainer completes readiness exams."
+            />
+          ) : (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <Badge variant={skillProfile.tier === "EXPERT" || skillProfile.tier === "ADVANCED" ? "success" : "outline"}>
+                  {skillProfile.tier ? TIER_LABELS[skillProfile.tier] : "Unranked"}
+                </Badge>
+                {skillProfile.overall != null ? (
+                  <span className="text-sm text-muted-foreground">
+                    Overall {Math.round(skillProfile.overall * 100)}% · {skillProfile.examsCompleted} exam
+                    {skillProfile.examsCompleted === 1 ? "" : "s"} completed
+                  </span>
+                ) : null}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {skillProfile.skills.map((s) => (
+                  <div key={s.skillArea} className="space-y-1">
+                    <div className="flex items-baseline justify-between text-sm">
+                      <span>{s.skillArea}</span>
+                      <span className="font-medium tabular-nums">{Math.round(s.score * 100)}%</span>
+                    </div>
+                    <Progress value={s.score * 100} />
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

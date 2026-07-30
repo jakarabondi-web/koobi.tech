@@ -64,6 +64,7 @@ describe("assessment question pool is drawn, not served in full", () => {
       maxAttempts: 2,
       cooldownHours: 72,
       timeLimitMins: null,
+      questionsPerAttempt: 3,
       questions: SIX_MCQ_ONE_WRITTEN,
     });
 
@@ -86,6 +87,7 @@ describe("assessment question pool is drawn, not served in full", () => {
       maxAttempts: 50,
       cooldownHours: 0,
       timeLimitMins: null,
+      questionsPerAttempt: 3,
       questions: SIX_MCQ_ONE_WRITTEN,
     });
 
@@ -108,6 +110,7 @@ describe("assessment question pool is drawn, not served in full", () => {
       maxAttempts: 2,
       cooldownHours: 72,
       timeLimitMins: null,
+      questionsPerAttempt: 10,
       questions: [question("1", "MULTIPLE_CHOICE"), question("2", "MULTIPLE_CHOICE")],
     });
 
@@ -123,6 +126,7 @@ describe("assessment question pool is drawn, not served in full", () => {
       maxAttempts: 2,
       cooldownHours: 72,
       timeLimitMins: null,
+      questionsPerAttempt: 3,
       questions: SIX_MCQ_ONE_WRITTEN,
     });
     // First findFirst call: no IN_PROGRESS attempt to resume.
