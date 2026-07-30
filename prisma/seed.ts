@@ -3869,8 +3869,25 @@ export async function seedDatabase() {
       },
     },
   });
-  await prisma.export.create({
-    data: { datasetId: dataset.id, format: "jsonl", status: "QUEUED", requestedBy: clientAdmin.id },
+  // Seeded READY with content, matching what processExport would produce for
+  // this dataset — the demo org should show a working download, not a row
+  // stuck in QUEUED.
+  const seededExport = await prisma.export.create({
+    data: {
+      datasetId: dataset.id,
+      format: "jsonl",
+      status: "READY",
+      requestedBy: clientAdmin.id,
+      content: [
+        JSON.stringify({ prompt: "Explain TCP vs UDP", chosen: "B", rejected: "A" }),
+        JSON.stringify({ prompt: "Summarise this contract clause", chosen: "A", rejected: "B" }),
+      ].join("\n"),
+      completedAt: new Date(),
+    },
+  });
+  await prisma.export.update({
+    where: { id: seededExport.id },
+    data: { fileUrl: `/api/v1/exports/${seededExport.id}/download` },
   });
   await prisma.billingAccount.upsert({
     where: { organizationId: org.id },

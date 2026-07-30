@@ -1201,6 +1201,13 @@ model Export {
   format    String       @default("jsonl")
   status    ExportStatus @default(QUEUED)
   fileUrl   String?
+  /// The generated file itself. Kept in the row — not object storage —
+  /// because this deployment has none; a dataset here is thousands of JSON
+  /// rows at most, well within text-column territory. Snapshotted at
+  /// processing time, so later dataset edits don't rewrite past exports.
+  content   String?
+  /// Human-readable failure reason when status is FAILED.
+  error     String?
   requestedBy String
   createdAt DateTime     @default(now())
   completedAt DateTime?

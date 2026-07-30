@@ -6,20 +6,19 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/prisma";
 import { auth } from "@/lib/auth";
 import { requireTenant, requireDatasetInTenant, TenantError } from "@/server/services/tenant";
+import { processExport } from "@/server/services/export-processor";
 
 export type ActionState = { status: "idle" | "success" | "error"; message?: string };
 
 const schema = z.object({
   datasetId: z.string().uuid(),
-  format: z.enum(["jsonl", "csv", "parquet"]),
+  format: z.enum(["jsonl", "csv"]),
 });
 
 /**
- * Queues a dataset export.
- *
- * MOCKED: no background worker exists yet, so the export is created in
- * QUEUED and stays there. A real deployment hands this to BullMQ, writes the
- * file to object storage, and flips the row to READY with a signed URL.
+ * Requests a dataset export. Processed synchronously in this request (see
+ * export-processor.ts) — by the time the action returns, the export is
+ * READY with a download URL, or FAILED with a reason.
  */
 export async function requestExport(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const session = await auth();
@@ -31,11 +30,12 @@ export async function requestExport(_prev: ActionState, formData: FormData): Pro
   });
   if (!parsed.success) return { status: "error", message: "Choose a dataset and format." };
 
+  let outcome: { status: "READY" | "FAILED"; error: string | null };
   try {
     const tenant = await requireTenant();
     await requireDatasetInTenant(parsed.data.datasetId, tenant);
 
-    await prisma.export.create({
+    const created = await prisma.export.create({
       data: {
         datasetId: parsed.data.datasetId,
         format: parsed.data.format,
@@ -44,6 +44,13 @@ export async function requestExport(_prev: ActionState, formData: FormData): Pro
       },
     });
 
+    await processExport(created.id);
+    const processed = await prisma.export.findUniqueOrThrow({
+      where: { id: created.id },
+      select: { status: true, error: true },
+    });
+    outcome = { status: processed.status === "READY" ? "READY" : "FAILED", error: processed.error };
+
     await prisma.auditLog.create({
       data: {
         actorId: session.user.id,
@@ -51,7 +58,7 @@ export async function requestExport(_prev: ActionState, formData: FormData): Pro
         action: "dataset.export_requested",
         entityType: "Dataset",
         entityId: parsed.data.datasetId,
-        metadata: { format: parsed.data.format },
+        metadata: { format: parsed.data.format, exportId: created.id, status: processed.status },
       },
     });
   } catch (err) {
@@ -60,8 +67,8 @@ export async function requestExport(_prev: ActionState, formData: FormData): Pro
   }
 
   revalidatePath("/client/exports");
-  return {
-    status: "success",
-    message: "Export queued. Processing runs in the background — you'll be notified when it's ready.",
-  };
+  if (outcome.status === "FAILED") {
+    return { status: "error", message: outcome.error ?? "Export failed." };
+  }
+  return { status: "success", message: "Export ready — download it from the Exports page." };
 }

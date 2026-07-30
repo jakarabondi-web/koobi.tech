@@ -17,6 +17,7 @@ const initial: WebhookState = { status: "idle" };
  *  would be more indirection than the duplication it avoids. */
 const AVAILABLE_EVENTS = [
   { value: "task.reviewed", label: "task.reviewed — fires when a reviewer approves, rejects, or requests revision" },
+  { value: "export.ready", label: "export.ready — fires when a requested dataset export finishes processing" },
 ];
 
 export type WebhookRow = {

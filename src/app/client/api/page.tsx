@@ -20,8 +20,9 @@ const ENDPOINTS: [string, string, string, string][] = [
   ["POST", "/api/v1/tasks", "Ingest tasks (idempotent on external_ref)", "write"],
   ["GET", "/api/v1/submissions?project_id=", "Retrieve completed evaluations", "read"],
   ["GET", "/api/v1/exports", "List dataset exports", "read"],
-  ["POST", "/api/v1/exports", "Queue a dataset export", "write"],
+  ["POST", "/api/v1/exports", "Request a dataset export (jsonl or csv)", "write"],
   ["GET", "/api/v1/exports/:id", "Poll a single export", "read"],
+  ["GET", "/api/v1/exports/:id/download", "Download a READY export's file", "read"],
 ];
 
 export default async function ClientApiPage() {
@@ -107,9 +108,9 @@ export default async function ClientApiPage() {
           </div>
 
           <p className="mt-4 text-sm text-muted-foreground">
-            Export processing runs in a background worker that isn&apos;t deployed yet, so a queued
-            export stays <code className="font-mono text-xs">QUEUED</code> and returns no file URL.
-            Everything else on this list is live.
+            Everything on this list is live. Exports are processed synchronously — the response to{" "}
+            <code className="font-mono text-xs">POST /api/v1/exports</code> already carries the final
+            status and download URL.
           </p>
         </CardContent>
       </Card>
@@ -119,8 +120,9 @@ export default async function ClientApiPage() {
           <CardTitle className="text-base">Webhooks</CardTitle>
           <CardDescription>
             Delivered inline, best-effort — a delivery that fails isn&apos;t retried, so treat this as
-            a push notification, not a guarantee. <code className="font-mono text-xs">task.reviewed</code>{" "}
-            is the only event live today.
+            a push notification, not a guarantee. Live events:{" "}
+            <code className="font-mono text-xs">task.reviewed</code> and{" "}
+            <code className="font-mono text-xs">export.ready</code>.
           </CardDescription>
         </CardHeader>
         <CardContent className="pb-6">

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db/prisma";
 import { serializeExport } from "@/lib/api/serializers";
+import { processExport } from "@/server/services/export-processor";
 import {
   apiError,
   apiOk,
@@ -41,15 +42,17 @@ export async function GET(request: Request) {
 
 const createSchema = z.object({
   dataset_id: z.string().uuid(),
-  format: z.enum(["jsonl", "csv", "parquet"]).default("jsonl"),
+  // Parquet is deliberately absent: nothing here can produce one, and a
+  // format that silently FAILs is worse than one the schema refuses.
+  format: z.enum(["jsonl", "csv"]).default("jsonl"),
 });
 
 /**
- * POST /api/v1/exports — queue an export. Requires the write scope.
+ * POST /api/v1/exports — request an export. Requires the write scope.
  *
- * MOCKED: the row is created in QUEUED and stays there. No background worker
- * exists yet, so `file_url` will remain null and no webhook fires. This is
- * documented in API.md rather than faked with a placeholder URL.
+ * Processing is synchronous (see export-processor.ts), so the response
+ * already carries the final status and, on success, the download URL —
+ * polling GET /exports/:id afterward works but is not required.
  */
 export async function POST(request: Request) {
   const ctx = await authenticateApiRequest(request, { write: true });
@@ -70,26 +73,27 @@ export async function POST(request: Request) {
   });
   if (!dataset) return apiError(404, "not_found", "Dataset not found.");
 
-  const row = await prisma.export.create({
+  const created = await prisma.export.create({
     data: {
       datasetId: dataset.id,
       format: parsed.data.format,
       status: "QUEUED",
       requestedBy: ctx.keyId,
     },
+  });
+
+  await processExport(created.id);
+
+  const row = await prisma.export.findUniqueOrThrow({
+    where: { id: created.id },
     include: { dataset: { select: { name: true, projectId: true } } },
   });
 
   await logApiAction(ctx, "dataset.export_requested_via_api", dataset.id, {
     format: parsed.data.format,
     exportId: row.id,
+    status: row.status,
   });
 
-  return apiOk(
-    {
-      data: serializeExport(row),
-      note: "Export processing is not yet implemented — this row stays QUEUED. See API.md.",
-    },
-    202
-  );
+  return apiOk({ data: serializeExport(row) }, 201);
 }

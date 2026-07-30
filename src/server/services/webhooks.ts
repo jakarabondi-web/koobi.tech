@@ -20,7 +20,7 @@ import { prisma } from "@/lib/db/prisma";
 const DELIVERY_TIMEOUT_MS = 8000;
 
 /** Names must stay in sync with what the client dashboard's event picker offers. */
-export type WebhookEvent = "task.reviewed";
+export type WebhookEvent = "task.reviewed" | "export.ready";
 
 function signPayload(secret: string, body: string): string {
   return createHmac("sha256", secret).update(body).digest("hex");

@@ -15,10 +15,9 @@ export type WebhookState = {
   plaintextSecret?: string;
 };
 
-/** The only event actually wired up to fire today — see webhooks.ts. Kept
- *  as an array (not a single literal) so adding a second real event later
- *  is a one-line change to the picker, not a rewrite of the form. */
-const AVAILABLE_EVENTS: WebhookEvent[] = ["task.reviewed"];
+/** Every event that actually fires today — see webhooks.ts and
+ *  export-processor.ts for the dispatch sites. */
+const AVAILABLE_EVENTS: WebhookEvent[] = ["task.reviewed", "export.ready"];
 
 const MAX_ACTIVE_WEBHOOKS = 10;
 

@@ -18,12 +18,11 @@ export function RequestExportForm({ datasetId }: { datasetId: string }) {
         className="h-8 rounded-md border border-input bg-transparent px-2 text-xs outline-none">
         <option value="jsonl">JSONL</option>
         <option value="csv">CSV</option>
-        <option value="parquet">Parquet</option>
       </select>
       <Button type="submit" size="sm" variant="outline" disabled={pending}>
-        <Download className="size-4" /> {pending ? "Queuing…" : "Export"}
+        <Download className="size-4" /> {pending ? "Exporting…" : "Export"}
       </Button>
-      {state.status === "success" ? <span className="text-xs text-success">Queued</span> : null}
+      {state.status === "success" ? <span className="text-xs text-success">Ready</span> : null}
       {state.status === "error" ? <span className="text-xs text-destructive">{state.message}</span> : null}
     </form>
   );

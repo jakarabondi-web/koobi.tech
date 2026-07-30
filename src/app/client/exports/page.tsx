@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Download, AlertTriangle } from "lucide-react";
+import { Download } from "lucide-react";
 
 import { prisma } from "@/lib/db/prisma";
 import { requireTenant } from "@/server/services/tenant";
@@ -24,17 +24,6 @@ export default async function ExportsPage() {
   return (
     <div className="space-y-6">
       <PageHeader title="Exports" description="Download production-ready datasets." />
-
-      <div className="flex items-start gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4 text-sm">
-        <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning-foreground" />
-        <div>
-          <p className="font-medium">Background processing not yet running</p>
-          <p className="text-muted-foreground">
-            Export requests are recorded but stay queued — the worker that builds files and issues
-            signed download URLs isn&apos;t implemented yet.
-          </p>
-        </div>
-      </div>
 
       <Card>
         <CardContent className="pt-6 pb-6">
