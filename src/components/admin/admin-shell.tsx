@@ -24,7 +24,11 @@ import {
 
 import { DashboardShell, type NavSection } from "@/components/navigation/dashboard-shell";
 
-function buildNavSections(counts: { pendingApplications: number; payoutQueue: number }): NavSection[] {
+function buildNavSections(counts: {
+  pendingApplications: number;
+  payoutQueue: number;
+  pendingProjectApplications: number;
+}): NavSection[] {
   return [
     {
       label: "Overview",
@@ -49,7 +53,13 @@ function buildNavSections(counts: { pendingApplications: number; payoutQueue: nu
     {
       label: "Work",
       items: [
-        { href: "/admin/projects", label: "Projects", icon: Briefcase },
+        {
+          href: "/admin/projects",
+          label: "Projects",
+          icon: Briefcase,
+          badge: counts.pendingProjectApplications || undefined,
+          badgeVariant: "attention",
+        },
         { href: "/admin/tasks", label: "Tasks", icon: ListChecks },
         { href: "/admin/reviews", label: "Reviews", icon: ClipboardCheck },
       ],
@@ -94,6 +104,7 @@ export function AdminShell({
   roleLabel,
   pendingApplications = 0,
   payoutQueue = 0,
+  pendingProjectApplications = 0,
   children,
 }: {
   userName: string;
@@ -101,11 +112,12 @@ export function AdminShell({
   roleLabel: string;
   pendingApplications?: number;
   payoutQueue?: number;
+  pendingProjectApplications?: number;
   children: React.ReactNode;
 }) {
   return (
     <DashboardShell
-      navSections={buildNavSections({ pendingApplications, payoutQueue })}
+      navSections={buildNavSections({ pendingApplications, payoutQueue, pendingProjectApplications })}
       surfaceLabel="Admin console"
       userName={userName}
       userEmail={userEmail}

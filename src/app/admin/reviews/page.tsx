@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, Scale } from "lucide-react";
 
 import { auth } from "@/lib/auth";
+import { can } from "@/lib/permissions/can";
 import { prisma } from "@/lib/db/prisma";
+import { getAdjudicationQueue } from "@/server/services/adjudication";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = { title: "Reviews" };
 
 export default async function ReviewsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canAdjudicate = can(session.user.roles, "task.adjudicate");
 
-  const [queue, recent, counts] = await Promise.all([
+  const [queue, recent, counts, adjudicationQueue] = await Promise.all([
     prisma.taskSubmission.findMany({
       where: { reviews: { none: {} } },
       include: { task: { include: { project: true } }, submittedBy: true },
@@ -30,12 +35,25 @@ export default async function ReviewsPage() {
       take: 20,
     }),
     prisma.review.groupBy({ by: ["decision"], _count: true }),
+    canAdjudicate ? getAdjudicationQueue() : Promise.resolve([]),
   ]);
   const countFor = (d: string) => counts.find((c) => c.decision === d)?._count ?? 0;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Review queue" description="Submissions awaiting review, and recent decisions." />
+      <PageHeader
+        title="Review queue"
+        description="Submissions awaiting review, and recent decisions."
+        actions={
+          canAdjudicate ? (
+            <Button size="sm" variant="outline" asChild>
+              <Link href="/admin/reviews/adjudication">
+                <Scale className="size-4" /> Adjudication{adjudicationQueue.length > 0 ? ` (${adjudicationQueue.length})` : ""}
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard label="Awaiting review" value={String(queue.length)} icon={ClipboardCheck} />

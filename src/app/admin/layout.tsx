@@ -10,9 +10,10 @@ function humanizeRole(role?: string) {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
 
-  const [pendingApplications, payoutQueue] = await Promise.all([
+  const [pendingApplications, payoutQueue, pendingProjectApplications] = await Promise.all([
     prisma.application.count({ where: { status: { in: ["SUBMITTED", "UNDER_REVIEW"] } } }),
     prisma.payoutRequest.count({ where: { status: { in: ["REQUESTED", "APPROVED"] } } }),
+    prisma.projectApplication.count({ where: { status: "APPLIED" } }),
   ]);
 
   return (
@@ -22,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       roleLabel={humanizeRole(session?.user?.roles?.[0])}
       pendingApplications={pendingApplications}
       payoutQueue={payoutQueue}
+      pendingProjectApplications={pendingProjectApplications}
     >
       {children}
     </AdminShell>

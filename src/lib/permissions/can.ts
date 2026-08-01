@@ -14,6 +14,8 @@ export type Action =
   | "task.adjudicate"
   | "trainer.approve"
   | "trainer.suspend"
+  | "assignment.match"
+  | "risk.resolve"
   | "payment.approve"
   | "payment.issue"
   | "dispute.resolve"
@@ -30,6 +32,8 @@ const RULES: Record<Action, GlobalRole[]> = {
   "task.adjudicate": ["LEAD_REVIEWER", "QUALITY_MANAGER", "SUPER_ADMIN"],
   "trainer.approve": ["OPERATIONS_MANAGER", "SUPER_ADMIN"],
   "trainer.suspend": ["OPERATIONS_MANAGER", "SUPER_ADMIN"],
+  "assignment.match": ["OPERATIONS_MANAGER", "SUPER_ADMIN"],
+  "risk.resolve": ["QUALITY_MANAGER", "OPERATIONS_MANAGER", "SUPER_ADMIN"],
   "payment.approve": ["FINANCE_MANAGER", "SUPER_ADMIN"],
   "payment.issue": ["FINANCE_MANAGER", "SUPER_ADMIN"],
   "dispute.resolve": ["FINANCE_MANAGER", "QUALITY_MANAGER", "SUPER_ADMIN"],

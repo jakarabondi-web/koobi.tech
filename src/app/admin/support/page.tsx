@@ -4,28 +4,38 @@ import { LifeBuoy } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { can } from "@/lib/permissions/can";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
+import { TicketActions } from "@/components/admin/ticket-actions";
 
 export const metadata: Metadata = { title: "Support" };
 
 export default async function AdminSupportPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canAssign = can(session.user.roles, "support.assign");
 
-  const [tickets, counts] = await Promise.all([
+  const [tickets, counts, agents] = await Promise.all([
     prisma.supportTicket.findMany({
       include: { requester: true, assignee: true, messages: { take: 1, orderBy: { createdAt: "asc" } } },
       orderBy: { updatedAt: "desc" },
       take: 100,
     }),
     prisma.supportTicket.groupBy({ by: ["status"], _count: true }),
+    canAssign
+      ? prisma.user.findMany({
+          where: { roles: { some: { role: { key: "SUPPORT_AGENT" } } } },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : Promise.resolve([]),
   ]);
   const countFor = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
+  const agentOptions = agents.map((a) => ({ id: a.id, name: `${a.firstName} ${a.lastName}` }));
 
   return (
     <div className="space-y-6">
@@ -43,6 +53,7 @@ export default async function AdminSupportPage() {
               <TableHeader><TableRow>
                 <TableHead>Subject</TableHead><TableHead>Requester</TableHead><TableHead>Category</TableHead>
                 <TableHead>Assignee</TableHead><TableHead>Opened</TableHead><TableHead>Status</TableHead>
+                {canAssign ? <TableHead></TableHead> : null}
               </TableRow></TableHeader>
               <TableBody>
                 {tickets.map((t) => (
@@ -56,6 +67,17 @@ export default async function AdminSupportPage() {
                     <TableCell className="text-sm">{t.assignee ? `${t.assignee.firstName} ${t.assignee.lastName}` : "—"}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{t.createdAt.toLocaleDateString()}</TableCell>
                     <TableCell><StatusBadge status={t.status} /></TableCell>
+                    {canAssign ? (
+                      <TableCell className="text-right">
+                        <TicketActions
+                          ticketId={t.id}
+                          currentUserId={session.user.id}
+                          currentStatus={t.status}
+                          isAssigned={Boolean(t.assigneeId)}
+                          agents={agentOptions}
+                        />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
