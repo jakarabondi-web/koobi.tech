@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
 import { AppealDecisionForm } from "@/components/admin/appeal-decision-form";
+import { DisputeDecisionForm } from "@/components/admin/dispute-decision-form";
 
 export const metadata: Metadata = { title: "Disputes" };
 const usd = (c: number | null) => (c === null ? "—" : (c / 100).toLocaleString("en-US", { style: "currency", currency: "USD" }));
@@ -91,6 +92,7 @@ export default async function DisputesPage() {
               <TableHeader><TableRow>
                 <TableHead>Trainer</TableHead><TableHead>Reason</TableHead><TableHead>Amount</TableHead>
                 <TableHead>Raised</TableHead><TableHead>Status</TableHead>
+                {canDecide ? <TableHead></TableHead> : null}
               </TableRow></TableHeader>
               <TableBody>
                 {disputes.map((d) => (
@@ -100,6 +102,13 @@ export default async function DisputesPage() {
                     <TableCell className="tabular-nums">{usd(d.amountCents)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{d.createdAt.toLocaleDateString()}</TableCell>
                     <TableCell><StatusBadge status={d.status} /></TableCell>
+                    {canDecide ? (
+                      <TableCell className="text-right">
+                        {d.status === "OPEN" || d.status === "UNDER_REVIEW" ? (
+                          <DisputeDecisionForm disputeId={d.id} />
+                        ) : null}
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>

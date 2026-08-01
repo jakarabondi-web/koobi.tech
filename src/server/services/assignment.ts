@@ -5,6 +5,93 @@ import { checkProjectEligibility } from "@/server/services/work-location";
 export class AssignmentError extends Error {}
 
 /**
+ * Approves a trainer's application into a real, task-bearing assignment.
+ *
+ * Reactivates a previously REMOVED assignment rather than erroring on the
+ * unique constraint — a trainer who left a project and later reapplies
+ * shouldn't be blocked by their own history.
+ */
+export async function matchApplication(params: { applicationId: string; decidedBy: string }) {
+  const application = await prisma.projectApplication.findUnique({ where: { id: params.applicationId } });
+  if (!application) throw new AssignmentError("That application no longer exists.");
+  if (application.status !== "APPLIED") {
+    throw new AssignmentError("That application has already been decided.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.projectApplication.update({
+      where: { id: params.applicationId },
+      data: { status: "MATCHED", decidedAt: new Date() },
+    });
+
+    await tx.projectAssignment.upsert({
+      where: { projectId_userId: { projectId: application.projectId, userId: application.userId } },
+      create: { projectId: application.projectId, userId: application.userId, status: "ACTIVE" },
+      update: { status: "ACTIVE", removedAt: null },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        actorId: params.decidedBy,
+        action: "project_application.matched",
+        entityType: "ProjectApplication",
+        entityId: params.applicationId,
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: application.userId,
+        type: "application_matched",
+        title: "You've been matched to a project",
+        body: "You can start pulling tasks now.",
+        link: `/trainer/projects/${application.projectId}`,
+      },
+    });
+
+    return updated;
+  });
+}
+
+/** Declines a trainer's application to a project. Record-only — no assignment is touched. */
+export async function rejectApplication(params: { applicationId: string; decidedBy: string; reason?: string }) {
+  const application = await prisma.projectApplication.findUnique({ where: { id: params.applicationId } });
+  if (!application) throw new AssignmentError("That application no longer exists.");
+  if (application.status !== "APPLIED") {
+    throw new AssignmentError("That application has already been decided.");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.projectApplication.update({
+      where: { id: params.applicationId },
+      data: { status: "REJECTED", decidedAt: new Date() },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        actorId: params.decidedBy,
+        action: "project_application.rejected",
+        entityType: "ProjectApplication",
+        entityId: params.applicationId,
+        metadata: params.reason ? { reason: params.reason } : undefined,
+      },
+    });
+
+    await tx.notification.create({
+      data: {
+        userId: application.userId,
+        type: "application_rejected",
+        title: "Application not matched",
+        body: params.reason || "This project wasn't a match this time. Keep an eye on the marketplace for others.",
+        link: "/trainer/projects",
+      },
+    });
+
+    return updated;
+  });
+}
+
+/**
  * A newly-approved trainer has passed the qualification exam, but that's
  * one test on one day — it says nothing about how they'll actually perform
  * across real, varied work. Until they've cleared this many submissions,

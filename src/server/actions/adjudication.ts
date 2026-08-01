@@ -48,6 +48,7 @@ export async function submitAdjudication(_prev: ActionState, formData: FormData)
     });
 
     revalidatePath("/trainer/adjudication");
+    revalidatePath("/admin/reviews/adjudication");
     return {
       status: "success",
       message: result.overturned

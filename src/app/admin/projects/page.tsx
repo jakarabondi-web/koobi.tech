@@ -58,11 +58,16 @@ export default async function AdminProjectsPage() {
                     <TableCell className="tabular-nums">{p._count.assignments}</TableCell>
                     <TableCell><StatusBadge status={p.status} /></TableCell>
                     <TableCell className="text-right">
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/admin/projects/${p.id}/import`}>
-                          <Upload className="size-4" /> Import
-                        </Link>
-                      </Button>
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/admin/projects/${p.id}`}>View</Link>
+                        </Button>
+                        <Button size="sm" variant="outline" asChild>
+                          <Link href={`/admin/projects/${p.id}/import`}>
+                            <Upload className="size-4" /> Import
+                          </Link>
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

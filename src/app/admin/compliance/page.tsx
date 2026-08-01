@@ -4,6 +4,7 @@ import { ShieldCheck, FileCheck, Globe, UserCheck, CalendarClock } from "lucide-
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { can } from "@/lib/permissions/can";
 import { credentialExpiryStatus, daysUntil } from "@/lib/utils/credential-expiry";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
@@ -12,24 +13,41 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
+import { IdentityReviewForm } from "@/components/admin/identity-review-form";
 
 export const metadata: Metadata = { title: "Compliance" };
 
 export default async function CompliancePage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canReview = can(session.user.roles, "trainer.approve");
 
-  const [identityCounts, consents, jurisdictionRules, verifiedUsers, verifiedWithExpiry] = await Promise.all([
-    prisma.identityVerification.groupBy({ by: ["status"], _count: true }),
-    prisma.consentRecord.findMany({ include: { user: true }, orderBy: { acceptedAt: "desc" }, take: 25 }),
-    prisma.projectJurisdictionRule.findMany({ include: { project: true } }),
-    prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
-    prisma.identityVerification.findMany({
-      where: { status: "VERIFIED", expiresAt: { not: null } },
-      include: { user: { select: { firstName: true, lastName: true, email: true } } },
-      orderBy: { expiresAt: "asc" },
-    }),
-  ]);
+  const [identityCounts, consents, jurisdictionRules, verifiedUsers, verifiedWithExpiry, pendingVerifications] =
+    await Promise.all([
+      prisma.identityVerification.groupBy({ by: ["status"], _count: true }),
+      prisma.consentRecord.findMany({ include: { user: true }, orderBy: { acceptedAt: "desc" }, take: 25 }),
+      prisma.projectJurisdictionRule.findMany({ include: { project: true } }),
+      prisma.user.count({ where: { emailVerifiedAt: { not: null } } }),
+      prisma.identityVerification.findMany({
+        where: { status: "VERIFIED", expiresAt: { not: null } },
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+        orderBy: { expiresAt: "asc" },
+      }),
+      prisma.identityVerification.findMany({
+        where: {
+          status: "PENDING",
+          submittedAt: { not: null },
+          OR: [
+            { documentAuthentic: "FAIL" },
+            { livenessPassed: "FAIL" },
+            { faceMatchPassed: "FAIL" },
+            { duplicateCheckPassed: "FAIL" },
+          ],
+        },
+        include: { user: { select: { firstName: true, lastName: true, email: true } } },
+        orderBy: { submittedAt: "asc" },
+      }),
+    ]);
   const idCount = (s: string) => identityCounts.find((c) => c.status === s)?._count ?? 0;
 
   const expiringOrExpired = verifiedWithExpiry
@@ -50,6 +68,49 @@ export default async function CompliancePage() {
         <KpiCard label="Jurisdiction rules" value={String(jurisdictionRules.length)} icon={Globe} />
         <KpiCard label="Expiring/expired IDs" value={String(expiringOrExpired.length)} icon={CalendarClock} />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Needs manual review</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {pendingVerifications.length === 0 ? (
+            <EmptyState icon={UserCheck} title="Nothing waiting on a human"
+              description="Verifications the automated vendor couldn't decide on its own land here." />
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Trainer</TableHead><TableHead>Submitted</TableHead><TableHead>Failed checks</TableHead>
+                {canReview ? <TableHead></TableHead> : null}
+              </TableRow></TableHeader>
+              <TableBody>
+                {pendingVerifications.map((v) => {
+                  const failed = [
+                    v.documentAuthentic === "FAIL" ? "Document" : null,
+                    v.livenessPassed === "FAIL" ? "Liveness" : null,
+                    v.faceMatchPassed === "FAIL" ? "Face match" : null,
+                    v.duplicateCheckPassed === "FAIL" ? "Duplicate" : null,
+                  ].filter(Boolean) as string[];
+                  return (
+                    <TableRow key={v.id}>
+                      <TableCell>{v.user.firstName} {v.user.lastName} <span className="text-muted-foreground">({v.user.email})</span></TableCell>
+                      <TableCell className="text-xs text-muted-foreground">{v.submittedAt?.toLocaleDateString() ?? "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {failed.map((f) => <Badge key={f} variant="warning">{f}</Badge>)}
+                        </div>
+                      </TableCell>
+                      {canReview ? (
+                        <TableCell className="text-right">
+                          <IdentityReviewForm userId={v.userId} />
+                        </TableCell>
+                      ) : null}
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader><CardTitle className="text-base">Expiring & expired identity verifications</CardTitle></CardHeader>

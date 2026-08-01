@@ -4,12 +4,14 @@ import { Receipt } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { can } from "@/lib/permissions/can";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
+import { InvoiceActions } from "@/components/admin/invoice-actions";
 
 export const metadata: Metadata = { title: "Invoices" };
 const usd = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -17,6 +19,7 @@ const usd = (c: number) => (c / 100).toLocaleString("en-US", { style: "currency"
 export default async function InvoicesPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canManage = can(session.user.roles, "payment.approve");
 
   const [invoices, totals] = await Promise.all([
     prisma.invoice.findMany({ include: { organization: true }, orderBy: { createdAt: "desc" } }),
@@ -42,6 +45,7 @@ export default async function InvoicesPage() {
               <TableHeader><TableRow>
                 <TableHead>Invoice</TableHead><TableHead>Client</TableHead><TableHead>Amount</TableHead>
                 <TableHead>Due</TableHead><TableHead>Status</TableHead>
+                {canManage ? <TableHead></TableHead> : null}
               </TableRow></TableHeader>
               <TableBody>
                 {invoices.map((i) => (
@@ -51,6 +55,11 @@ export default async function InvoicesPage() {
                     <TableCell className="tabular-nums font-medium">{usd(i.amountCents)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground">{i.dueDate?.toLocaleDateString() ?? "—"}</TableCell>
                     <TableCell><StatusBadge status={i.status} /></TableCell>
+                    {canManage ? (
+                      <TableCell className="text-right">
+                        <InvoiceActions invoiceId={i.id} status={i.status} />
+                      </TableCell>
+                    ) : null}
                   </TableRow>
                 ))}
               </TableBody>
