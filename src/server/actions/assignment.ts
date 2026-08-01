@@ -33,6 +33,7 @@ export async function matchApplicationAction(_prev: ActionState, formData: FormD
   }
 
   revalidatePath(`/admin/projects/${parsed.data.projectId}`);
+  revalidatePath("/admin/projects");
   revalidatePath("/trainer/projects/mine");
   return { status: "success", message: "Trainer matched and assigned." };
 }
@@ -67,6 +68,7 @@ export async function rejectApplicationAction(_prev: ActionState, formData: Form
   }
 
   revalidatePath(`/admin/projects/${parsed.data.projectId}`);
+  revalidatePath("/admin/projects");
   revalidatePath("/trainer/projects/mine");
   return { status: "success", message: "Application declined." };
 }

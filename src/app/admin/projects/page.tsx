@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { Briefcase, Upload } from "lucide-react";
+import { Briefcase, Upload, UserPlus } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
+import { can } from "@/lib/permissions/can";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Button } from "@/components/ui/button";
+import { ApplicationDecisionForm } from "@/components/admin/application-decision-form";
 import Link from "next/link";
 
 export const metadata: Metadata = { title: "Projects" };
@@ -19,13 +21,22 @@ const usd = (c: number | null) => (c === null ? "—" : `$${(c / 100).toFixed(2)
 export default async function AdminProjectsPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
+  const canMatch = can(session.user.roles, "assignment.match");
 
-  const [projects, counts] = await Promise.all([
+  const [projects, counts, pendingApplications] = await Promise.all([
     prisma.project.findMany({
       include: { organization: true, _count: { select: { tasks: true, assignments: true } } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.project.groupBy({ by: ["status"], _count: true }),
+    prisma.projectApplication.findMany({
+      where: { status: "APPLIED" },
+      include: {
+        user: { select: { firstName: true, lastName: true, email: true } },
+        project: { select: { name: true } },
+      },
+      orderBy: { appliedAt: "asc" },
+    }),
   ]);
   const countFor = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
 
@@ -38,6 +49,38 @@ export default async function AdminProjectsPage() {
         <KpiCard label="Paused" value={String(countFor("PAUSED"))} />
         <KpiCard label="Completed" value={String(countFor("COMPLETED"))} />
       </div>
+
+      <Card>
+        <CardHeader><CardTitle className="text-base">Pending applications</CardTitle></CardHeader>
+        <CardContent className="pb-6">
+          {pendingApplications.length === 0 ? (
+            <EmptyState icon={UserPlus} title="Nothing waiting"
+              description="Trainer applications to any project show up here, across every project at once." />
+          ) : (
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Trainer</TableHead><TableHead>Project</TableHead><TableHead>Applied</TableHead>
+                {canMatch ? <TableHead></TableHead> : null}
+              </TableRow></TableHeader>
+              <TableBody>
+                {pendingApplications.map((a) => (
+                  <TableRow key={a.id}>
+                    <TableCell className="font-medium">{a.user.firstName} {a.user.lastName}</TableCell>
+                    <TableCell className="text-sm">{a.project.name}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{a.appliedAt.toLocaleDateString()}</TableCell>
+                    {canMatch ? (
+                      <TableCell className="text-right">
+                        <ApplicationDecisionForm applicationId={a.id} projectId={a.projectId} />
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="pt-6 pb-6">
           {projects.length === 0 ? <EmptyState icon={Briefcase} title="No projects yet" /> : (

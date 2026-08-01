@@ -31,6 +31,7 @@ export default async function AdminDashboardPage() {
     payoutQueue,
     openRiskFlags,
     supportBacklog,
+    pendingProjectApplications,
     recentAudit,
   ] = await Promise.all([
     prisma.user.count({ where: { status: "ACTIVE", roles: { some: { role: { key: "TRAINER" } } } } }),
@@ -45,6 +46,7 @@ export default async function AdminDashboardPage() {
     }),
     prisma.riskFlag.count({ where: { status: "OPEN" } }),
     prisma.supportTicket.count({ where: { status: { in: ["OPEN", "ASSIGNED", "ESCALATED"] } } }),
+    prisma.projectApplication.count({ where: { status: "APPLIED" } }),
     prisma.auditLog.findMany({ include: { actor: true }, orderBy: { createdAt: "desc" }, take: 8 }),
   ]);
 
@@ -120,6 +122,11 @@ export default async function AdminDashboardPage() {
             <Button variant="outline" className="w-full justify-between" asChild>
               <Link href="/admin/applications">
                 Trainer applications <Badge variant={pendingApplications > 0 ? "default" : "outline"}>{pendingApplications}</Badge>
+              </Link>
+            </Button>
+            <Button variant="outline" className="w-full justify-between" asChild>
+              <Link href="/admin/projects">
+                Project applications <Badge variant={pendingProjectApplications > 0 ? "default" : "outline"}>{pendingProjectApplications}</Badge>
               </Link>
             </Button>
             <Button variant="outline" className="w-full justify-between" asChild>
