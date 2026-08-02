@@ -71,14 +71,14 @@ export default async function TrainerDashboardPage() {
           </CardHeader>
           <CardContent className="space-y-3 pb-6 text-sm text-muted-foreground">
             <p>
-              Once you&apos;ve passed the assessment and verified your identity, our team reviews
-              your application. We&apos;ll email you as soon as there&apos;s a decision — you
-              don&apos;t need to check back.
+              Once you&apos;ve passed the assessment, our team reviews your application. We&apos;ll
+              email you as soon as there&apos;s a decision — you don&apos;t need to check back.
             </p>
             <p>
-              After you&apos;re approved, a short readiness program is the last step — projects,
-              tasks and earnings unlock once it&apos;s complete. If anything here looks wrong, our
-              support team can help.
+              After you&apos;re approved, work through a short readiness program so we can see
+              what you&apos;re strongest at. Verifying your identity is the last step after
+              that — projects, tasks and earnings unlock once it&apos;s complete. If anything
+              here looks wrong, our support team can help.
             </p>
             <Button variant="outline" size="sm" asChild>
               <Link href="/trainer/support">Contact support</Link>

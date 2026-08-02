@@ -110,8 +110,11 @@ export type ApplicantReadiness = {
 
 /**
  * What a reviewer needs to see to approve on the evidence, not on trust:
- * the assessment score against its own pass bar, and the identity checks
- * behind the single VERIFIED/FAILED badge — not just pass/fail restated.
+ * the assessment score against its own pass bar. Identity status/checks are
+ * included too, purely as context — identity verification happens *after*
+ * approval now (see the doc comment on evaluateTrainerGate in
+ * src/lib/permissions/gating.ts for why), so it is informational here, not
+ * part of `readyForApproval`.
  *
  * `applicationDomain`, if given, picks which attempt to *display* when
  * there's more than one: assessments aren't restricted to the domain
@@ -170,31 +173,29 @@ export async function getApplicantReadiness(
           duplicateCheckPassed: identity.duplicateCheckPassed,
         }
       : null,
-    readyForApproval: Boolean(passedAttempt) && identityStatus === "VERIFIED",
+    readyForApproval: Boolean(passedAttempt),
   };
 }
 
 /**
  * Blocks an APPROVED decision until the applicant has actually passed the
- * qualification assessment and cleared identity verification.
+ * qualification assessment.
  *
  * Without this, nothing stopped a reviewer clicking Approve on day one —
- * `getTrainerGate` would still refuse the trainer dashboard access until
- * both were done, so no work was ever reachable, but the application's own
- * status would read APPROVED while the applicant hadn't qualified for
- * anything, which is wrong on its face and confusing for whoever reads the
- * decision later.
+ * `getTrainerGate` would still refuse the trainer dashboard access until it
+ * was done, so no work was ever reachable, but the application's own status
+ * would read APPROVED while the applicant hadn't qualified for anything,
+ * which is wrong on its face and confusing for whoever reads the decision
+ * later. Identity verification is deliberately NOT required here — it's
+ * the last gate, checked after readiness, not a precondition for approval.
+ * See evaluateTrainerGate's doc comment for why.
  */
 export async function assertReadyForApplicationApproval(userId: string) {
   const readiness = await getApplicantReadiness(userId);
   if (readiness.readyForApproval) return readiness;
 
-  const missing: string[] = [];
-  if (!readiness.hasPassedAssessment) missing.push("passed the qualification assessment");
-  if (readiness.identityStatus !== "VERIFIED") missing.push("completed identity verification");
-
   throw new GateError(
-    `This applicant hasn't ${missing.join(" and ")} yet. Approval isn't available until both are done — ` +
-      `use "Request info" or "Waitlist" instead if you need to respond now.`
+    `This applicant hasn't passed the qualification assessment yet. Approval isn't available until that's ` +
+      `done — use "Request info" or "Waitlist" instead if you need to respond now.`
   );
 }

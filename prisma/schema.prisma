@@ -554,6 +554,16 @@ model IdentityVerification {
   expiresAt    DateTime?
   notes        String?
 
+  /// Uploaded ID photo + selfie for the in-house manual-review path
+  /// (provider = "manual") — a free alternative when no vendor is
+  /// configured. Bare FileAsset ids, not a formal relation, matching
+  /// FileAsset.ownerId's own style. Deliberately temporary: cleared and the
+  /// underlying objects deleted from storage once reviewVerification()
+  /// records a decision — see SECURITY.md for why these two fields are the
+  /// one exception to "decisions only, no images retained."
+  documentAssetId String?
+  selfieAssetId   String?
+
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([status])

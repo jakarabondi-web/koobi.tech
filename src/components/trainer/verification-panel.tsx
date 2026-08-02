@@ -1,15 +1,21 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { ShieldCheck, RefreshCw } from "lucide-react";
+import { ShieldCheck, RefreshCw, Upload } from "lucide-react";
 
 import { beginVerification, refreshVerification, type ActionState } from "@/server/actions/verification";
+import {
+  submitManualVerificationAction,
+  type ActionState as ManualActionState,
+} from "@/server/actions/manual-verification";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 
 const initialState: ActionState = { status: "idle" };
+const manualInitialState: ManualActionState = { status: "idle" };
 
 export function VerificationStarter() {
   const router = useRouter();
@@ -60,6 +66,66 @@ export function VerificationStarter() {
       <Button type="submit" variant="violet" disabled={pending || !consented}>
         <ShieldCheck className="size-4" />
         {pending ? "Starting…" : "Start verification"}
+      </Button>
+    </form>
+  );
+}
+
+/**
+ * The free, human-reviewed alternative when no vendor is configured — a
+ * trainer uploads an ID photo and a selfie directly, and an admin decides
+ * (src/app/admin/compliance). Honest about the tradeoff: unlike the vendor
+ * flow, these images ARE stored — only until reviewed, then deleted (see
+ * reviewVerification in src/server/services/identity-verification.ts) —
+ * and there's no automated liveness/anti-spoof check, just a human looking
+ * at two photos.
+ */
+export function ManualVerificationUpload() {
+  const [state, action, pending] = useActionState(submitManualVerificationAction, manualInitialState);
+  const [consented, setConsented] = useState(false);
+
+  if (state.status === "success") {
+    return <p className="text-sm text-success">{state.message}</p>;
+  }
+
+  return (
+    <form action={action} className="space-y-4">
+      <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm">
+        <p className="font-medium">What happens with manual review</p>
+        <ul className="mt-2 space-y-1 text-muted-foreground">
+          <li>• You upload a photo of a government-issued ID and a selfie</li>
+          <li>• A team member compares them by eye and makes the call — there&apos;s no automated liveness check</li>
+          <li>• We store both images only until that decision is made, then delete them</li>
+        </ul>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="manual-document">Photo of your ID</Label>
+        <Input id="manual-document" name="document" type="file" accept="image/jpeg,image/png,image/webp" required />
+      </div>
+      <div className="space-y-1.5">
+        <Label htmlFor="manual-selfie">Selfie</Label>
+        <Input id="manual-selfie" name="selfie" type="file" accept="image/jpeg,image/png,image/webp" required />
+      </div>
+
+      <Label className="flex items-start gap-2.5 text-sm font-normal">
+        <Checkbox
+          checked={consented}
+          onCheckedChange={(v) => setConsented(v === true)}
+          className="mt-0.5"
+        />
+        <span>
+          I consent to submitting these images for manual identity review, and understand they&apos;re
+          stored only until a team member reviews them, then deleted.
+        </span>
+      </Label>
+      <input type="hidden" name="consent" value={consented ? "true" : "false"} />
+
+      {state.status === "error" ? <p className="text-sm text-destructive">{state.message}</p> : null}
+
+      <Button type="submit" variant="outline" disabled={pending || !consented}>
+        <Upload className="size-4" />
+        {pending ? "Uploading…" : "Submit for manual review"}
       </Button>
     </form>
   );

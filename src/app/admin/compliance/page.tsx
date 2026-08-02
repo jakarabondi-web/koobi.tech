@@ -14,6 +14,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
 import { IdentityReviewForm } from "@/components/admin/identity-review-form";
+import { getManualVerificationPreviewUrls } from "@/server/services/manual-identity-verification";
 
 export const metadata: Metadata = { title: "Compliance" };
 
@@ -42,6 +43,9 @@ export default async function CompliancePage() {
             { livenessPassed: "FAIL" },
             { faceMatchPassed: "FAIL" },
             { duplicateCheckPassed: "FAIL" },
+            // Manually-submitted rows have no automated checks at all —
+            // they need a human look regardless of check state.
+            { provider: "manual" },
           ],
         },
         include: { user: { select: { firstName: true, lastName: true, email: true } } },
@@ -53,6 +57,14 @@ export default async function CompliancePage() {
   const expiringOrExpired = verifiedWithExpiry
     .map((v) => ({ ...v, expiryStatus: credentialExpiryStatus(v.expiresAt) }))
     .filter((v) => v.expiryStatus === "expiring_soon" || v.expiryStatus === "expired");
+
+  const previewsByUserId = new Map(
+    await Promise.all(
+      pendingVerifications
+        .filter((v) => v.provider === "manual")
+        .map(async (v) => [v.userId, await getManualVerificationPreviewUrls(v)] as const)
+    )
+  );
 
   return (
     <div className="space-y-6">
@@ -78,7 +90,7 @@ export default async function CompliancePage() {
           ) : (
             <Table>
               <TableHeader><TableRow>
-                <TableHead>Trainer</TableHead><TableHead>Submitted</TableHead><TableHead>Failed checks</TableHead>
+                <TableHead>Trainer</TableHead><TableHead>Submitted</TableHead><TableHead>Source</TableHead><TableHead>Images</TableHead>
                 {canReview ? <TableHead></TableHead> : null}
               </TableRow></TableHeader>
               <TableBody>
@@ -89,14 +101,40 @@ export default async function CompliancePage() {
                     v.faceMatchPassed === "FAIL" ? "Face match" : null,
                     v.duplicateCheckPassed === "FAIL" ? "Duplicate" : null,
                   ].filter(Boolean) as string[];
+                  const isManual = v.provider === "manual";
+                  const previews = previewsByUserId.get(v.userId);
                   return (
                     <TableRow key={v.id}>
                       <TableCell>{v.user.firstName} {v.user.lastName} <span className="text-muted-foreground">({v.user.email})</span></TableCell>
                       <TableCell className="text-xs text-muted-foreground">{v.submittedAt?.toLocaleDateString() ?? "—"}</TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {failed.map((f) => <Badge key={f} variant="warning">{f}</Badge>)}
-                        </div>
+                        {isManual ? (
+                          <Badge variant="secondary">Manual upload</Badge>
+                        ) : (
+                          <div className="flex flex-wrap gap-1">
+                            {failed.length === 0 ? <Badge variant="outline">Vendor</Badge> : failed.map((f) => <Badge key={f} variant="warning">{f}</Badge>)}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {isManual && previews ? (
+                          <div className="flex gap-2">
+                            {previews.documentUrl ? (
+                              <a href={previews.documentUrl} target="_blank" rel="noreferrer" className="block">
+                                {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed S3 URL, not an asset Next's optimizer can process */}
+                                <img src={previews.documentUrl} alt="Uploaded ID" className="size-14 rounded-md border border-border object-cover" />
+                              </a>
+                            ) : null}
+                            {previews.selfieUrl ? (
+                              <a href={previews.selfieUrl} target="_blank" rel="noreferrer" className="block">
+                                {/* eslint-disable-next-line @next/next/no-img-element -- a short-lived signed S3 URL, not an asset Next's optimizer can process */}
+                                <img src={previews.selfieUrl} alt="Uploaded selfie" className="size-14 rounded-md border border-border object-cover" />
+                              </a>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       {canReview ? (
                         <TableCell className="text-right">
@@ -146,8 +184,10 @@ export default async function CompliancePage() {
       <div className="rounded-lg border border-border bg-muted/40 p-4 text-sm text-muted-foreground">
         <p className="font-medium text-foreground">Data handling</p>
         <p className="mt-1">
-          Identity verification stores decisions only — no document images, selfies, or biometric
-          templates are retained on this platform. Location data is coarse (country-level from IP)
+          Vendor-based verification stores decisions only — no document images, selfies, or biometric
+          templates are retained. The one exception is manual-upload submissions above: those images
+          are stored so a reviewer can look at them, and deleted automatically the moment a decision
+          is recorded — never retained after review. Location data is coarse (country-level from IP)
           and never GPS. See SECURITY.md for the full boundary.
         </p>
       </div>
