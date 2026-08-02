@@ -12,6 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { AccountInfoForm } from "@/components/shared/account-info-form";
+import { ChangePasswordForm } from "@/components/shared/change-password-form";
 import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Platform settings" };
@@ -43,17 +45,40 @@ export default async function AdminSettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Your account</CardTitle>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Your name and login email.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <AccountInfoForm
+            firstName={me?.firstName ?? ""}
+            lastName={me?.lastName ?? ""}
+            displayName={me?.displayName ?? null}
+            email={me?.email ?? ""}
+            emailVerified={Boolean(me?.emailVerifiedAt)}
+            pendingEmail={me?.pendingEmail ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Password</CardTitle>
+          <CardDescription>Change your password.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <ChangePasswordForm />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Two-factor authentication</CardTitle>
           <CardDescription>
             An administrator account is a high-value target — two-factor authentication is strongly
             recommended here.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 pb-6 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Email</span>
-            <span>{me?.email}</span>
-          </div>
+        <CardContent className="pb-6">
           <TwoFactorSettings
             initiallyEnabled={me?.twoFactorEnabled ?? false}
             recoveryCodesRemaining={me?.twoFactorRecoveryCodes.length ?? 0}

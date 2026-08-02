@@ -13,7 +13,7 @@ const COPY = {
     icon: CheckCircle2,
     tone: "text-success",
     title: "Email confirmed",
-    body: "Your account is now active. Sign in to get started.",
+    body: "Your email address is confirmed. Sign in to continue.",
   },
   already_verified: {
     icon: CheckCircle2,

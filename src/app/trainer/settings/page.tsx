@@ -5,10 +5,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { NotificationPreferences, SensitiveContentToggle } from "@/components/trainer/settings-forms";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { AccountInfoForm } from "@/components/shared/account-info-form";
+import { ChangePasswordForm } from "@/components/shared/change-password-form";
 import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -29,17 +30,28 @@ export default async function SettingsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Account</CardTitle>
-          <CardDescription>Sign-in details and security.</CardDescription>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Your name and login email.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3 pb-6 text-sm">
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Email</span>
-            <span className="flex items-center gap-2">
-              {user?.email}
-              {user?.emailVerifiedAt ? <Badge variant="success">Verified</Badge> : <Badge variant="warning">Unverified</Badge>}
-            </span>
-          </div>
+        <CardContent className="pb-6">
+          <AccountInfoForm
+            firstName={user?.firstName ?? ""}
+            lastName={user?.lastName ?? ""}
+            displayName={user?.displayName ?? null}
+            email={user?.email ?? ""}
+            emailVerified={Boolean(user?.emailVerifiedAt)}
+            pendingEmail={user?.pendingEmail ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Password</CardTitle>
+          <CardDescription>Change your password.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 

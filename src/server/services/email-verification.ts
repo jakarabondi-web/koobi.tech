@@ -60,6 +60,42 @@ export type VerifyResult = "verified" | "already_verified" | "invalid" | "expire
 export async function verifyEmailToken(token: string): Promise<VerifyResult> {
   const user = await prisma.user.findUnique({ where: { emailVerificationToken: token } });
   if (!user) return "invalid";
+
+  // A pending email means this token is confirming a change-email request
+  // (see requestEmailChange), not initial signup — `emailVerifiedAt` is
+  // already set from before, so it must be checked first, or every change
+  // would short-circuit as "already_verified" below.
+  if (user.pendingEmail) {
+    if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
+      return "expired";
+    }
+
+    // Someone else may have claimed the address while this link was
+    // outstanding — re-check rather than trust the uniqueness check made
+    // when the change was requested.
+    const taken = await prisma.user.findUnique({ where: { email: user.pendingEmail } });
+    if (taken && taken.id !== user.id) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { pendingEmail: null, emailVerificationToken: null, emailVerificationExpiresAt: null },
+      });
+      return "invalid";
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        email: user.pendingEmail,
+        pendingEmail: null,
+        emailVerifiedAt: new Date(),
+        emailVerificationToken: null,
+        emailVerificationExpiresAt: null,
+      },
+    });
+
+    return "verified";
+  }
+
   if (user.emailVerifiedAt) return "already_verified";
   if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
     return "expired";
