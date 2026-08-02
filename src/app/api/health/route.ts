@@ -52,6 +52,9 @@ export async function GET() {
       seedEndpointEnabled: Boolean(
         process.env.SEED_SECRET && process.env.SEED_SECRET.length >= 16
       ),
+      // Without this set, the support-signals cron endpoint refuses every
+      // request — worth surfacing here rather than discovering it silently.
+      cronSecretSet: Boolean(process.env.CRON_SECRET),
     },
     { headers: { "Cache-Control": "no-store" } }
   );
