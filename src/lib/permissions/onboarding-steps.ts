@@ -11,7 +11,7 @@ import type { TrainerGateState } from "@/lib/permissions/gating";
 
 export type OnboardingStepStatus = "done" | "current" | "upcoming";
 
-export type OnboardingStepKey = "application" | "assessment" | "identity" | "review" | "readiness" | "approved";
+export type OnboardingStepKey = "application" | "assessment" | "review" | "readiness" | "identity" | "approved";
 
 export type OnboardingStep = {
   key: OnboardingStepKey;
@@ -37,12 +37,6 @@ const STEPS: { key: OnboardingStepKey; label: string; description: string; href?
     href: "/trainer/assessments",
   },
   {
-    key: "identity",
-    label: "Identity",
-    description: "Upload a photo ID and take a selfie to confirm it's you.",
-    href: "/trainer/verification",
-  },
-  {
     key: "review",
     label: "Review",
     description: "Our team checks everything over.",
@@ -52,6 +46,12 @@ const STEPS: { key: OnboardingStepKey; label: string; description: string; href?
     label: "Readiness",
     description: "Complete a short set of calibration tasks so we know what you're strongest at.",
     href: "/trainer/readiness",
+  },
+  {
+    key: "identity",
+    label: "Identity",
+    description: "Upload a photo ID and take a selfie to confirm it's you — the last step before paid work.",
+    href: "/trainer/verification",
   },
   {
     key: "approved",
@@ -65,10 +65,10 @@ const STAGE_POSITION: Record<TrainerGateState["stage"], number | null> = {
   application_not_started: 0,
   more_info_required: 0,
   assessment_required: 1,
-  identity_required: 2,
-  identity_processing: 2,
-  under_review: 3,
-  readiness_required: 4,
+  under_review: 2,
+  readiness_required: 3,
+  identity_required: 4,
+  identity_processing: 4,
   approved: 5,
   // Terminal outcomes. A progress bar implies a road still ahead, so these
   // deliberately render no stepper at all — the banner carries the message.

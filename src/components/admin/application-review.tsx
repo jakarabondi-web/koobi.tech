@@ -44,7 +44,7 @@ function DecisionDialog({ applicationId, decision, applicantName, disabled, disa
   applicationId: string;
   decision: Decision;
   applicantName: string;
-  /** Approve only: blocked until the assessment is passed and identity verified. */
+  /** Approve only: blocked until the assessment is passed. Identity verification happens after approval, not before. */
   disabled?: boolean;
   disabledReason?: string;
 }) {
@@ -112,14 +112,14 @@ export function ApplicationReviewActions({ applicationId, applicantName, readyFo
           decision="APPROVED"
           applicantName={applicantName}
           disabled={!readyForApproval}
-          disabledReason="Needs a passed assessment and verified identity before this can be approved."
+          disabledReason="Needs a passed assessment before this can be approved."
         />
         <DecisionDialog applicationId={applicationId} decision="ADDITIONAL_INFO_REQUIRED" applicantName={applicantName} />
         <DecisionDialog applicationId={applicationId} decision="WAITLISTED" applicantName={applicantName} />
         <DecisionDialog applicationId={applicationId} decision="REJECTED" applicantName={applicantName} />
       </div>
       {!readyForApproval ? (
-        <p className="text-[11px] text-muted-foreground">Approve unlocks once both checks pass.</p>
+        <p className="text-[11px] text-muted-foreground">Approve unlocks once the assessment is passed.</p>
       ) : null}
     </div>
   );

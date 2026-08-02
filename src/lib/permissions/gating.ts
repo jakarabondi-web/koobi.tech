@@ -4,9 +4,18 @@ import type { ApplicationStatus, IdentityStatus } from "@prisma/client";
  * Access gates that sit *between* "signed in" and "can do paid work".
  *
  * A trainer progresses: registered → email verified → application submitted
- * → screener passed → qualification exam passed → identity verified →
- * approved by an operations manager → readiness program completed → can
- * see and accept assignments.
+ * → screener passed → qualification exam passed → approved by an operations
+ * manager → readiness program completed → identity verified → can see and
+ * accept assignments.
+ *
+ * Identity verification is deliberately the *last* gate, not an early one.
+ * Everything ahead of it — the assessment, admin approval, the readiness
+ * program — establishes whether someone can actually do the job. A
+ * documentation requirement (a specific ID format, a document type some
+ * countries don't issue) should never be what stops a genuinely skilled
+ * applicant from getting that far; it only becomes relevant once capability
+ * is already proven, as the final check before real client work and pay are
+ * on the line.
  *
  * These are checked server-side wherever assignment data is read. UI copy
  * derives from the same source so what the trainer is told always matches
@@ -119,34 +128,6 @@ export function evaluateTrainerGate(input: {
     };
   }
 
-  // Submitted and with the provider. Distinct from "not started" on
-  // purpose: telling someone who already uploaded their documents that
-  // verification "takes about two minutes" reads as though nothing was
-  // received, and sends them to re-submit work they have already done.
-  if (identityStatus === "PENDING") {
-    return {
-      canAccessAssignments: false,
-      stage: "identity_processing",
-      title: "We're reviewing your documents",
-      message:
-        "Your ID and selfie are with our verification provider. Most checks finish in a few minutes — we'll email you the moment there's a result.",
-      actionHref: "/trainer/verification",
-      actionLabel: "View status",
-    };
-  }
-
-  if (identityStatus !== "VERIFIED") {
-    return {
-      canAccessAssignments: false,
-      stage: "identity_required",
-      title: "Verify your identity",
-      message:
-        "We verify every trainer's identity before they access client work. This takes about two minutes.",
-      actionHref: "/trainer/verification",
-      actionLabel: "Verify identity",
-    };
-  }
-
   if (application.status === "APPROVED") {
     if (!readinessComplete) {
       return {
@@ -154,11 +135,40 @@ export function evaluateTrainerGate(input: {
         stage: "readiness_required",
         title: "Complete your readiness program",
         message:
-          "You're approved — one last step. Work through a short set of calibration tasks so we can see what you're strongest at and get you ranked before you start paid work.",
+          "You're approved — work through a short set of calibration tasks so we can see what you're strongest at and get you ranked. One more step after that: identity verification.",
         actionHref: "/trainer/readiness",
         actionLabel: "Start readiness program",
       };
     }
+
+    // Submitted and with the provider. Distinct from "not started" on
+    // purpose: telling someone who already uploaded their documents that
+    // verification "takes about two minutes" reads as though nothing was
+    // received, and sends them to re-submit work they have already done.
+    if (identityStatus === "PENDING") {
+      return {
+        canAccessAssignments: false,
+        stage: "identity_processing",
+        title: "We're reviewing your documents",
+        message:
+          "Your ID and selfie are with our verification provider. Most checks finish in a few minutes — we'll email you the moment there's a result.",
+        actionHref: "/trainer/verification",
+        actionLabel: "View status",
+      };
+    }
+
+    if (identityStatus !== "VERIFIED") {
+      return {
+        canAccessAssignments: false,
+        stage: "identity_required",
+        title: "Verify your identity",
+        message:
+          "Last step: verify your identity before you start client work and get paid. This takes about two minutes.",
+        actionHref: "/trainer/verification",
+        actionLabel: "Verify identity",
+      };
+    }
+
     return {
       canAccessAssignments: true,
       stage: "approved",

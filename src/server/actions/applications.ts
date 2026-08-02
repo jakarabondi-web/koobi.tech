@@ -129,7 +129,9 @@ export async function decideApplication(_prev: ActionState, formData: FormData):
 
   // The one decision that grants backend access has to be backed by
   // evidence, not a reviewer's trust — refuse it outright if the applicant
-  // hasn't actually passed the assessment and cleared identity verification.
+  // hasn't actually passed the assessment. Identity verification is
+  // deliberately not checked here — it's the last gate, after readiness,
+  // not a precondition for approval. See gating.ts.
   if (decision === "APPROVED") {
     try {
       await assertReadyForApplicationApproval(application.userId);

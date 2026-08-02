@@ -30,13 +30,13 @@ beforeEach(() => {
 });
 
 describe("application approval requires real evidence, not trust", () => {
-  it("refuses approval when neither the assessment nor identity is done", async () => {
+  it("refuses approval when the assessment isn't done", async () => {
     identityFindUnique.mockResolvedValue(null);
     attemptFindMany.mockResolvedValue([]);
 
     await expect(assertReadyForApplicationApproval("user-1")).rejects.toThrow(GateError);
     await expect(assertReadyForApplicationApproval("user-1")).rejects.toThrow(
-      /passed the qualification assessment and completed identity verification/
+      /passed the qualification assessment/
     );
   });
 
@@ -55,7 +55,7 @@ describe("application approval requires real evidence, not trust", () => {
     );
   });
 
-  it("refuses approval when the assessment passed but identity is still pending", async () => {
+  it("allows approval on a passed assessment alone — identity verification is not a precondition", async () => {
     identityFindUnique.mockResolvedValue({
       status: "PENDING",
       documentAuthentic: null,
@@ -65,19 +65,13 @@ describe("application approval requires real evidence, not trust", () => {
     });
     attemptFindMany.mockResolvedValue([attempt("PASSED", 0.92)]);
 
-    await expect(assertReadyForApplicationApproval("user-1")).rejects.toThrow(
-      /completed identity verification/
-    );
+    await expect(assertReadyForApplicationApproval("user-1")).resolves.toMatchObject({
+      readyForApproval: true,
+    });
   });
 
-  it("allows approval once both are genuinely done", async () => {
-    identityFindUnique.mockResolvedValue({
-      status: "VERIFIED",
-      documentAuthentic: "PASS",
-      livenessPassed: "PASS",
-      faceMatchPassed: "PASS",
-      duplicateCheckPassed: "PASS",
-    });
+  it("allows approval even when identity verification hasn't started at all", async () => {
+    identityFindUnique.mockResolvedValue(null);
     attemptFindMany.mockResolvedValue([attempt("PASSED", 0.92)]);
 
     await expect(assertReadyForApplicationApproval("user-1")).resolves.toMatchObject({
