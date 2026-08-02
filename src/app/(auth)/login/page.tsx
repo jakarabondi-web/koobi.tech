@@ -43,9 +43,9 @@ const BENEFITS = [
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; for?: string; error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; for?: string; error?: string; passwordChanged?: string }>;
 }) {
-  const { callbackUrl, for: forSurface, error } = await searchParams;
+  const { callbackUrl, for: forSurface, error, passwordChanged } = await searchParams;
   const ssoError = error ? SSO_ERRORS[error] : undefined;
 
   return (
@@ -78,6 +78,12 @@ export default async function LoginPage({
         {ssoError ? (
           <p className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
             {ssoError}
+          </p>
+        ) : null}
+
+        {passwordChanged ? (
+          <p className="mt-4 rounded-md border border-success/40 bg-success/10 p-3 text-sm text-success">
+            Your password was changed. Sign in with your new password.
           </p>
         ) : null}
 

@@ -45,6 +45,10 @@ model User {
   passwordResetExpiresAt DateTime?
   emailVerificationToken String? @unique
   emailVerificationExpiresAt DateTime?
+  /// New address awaiting confirmation from a change-email request. `email`
+  /// itself is left untouched (still the address used for login) until the
+  /// verification link for this value is clicked — see verifyEmailToken().
+  pendingEmail      String?
   firstName         String
   lastName          String
   displayName       String?

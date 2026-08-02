@@ -8,6 +8,8 @@ import { StatusBadge } from "@/components/ui/badge-status";
 import { Badge } from "@/components/ui/badge";
 import { TwoFactorSettings } from "@/components/shared/two-factor-settings";
 import { SessionsPanel } from "@/components/shared/sessions-panel";
+import { AccountInfoForm } from "@/components/shared/account-info-form";
+import { ChangePasswordForm } from "@/components/shared/change-password-form";
 import { recentLoginSummaries } from "@/server/services/login-events";
 
 export const metadata: Metadata = { title: "Settings" };
@@ -58,6 +60,33 @@ export default async function ClientSettingsPage() {
               ? "You can create projects, invite teammates, and manage billing."
               : "You can view projects and results. Ask an admin for elevated access."}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Profile</CardTitle>
+          <CardDescription>Your name and login email.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <AccountInfoForm
+            firstName={me?.firstName ?? ""}
+            lastName={me?.lastName ?? ""}
+            displayName={me?.displayName ?? null}
+            email={me?.email ?? ""}
+            emailVerified={Boolean(me?.emailVerifiedAt)}
+            pendingEmail={me?.pendingEmail ?? null}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Password</CardTitle>
+          <CardDescription>Change your password.</CardDescription>
+        </CardHeader>
+        <CardContent className="pb-6">
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 
