@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma";
 import { getIdentityProvider } from "@/lib/identity";
 import type { VerificationDecision } from "@/lib/identity";
+import { deletePrivateFile } from "@/lib/storage/s3";
 
 export const MAX_VERIFICATION_ATTEMPTS = 3;
 /** Re-verify annually; also triggered on high-risk changes. */
@@ -137,13 +138,28 @@ export async function syncVerificationDecision(userId: string): Promise<Verifica
   return decision;
 }
 
-/** Manual override for an inconclusive automated result. */
+/**
+ * Manual override for an inconclusive automated result — also the decision
+ * point for the in-house manual-upload path (provider "manual"). Either
+ * way, once a human has looked and decided, any uploaded ID/selfie images
+ * are deleted from storage: the retention window for those is "until
+ * reviewed," never indefinite. See IdentityVerification.documentAssetId in
+ * schema.prisma.
+ */
 export async function reviewVerification(params: {
   userId: string;
   reviewerId: string;
   approve: boolean;
   notes: string;
 }) {
+  const existing = await prisma.identityVerification.findUnique({ where: { userId: params.userId } });
+  const assetIds = [existing?.documentAssetId, existing?.selfieAssetId].filter(
+    (id): id is string => Boolean(id)
+  );
+  // Fetched before the transaction, since the transaction below deletes
+  // these rows — need the storage keys in hand to delete the objects too.
+  const assets = assetIds.length ? await prisma.fileAsset.findMany({ where: { id: { in: assetIds } } }) : [];
+
   await prisma.$transaction([
     prisma.identityVerification.update({
       where: { userId: params.userId },
@@ -153,6 +169,8 @@ export async function reviewVerification(params: {
         reviewedAt: new Date(),
         verifiedAt: params.approve ? new Date() : null,
         notes: params.notes,
+        documentAssetId: null,
+        selfieAssetId: null,
       },
     }),
     prisma.auditLog.create({
@@ -175,5 +193,17 @@ export async function reviewVerification(params: {
         link: "/trainer/profile",
       },
     }),
+    ...(assetIds.length ? [prisma.fileAsset.deleteMany({ where: { id: { in: assetIds } } })] : []),
   ]);
+
+  // Best-effort: the DB rows are already gone above regardless of whether
+  // the underlying objects actually delete cleanly — a storage outage here
+  // must not leave the review decision stuck.
+  await Promise.all(
+    assets.map((a) =>
+      deletePrivateFile(a.key).catch((err) =>
+        console.error("[identity-verification] failed to delete stored object:", err)
+      )
+    )
+  );
 }

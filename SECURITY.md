@@ -44,7 +44,39 @@ pull the platform into obligations it is not built to carry.
 `IdentityVerification`.** If a future feature seems to need them, that is a
 signal to push the work to the vendor instead.
 
-Additional requirements when going live:
+### Manual-review path — the one disclosed exception
+
+When no vendor is configured, trainers may instead submit to **manual,
+human review**: an ID photo and a selfie uploaded directly
+(`src/server/services/manual-identity-verification.ts`), stored in private
+S3-compatible object storage (`src/lib/storage/s3.ts`) via `FileAsset` rows
+referenced from `IdentityVerification.documentAssetId` /
+`.selfieAssetId` — never inline columns on `IdentityVerification` itself,
+and never a public URL; only short-lived signed URLs generated per admin
+page view.
+
+This is a real, disclosed reversal of "decisions only" for this one path,
+not an oversight — the trade a platform makes when it wants a **free**
+verification option instead of paying a vendor. It carries real weaknesses
+a certified vendor doesn't have: no liveness/anti-spoof detection (a human
+just looks at two photos), and it brings the platform into GDPR Art. 9 /
+BIPA scope for as long as the images exist. Two things bound that exposure:
+
+- **Retention is "until reviewed," never indefinite.**
+  `reviewVerification()` deletes both the storage objects and their
+  `FileAsset` rows the instant a decision (approve or reject) is recorded —
+  see the function's doc comment in
+  `src/server/services/identity-verification.ts`.
+- **Trainers are told this in plain language before uploading** —
+  `ManualVerificationUpload` (`src/components/trainer/verification-panel.tsx`)
+  states images are stored only until reviewed, then deleted, and that
+  there's no automated liveness check.
+
+Treat this as a bridge to a real vendor, not a permanent replacement — the
+gap it leaves (no anti-spoof detection) is exactly what iBeta/ISO 30107-3
+Level 2 certification exists to close.
+
+Additional requirements when going live with a vendor:
 
 - Choose a vendor certified for **iBeta / ISO 30107-3 Level 2** presentation-
   attack detection — passive-only liveness is defeatable by replay and
@@ -243,13 +275,21 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
   else's pending account, and password reset, where it would be outright
   account takeover. A send *failure* on a configured deployment also keeps
   the link hidden — that's a transient fault, not an unconfigured host.
-- **File storage, Redis/queue jobs** — abstraction points exist in
-  `.env.example` but are not yet implemented. In particular no worker
-  processes dataset exports, so an export stays `QUEUED` forever.
+- **File storage** (`src/lib/storage/s3.ts`) — implemented for one purpose
+  only (manual identity-verification uploads, see above); every function
+  throws rather than mocking a fake success when `STORAGE_*` env vars are
+  unset, since there's no meaningful decision to fake for "did this image
+  actually get stored." Not used for anything else yet — dataset exports in
+  particular have no worker processing them, so an export stays `QUEUED`
+  forever regardless of storage configuration.
+- **Redis/queue jobs** — abstraction points exist in `.env.example` but are
+  not yet implemented.
 - **Identity verification** (`src/lib/identity/persona.ts`) — simulates
   document/liveness/face-match/dedupe decisions unless `PERSONA_API_KEY` and
   `PERSONA_TEMPLATE_ID` are set, so the review workflow can be exercised end
-  to end without a vendor account.
+  to end without a vendor account. The manual-review path (above) is a
+  separate, non-simulated alternative — real images, real human decision —
+  available regardless of Persona's configuration state.
 - **IP geolocation** (`src/lib/security/geolocation.ts`) — returns empty
   results unless `IPINFO_TOKEN` is set.
 

@@ -5,11 +5,16 @@ import { ShieldCheck, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { getIdentityProvider } from "@/lib/identity";
+import { isStorageConfigured } from "@/lib/storage/s3";
 import { credentialExpiryStatus, daysUntil } from "@/lib/utils/credential-expiry";
 import { PageHeader } from "@/components/shared/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { VerificationStarter, VerificationRefresher } from "@/components/trainer/verification-panel";
+import {
+  VerificationStarter,
+  VerificationRefresher,
+  ManualVerificationUpload,
+} from "@/components/trainer/verification-panel";
 
 export const metadata: Metadata = { title: "Identity verification" };
 
@@ -27,6 +32,7 @@ export default async function VerificationPage() {
   const record = await prisma.identityVerification.findUnique({ where: { userId: session.user.id } });
   const provider = getIdentityProvider();
   const mocked = provider.isMocked();
+  const manualAvailable = isStorageConfigured();
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
@@ -37,10 +43,11 @@ export default async function VerificationPage() {
 
       {mocked ? (
         <div className="rounded-lg border border-warning/50 bg-warning/10 p-4 text-sm">
-          <p className="font-medium">Simulated verification</p>
+          <p className="font-medium">{manualAvailable ? "Automated verification unavailable" : "Simulated verification"}</p>
           <p className="text-muted-foreground">
-            No verification provider is configured, so this flow simulates a decision end to end.
-            No documents are captured or transmitted.
+            {manualAvailable
+              ? "No automated verification provider is configured. Use \"Start verification\" for a simulated automatic decision, or upload documents below for a team member to review by hand."
+              : "No verification provider is configured, so this flow simulates a decision end to end. No documents are captured or transmitted."}
           </p>
         </div>
       ) : null}
@@ -108,6 +115,11 @@ export default async function VerificationPage() {
                 </p>
               );
             })()
+          ) : record?.status === "PENDING" && record.provider === "manual" ? (
+            <p className="text-sm text-muted-foreground">
+              Submitted for manual review. We&apos;ll email you once a team member has looked at it —
+              typically within a few business days.
+            </p>
           ) : record?.status === "PENDING" ? (
             <VerificationRefresher />
           ) : (
@@ -115,6 +127,17 @@ export default async function VerificationPage() {
           )}
         </CardContent>
       </Card>
+
+      {mocked && manualAvailable && record?.status !== "PENDING" && record?.status !== "VERIFIED" ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Or verify manually</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-6">
+            <ManualVerificationUpload />
+          </CardContent>
+        </Card>
+      ) : null}
     </div>
   );
 }
