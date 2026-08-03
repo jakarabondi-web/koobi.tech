@@ -16,7 +16,7 @@ const CONTROLS: FeatureBentoItem[] = [
   {
     icon: <KeyRound className="size-6" />,
     title: "Encryption in transit and at rest",
-    desc: "Sensitive fields held under application-level encryption.",
+    desc: "Standard TLS in transit. At rest, specific high-risk fields — 2FA secrets, payout details, login history — are additionally encrypted at the application level, not just relying on disk encryption.",
     tag: "Encryption",
   },
   {
@@ -40,7 +40,7 @@ const CONTROLS: FeatureBentoItem[] = [
   {
     icon: <ServerCog className="size-6" />,
     title: "Data-retention controls",
-    desc: "Configurable retention windows, defined deletion workflows.",
+    desc: "Defined retention windows for login and location history, enforced by an automated daily sweep — not indefinite by default.",
     tag: "Retention",
   },
   {

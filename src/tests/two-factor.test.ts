@@ -9,30 +9,46 @@ import {
   totpUri,
   verifyTotpCode,
 } from "@/lib/auth/two-factor";
-import { decryptSecret, encryptSecret } from "@/lib/security/field-encryption";
+import { decryptField, decryptFieldOrLegacy, encryptField } from "@/lib/security/field-encryption";
 
 describe("field encryption", () => {
   it("round-trips a secret", () => {
-    const encrypted = encryptSecret("JBSWY3DPEHPK3PXP");
-    expect(decryptSecret(encrypted)).toBe("JBSWY3DPEHPK3PXP");
+    const encrypted = encryptField("JBSWY3DPEHPK3PXP");
+    expect(decryptField(encrypted)).toBe("JBSWY3DPEHPK3PXP");
   });
 
   it("never stores the plaintext inside the ciphertext string", () => {
-    const encrypted = encryptSecret("JBSWY3DPEHPK3PXP");
+    const encrypted = encryptField("JBSWY3DPEHPK3PXP");
     expect(encrypted).not.toContain("JBSWY3DPEHPK3PXP");
   });
 
   it("produces a different ciphertext each time (random IV)", () => {
-    expect(encryptSecret("same-secret")).not.toBe(encryptSecret("same-secret"));
+    expect(encryptField("same-secret")).not.toBe(encryptField("same-secret"));
   });
 
   it("rejects a tampered ciphertext rather than returning garbage", () => {
-    const encrypted = encryptSecret("JBSWY3DPEHPK3PXP");
+    const encrypted = encryptField("JBSWY3DPEHPK3PXP");
     const [iv, tag, ciphertext] = encrypted.split(":");
     const flipped = Buffer.from(ciphertext, "base64");
     flipped[0] ^= 0xff;
     const tampered = [iv, tag, flipped.toString("base64")].join(":");
-    expect(() => decryptSecret(tampered)).toThrow();
+    expect(() => decryptField(tampered)).toThrow();
+  });
+});
+
+describe("decryptFieldOrLegacy", () => {
+  it("decrypts real ciphertext the same as decryptField", () => {
+    const encrypted = encryptField("254712345678");
+    expect(decryptFieldOrLegacy(encrypted)).toBe("254712345678");
+  });
+
+  it("passes through a value written before the column started encrypting, instead of throwing", () => {
+    // What a pre-migration row actually looks like: the raw plaintext,
+    // never touched by encryptField. Strict decryptField throws on this —
+    // this is exactly the bug that would 500 every account's payments page
+    // and login-history panel the moment encryption shipped.
+    expect(decryptFieldOrLegacy("254712345678")).toBe("254712345678");
+    expect(decryptFieldOrLegacy("203.0.113.42")).toBe("203.0.113.42");
   });
 });
 

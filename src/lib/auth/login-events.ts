@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { encryptField } from "@/lib/security/field-encryption";
 
 /**
  * Best-effort client IP from standard proxy headers. This deployment sits
@@ -24,13 +25,16 @@ function clientIp(hdrs: Headers | undefined): string | null {
  */
 export async function recordSuccessfulLogin(userId: string, hdrs: Headers | undefined) {
   const ipAddress = clientIp(hdrs);
+  // Encrypted at rest, same as a payout phone number — an IP tied to a login
+  // history is exactly the kind of column worth it (see field-encryption.ts).
+  const encryptedIp = ipAddress ? encryptField(ipAddress) : null;
   const userAgent = hdrs?.get("user-agent") ?? null;
 
   await Promise.all([
     prisma.user.update({
       where: { id: userId },
-      data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date(), lastLoginIp: ipAddress },
+      data: { failedLoginCount: 0, lockedUntil: null, lastLoginAt: new Date(), lastLoginIp: encryptedIp },
     }),
-    prisma.loginEvent.create({ data: { userId, ipAddress, userAgent } }),
+    prisma.loginEvent.create({ data: { userId, ipAddress: encryptedIp, userAgent } }),
   ]);
 }

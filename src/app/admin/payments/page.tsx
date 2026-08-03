@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { can } from "@/lib/permissions/can";
 import { listPayoutProviders } from "@/lib/payments";
+import { decryptFieldOrLegacy } from "@/lib/security/field-encryption";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -111,7 +112,7 @@ export default async function AdminPayoutsPage() {
                     <TableCell>{r.requestedAt.toLocaleDateString()}</TableCell>
                     <TableCell>
                       {r.provider === "MPESA"
-                        ? `M-Pesa · ${r.paymentAccount.mpesaPhoneNumber}`
+                        ? `M-Pesa · ${r.paymentAccount.mpesaPhoneNumber ? decryptFieldOrLegacy(r.paymentAccount.mpesaPhoneNumber) : "unknown number"}`
                         : "Stripe transfer"}
                     </TableCell>
                     <TableCell className="tabular-nums font-medium">{usd(r.amountCents)}</TableCell>

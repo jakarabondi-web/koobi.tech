@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import { getPayoutProvider } from "@/lib/payments";
+import { decryptFieldOrLegacy } from "@/lib/security/field-encryption";
 
 export class PayoutError extends Error {}
 
@@ -30,7 +31,9 @@ export async function processPayoutRequest(params: {
   const provider = getPayoutProvider(request.provider);
   const destination =
     request.provider === "MPESA"
-      ? request.paymentAccount.mpesaPhoneNumber ?? ""
+      ? request.paymentAccount.mpesaPhoneNumber
+        ? decryptFieldOrLegacy(request.paymentAccount.mpesaPhoneNumber)
+        : ""
       : request.paymentAccount.externalId ?? "";
 
   const result = await provider.send({

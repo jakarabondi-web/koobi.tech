@@ -8,6 +8,7 @@ import { assertClearedForTrainerWork, GateError } from "@/server/services/traine
 import { prisma } from "@/lib/db/prisma";
 import { assertCan } from "@/lib/permissions/can";
 import { normalizeMpesaPhone } from "@/lib/payments/mpesa";
+import { encryptField } from "@/lib/security/field-encryption";
 import { requestPayout, WalletError } from "@/server/services/wallet";
 import { processPayoutRequest, rejectPayoutRequest, PayoutError } from "@/server/services/payouts";
 
@@ -47,7 +48,7 @@ export async function addPaymentMethod(_prev: ActionState, formData: FormData): 
       return { status: "error", message: "Enter a valid Kenyan M-Pesa number (e.g. 0712 345 678)." };
     }
     await prisma.paymentAccount.create({
-      data: { userId: session.user.id, provider: "MPESA", mpesaPhoneNumber: msisdn },
+      data: { userId: session.user.id, provider: "MPESA", mpesaPhoneNumber: encryptField(msisdn) },
     });
   } else {
     await prisma.paymentAccount.create({

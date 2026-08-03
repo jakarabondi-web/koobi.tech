@@ -301,13 +301,57 @@ in `resolveOAuthSignIn`, not implicit adapter behavior.
 - Rate limiting (`RATE_LIMIT_ENABLED` env var is a placeholder — no limiter is
   wired in yet). This matters most for `/api/v1/*`, where keys are currently
   unthrottled.
-- Field-level encryption for sensitive PII beyond password hashing
-  (`FIELD_ENCRYPTION_KEY` is reserved in `.env.example`).
 - Signed/expiring download URLs for `FileAsset`.
 - Full audit-log coverage (the `AuditLog` model exists; write call sites are
   added incrementally as admin actions are built).
 - Suspicious-login and anomaly detection (`RiskFlag` model exists; detection
   logic is not yet implemented).
+
+## Field-level encryption
+
+`src/lib/security/field-encryption.ts` — AES-256-GCM, keyed off `AUTH_SECRET`
+rather than a separate secret (see the file's own doc comment for why).
+Deliberately applied per-column, not as a blanket policy: a column only gets
+added here when there's a specific, nameable harm if it leaked.
+
+Encrypted today:
+
+- `User.twoFactorSecret` — a TOTP secret is as sensitive as a password.
+- `PaymentAccount.mpesaPhoneNumber` — a payout destination.
+- `LoginEvent.ipAddress` / `User.lastLoginIp` — per-login IP history.
+
+Not encrypted, and why that's a deliberate line rather than an oversight:
+`ConsentRecord.ipAddress` and `AuditLog.ipAddress` (the latter isn't even
+populated by any current call site) stay as-is for now — extend this list
+before relying on that being complete for a specific compliance claim.
+
+**Reading a column that only started encrypting partway through its
+life**: use `decryptFieldOrLegacy`, not `decryptField`, wherever the column
+could hold rows written before encryption was added — `mpesaPhoneNumber`
+and `LoginEvent.ipAddress` both do. It falls back to the stored value as-is
+when it isn't in ciphertext format, instead of throwing. This is not
+theoretical: wiring `mpesaPhoneNumber` encryption without it broke both
+payment pages and real M-Pesa payouts for every account created before the
+change, caught by testing against actual seeded data rather than mocks
+alone. `User.twoFactorSecret` has been encrypted since the column was
+introduced — no legacy plaintext window ever existed for it — so it keeps
+using strict `decryptField`, where a decrypt failure is a genuine integrity
+problem worth throwing on, not an expected old row.
+
+## Data retention
+
+`src/server/services/data-retention.ts` — fixed, documented windows, swept
+daily by `/api/cron/data-retention` (see `vercel.json`). Not an
+admin-configurable settings table: changing a window is a code change and a
+deploy, the same review bar as any other policy change here.
+
+- Location signals (`LocationSignal`) and login history (`LoginEvent`) — 90
+  days. Both are already coarse (country/region/city, hashed or encrypted
+  IP) — this bounds how long even that reduced data sticks around.
+- Audit log (`AuditLog`) — 7 years. Deliberately excluded from the
+  short-lived telemetry schedule: this is the record that has to survive a
+  dispute or compliance review, not something to age out with everything
+  else.
 
 ## Reporting
 
