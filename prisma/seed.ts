@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 import { GLOBAL_ROLES } from "../src/lib/permissions/roles";
+import { encryptField } from "../src/lib/security/field-encryption";
 
 export const prisma = new PrismaClient();
 
@@ -4391,7 +4392,7 @@ export async function seedDatabase() {
     data: {
       userId: trainer.id,
       provider: "MPESA",
-      mpesaPhoneNumber: "254712345678",
+      mpesaPhoneNumber: encryptField("254712345678"),
       isDefault: true,
     },
   });

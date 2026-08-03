@@ -10,7 +10,7 @@ import {
   totpQrDataUrl,
   verifyTotpCode,
 } from "@/lib/auth/two-factor";
-import { decryptSecret, encryptSecret } from "@/lib/security/field-encryption";
+import { decryptField, encryptField } from "@/lib/security/field-encryption";
 import { prisma } from "@/lib/db/prisma";
 
 export type StartEnrollState = {
@@ -46,7 +46,7 @@ export async function startEnroll2fa(): Promise<StartEnrollState> {
   // an abandoned enrollment never blocks sign-in.
   await prisma.user.update({
     where: { id: user.id },
-    data: { twoFactorSecret: encryptSecret(secret) },
+    data: { twoFactorSecret: encryptField(secret) },
   });
 
   return { status: "ready", qrDataUrl, manualEntryKey: secret };
@@ -79,7 +79,7 @@ export async function confirmEnroll2fa(
     return { status: "error", message: "Two-factor authentication is already enabled." };
   }
 
-  const valid = await verifyTotpCode(decryptSecret(user.twoFactorSecret), parsed.data);
+  const valid = await verifyTotpCode(decryptField(user.twoFactorSecret), parsed.data);
   if (!valid) {
     return { status: "error", message: "That code didn't match. Check the time on your device and try again." };
   }

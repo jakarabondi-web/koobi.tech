@@ -6,6 +6,7 @@ import { auth } from "@/lib/auth";
 import { requireApprovedTrainer } from "@/server/services/trainer-gate";
 import { prisma } from "@/lib/db/prisma";
 import { getWalletSummary, MIN_PAYOUT_CENTS } from "@/server/services/wallet";
+import { decryptFieldOrLegacy } from "@/lib/security/field-encryption";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
 import { EmptyState } from "@/components/shared/empty-state";
@@ -38,13 +39,17 @@ export default async function TrainerPaymentsPage() {
     }),
   ]);
 
+  // Stored encrypted at rest (src/lib/security/field-encryption.ts) — decrypt
+  // once here rather than at each place it's displayed below.
+  const mpesaPhone = (encrypted: string | null) => (encrypted ? decryptFieldOrLegacy(encrypted) : null);
+
   const payoutMethods = accounts
     .filter((a) => a.provider === "MPESA" || a.provider === "STRIPE_CONNECT")
     .map((a) => ({
       id: a.id,
       label:
         a.provider === "MPESA"
-          ? `M-Pesa · ${a.mpesaPhoneNumber ?? "unknown number"}`
+          ? `M-Pesa · ${mpesaPhone(a.mpesaPhoneNumber) ?? "unknown number"}`
           : `Stripe · ${a.externalId ?? "unknown account"}`,
     }));
 
@@ -92,7 +97,7 @@ export default async function TrainerPaymentsPage() {
                     <CreditCard className="size-4 text-muted-foreground" />
                     <span className="flex-1">
                       {a.provider === "MPESA"
-                        ? `M-Pesa · ${a.mpesaPhoneNumber}`
+                        ? `M-Pesa · ${mpesaPhone(a.mpesaPhoneNumber)}`
                         : `${a.provider.replace(/_/g, " ")} · ${a.externalId ?? "—"}`}
                     </span>
                   </li>
@@ -132,7 +137,7 @@ export default async function TrainerPaymentsPage() {
                     <TableCell>{r.requestedAt.toLocaleDateString()}</TableCell>
                     <TableCell>
                       {r.provider === "MPESA"
-                        ? `M-Pesa · ${r.paymentAccount.mpesaPhoneNumber}`
+                        ? `M-Pesa · ${mpesaPhone(r.paymentAccount.mpesaPhoneNumber)}`
                         : "Stripe transfer"}
                     </TableCell>
                     <TableCell className="tabular-nums">{usd(r.amountCents)}</TableCell>

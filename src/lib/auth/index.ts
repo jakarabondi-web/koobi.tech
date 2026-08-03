@@ -12,7 +12,7 @@ import {
   createTwoFactorChallenge,
   verifyTotpCode,
 } from "@/lib/auth/two-factor";
-import { decryptSecret } from "@/lib/security/field-encryption";
+import { decryptField } from "@/lib/security/field-encryption";
 import { isSupportedOAuthAccount } from "@/lib/auth/oauth-providers";
 import { resolveOAuthSignIn } from "@/server/services/oauth-account";
 import { recordSuccessfulLogin } from "@/lib/auth/login-events";
@@ -230,7 +230,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         let verified = false;
         let remainingRecoveryCodes: string[] | null = null;
 
-        if (user.twoFactorSecret && (await verifyTotpCode(decryptSecret(user.twoFactorSecret), code))) {
+        if (user.twoFactorSecret && (await verifyTotpCode(decryptField(user.twoFactorSecret), code))) {
           verified = true;
         } else {
           const recovery = consumeRecoveryCode(user.twoFactorRecoveryCodes, code);
