@@ -18,7 +18,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     links: [
       { href: "/for-companies", label: "For AI companies" },
       { href: "/for-experts", label: "For experts" },
-      { href: "/apply", label: "Apply as an expert" },
+      { href: "/apply", label: "Apply to join" },
     ],
   },
   {

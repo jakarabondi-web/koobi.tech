@@ -13,7 +13,17 @@ import { Textarea } from "@/components/ui/textarea";
 
 const initialState: ActionState = { status: "idle" };
 
-export const DOMAINS = [
+/**
+ * "General assistant" is a real track, not a fallback option — it has its
+ * own qualification exam and readiness tasks (see prisma/seed.ts), and
+ * `listAssessmentsForUser` already shows it to every applicant regardless
+ * of what they pick here. Kept first and in its own optgroup so it reads as
+ * an equally legitimate path, not something buried at the bottom of a list
+ * of specialist fields for people who don't have one of those.
+ */
+export const GENERAL_DOMAIN = "General assistant";
+
+export const SPECIALIST_DOMAINS = [
   "Software engineering",
   "Mathematics",
   "Medicine",
@@ -26,6 +36,8 @@ export const DOMAINS = [
   "Writing",
   "Research",
 ] as const;
+
+export const DOMAINS = [GENERAL_DOMAIN, ...SPECIALIST_DOMAINS] as const;
 
 export function ApplicationForm({
   defaults,
@@ -53,7 +65,7 @@ export function ApplicationForm({
   return (
     <form action={formAction} className="space-y-5 rounded-xl border border-border bg-card p-6">
       <div className="space-y-1.5">
-        <Label htmlFor="domain">Primary area of expertise</Label>
+        <Label htmlFor="domain">What you&apos;d like to work on</Label>
         <select
           id="domain"
           name="domain"
@@ -62,16 +74,23 @@ export function ApplicationForm({
           className="h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30"
         >
           <option value="" disabled>
-            Select a domain
+            Select an option
           </option>
-          {DOMAINS.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
+          <optgroup label="General">
+            <option value={GENERAL_DOMAIN}>General assistant — no specialist background required</option>
+          </optgroup>
+          <optgroup label="Specialist fields">
+            {SPECIALIST_DOMAINS.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </optgroup>
         </select>
         <p className="text-xs text-muted-foreground">
-          This determines which qualification assessment you&apos;ll take.
+          This determines which qualification assessment you&apos;ll take. General assistant work
+          draws on judgment, instruction-following, and clear writing rather than a specific field —
+          it&apos;s a real track, not a fallback.
         </p>
       </div>
 
