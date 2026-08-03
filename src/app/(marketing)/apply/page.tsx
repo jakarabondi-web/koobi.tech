@@ -5,12 +5,12 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Apply as an expert" };
+export const metadata: Metadata = { title: "Apply to join" };
 
 const STEPS = [
   "Create your account and verify your email",
   "Tell us about your background, skills, and languages",
-  "Take a short qualification assessment in your area of expertise",
+  "Take a short qualification assessment — a specialist field, or our General assistant track",
   "Get matched to available projects once approved",
 ];
 
@@ -18,9 +18,9 @@ export default function ApplyPage() {
   return (
     <>
       <MarketingPageHero
-        eyebrow="Apply as an expert"
-        title="Join the Traivr expert network"
-        description="Applications take about 20 minutes. We review every application and follow up within a few business days."
+        eyebrow="Apply to join"
+        title="Join the Traivr trainer network"
+        description="Applications take about 20 minutes. We review every application and follow up within a few business days. No specialist background needed — our General assistant track is a real qualification path, not a fallback."
       />
       <section className="py-16">
         <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">

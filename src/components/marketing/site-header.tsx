@@ -46,7 +46,7 @@ export function SiteHeader() {
             <Link href="/login">Sign in</Link>
           </Button>
           <Button variant="outline" size="sm" asChild>
-            <Link href="/apply">Apply as an expert</Link>
+            <Link href="/apply">Apply to join</Link>
           </Button>
           <Button variant="violet" size="sm" asChild>
             <Link href="/contact">Book a demo</Link>

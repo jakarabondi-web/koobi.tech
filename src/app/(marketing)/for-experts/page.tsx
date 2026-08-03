@@ -41,7 +41,7 @@ export default function ForExpertsPage() {
       <MarketingPageHero
         eyebrow="For experts"
         title="Get paid to improve the world's most advanced AI systems"
-        description="Join a network of software engineers, scientists, medical and legal professionals, linguists, and researchers doing meaningful AI-training work."
+        description="Join a network of software engineers, scientists, medical and legal professionals, linguists, and researchers doing meaningful AI-training work — or apply to our General assistant track if you don't have a specialist field; it's a real qualification path, not a fallback."
       />
       <section className="py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

@@ -35,6 +35,7 @@ import {
   Radar,
   Layers,
   ClipboardCheck,
+  Sparkles,
 } from "lucide-react";
 
 import { brand } from "@/config/brand";
@@ -103,6 +104,7 @@ const EXPERT_CATEGORIES = [
   { icon: <Landmark className="size-6" />, label: "Finance professionals" },
   { icon: <Languages className="size-6" />, label: "Linguists" },
   { icon: <BookOpenText className="size-6" />, label: "Researchers" },
+  { icon: <Sparkles className="size-6" />, label: "General assistants" },
 ];
 
 const CLIENT_STEPS = [
@@ -133,7 +135,7 @@ const SECURITY_POINTS: FeatureBentoItem[] = [
 const TRAINER_BENEFITS = [
   "Flexible projects you choose, on your schedule",
   "Transparent pay shown before you start any task",
-  "Domain-specific work matched to your expertise",
+  "Work matched to your background — specialist field or general skills",
   "Quality bonuses for consistently strong submissions",
   "Clear, actionable feedback from senior reviewers",
   "Reliable, on-time payments with full history",
@@ -384,12 +386,12 @@ export default async function HomePage() {
               Get paid to improve the world&apos;s most advanced AI systems.
             </h2>
             <p className="mt-4 text-muted-foreground">
-              Join a network of specialists doing meaningful, well-compensated work that shapes how AI systems
-              behave.
+              Join a network of specialists and generalists doing meaningful, well-compensated work that
+              shapes how AI systems behave — no subject-matter background required to start.
             </p>
             <Button size="lg" variant="violet" className="mt-6" asChild>
               <Link href="/apply">
-                Apply as an expert <ArrowRight className="size-4" />
+                Apply to join <ArrowRight className="size-4" />
               </Link>
             </Button>
           </div>
