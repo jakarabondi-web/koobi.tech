@@ -225,3 +225,18 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ServiceOrbit (homepage "What we do"): slow dashed-ring rotation and the
+   content swap pop. Both are killed by the reduced-motion block above. */
+@keyframes orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes orbit-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
