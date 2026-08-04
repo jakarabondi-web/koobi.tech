@@ -22,13 +22,31 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const description = `${brand.name} connects verified AI trainers, subject-matter experts, and reviewers with AI companies that need high-quality training data, human feedback, and model evaluations.`;
+
 export const metadata: Metadata = {
+  // Absolute-URL base for the generated opengraph-image route — link
+  // previews (WhatsApp, iMessage, X, Slack, LinkedIn) need absolute image
+  // URLs, and every page inherits this.
+  metadataBase: new URL(`https://${brand.domain}`),
   title: {
     default: `${brand.name} — ${brand.tagline}`,
     template: `%s · ${brand.name}`,
   },
-  description:
-    `${brand.name} connects verified AI trainers, subject-matter experts, and reviewers with AI companies that need high-quality training data, human feedback, and model evaluations.`,
+  description,
+  openGraph: {
+    type: "website",
+    siteName: brand.name,
+    title: `${brand.name} — Train better AI with verified human expertise`,
+    description,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${brand.name} — Train better AI with verified human expertise`,
+    description,
+    site: "@traivr",
+  },
 };
 
 export default function RootLayout({
