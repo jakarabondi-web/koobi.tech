@@ -1,16 +1,12 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { ListChecks } from "lucide-react";
+import { ListChecks, Clock, CheckCircle2, AlertTriangle } from "lucide-react";
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db/prisma";
 import { PageHeader } from "@/components/shared/page-header";
 import { KpiCard } from "@/components/shared/kpi-card";
-import { EmptyState } from "@/components/shared/empty-state";
-import { Card, CardContent } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { StatusBadge } from "@/components/ui/badge-status";
-import { Badge } from "@/components/ui/badge";
+import { TaskAssignmentsTable, type AdminTaskAssignmentRow } from "@/components/admin/task-assignments-table";
 
 export const metadata: Metadata = { title: "Tasks" };
 
@@ -18,49 +14,44 @@ export default async function AdminTasksPage() {
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [tasks, counts] = await Promise.all([
-    prisma.task.findMany({
-      include: { project: true, assignments: true, _count: { select: { submissions: true } } },
-      orderBy: { updatedAt: "desc" },
-      take: 100,
-    }),
-    prisma.task.groupBy({ by: ["status"], _count: true }),
-  ]);
-  const countFor = (s: string) => counts.find((c) => c.status === s)?._count ?? 0;
+  const assignments = await prisma.taskAssignment.findMany({
+    include: {
+      task: { select: { id: true, isGold: true, project: { select: { name: true } } } },
+      user: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: [{ completedAt: "asc" }, { dueAt: "asc" }],
+    take: 300,
+  });
+
+  const now = new Date();
+  const rows: AdminTaskAssignmentRow[] = assignments.map((a) => ({
+    id: a.id,
+    taskId: a.taskId,
+    projectName: a.task.project.name,
+    trainerName: `${a.user.firstName} ${a.user.lastName}`,
+    assignedAt: a.assignedAt.toISOString(),
+    dueAt: a.dueAt ? a.dueAt.toISOString() : null,
+    completedAt: a.completedAt ? a.completedAt.toISOString() : null,
+    isGold: a.task.isGold,
+  }));
+
+  const completed = assignments.filter((a) => a.completedAt).length;
+  const overdue = assignments.filter((a) => !a.completedAt && a.dueAt && a.dueAt.getTime() < now.getTime()).length;
+  const inProgress = assignments.length - completed - overdue;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Tasks" description="Task pipeline across all projects." />
+      <PageHeader
+        title="Tasks"
+        description="Every job assigned to a trainer across all projects — status and time to deadline in one place."
+      />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard label="In progress" value={String(countFor("ASSIGNED") + countFor("IN_PROGRESS"))} icon={ListChecks} />
-        <KpiCard label="Awaiting review" value={String(countFor("SUBMITTED") + countFor("UNDER_REVIEW"))} />
-        <KpiCard label="Approved" value={String(countFor("APPROVED"))} />
-        <KpiCard label="Escalated" value={String(countFor("ESCALATED"))} />
+        <KpiCard label="Assigned jobs" value={String(assignments.length)} icon={ListChecks} />
+        <KpiCard label="Under completion" value={String(inProgress)} icon={Clock} />
+        <KpiCard label="Completed" value={String(completed)} icon={CheckCircle2} />
+        <KpiCard label="Overdue" value={String(overdue)} icon={AlertTriangle} />
       </div>
-      <Card>
-        <CardContent className="pt-6 pb-6">
-          {tasks.length === 0 ? <EmptyState icon={ListChecks} title="No tasks yet" /> : (
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Task</TableHead><TableHead>Project</TableHead><TableHead>Assigned</TableHead>
-                <TableHead>Submissions</TableHead><TableHead>Gold</TableHead><TableHead>Status</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {tasks.map((t) => (
-                  <TableRow key={t.id}>
-                    <TableCell className="font-mono text-xs">{t.id.slice(0, 8)}</TableCell>
-                    <TableCell className="max-w-52 truncate">{t.project.name}</TableCell>
-                    <TableCell className="tabular-nums">{t.assignments.length}</TableCell>
-                    <TableCell className="tabular-nums">{t._count.submissions}</TableCell>
-                    <TableCell>{t.isGold ? <Badge variant="info">Gold</Badge> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
-                    <TableCell><StatusBadge status={t.status} /></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <TaskAssignmentsTable rows={rows} />
     </div>
   );
 }
