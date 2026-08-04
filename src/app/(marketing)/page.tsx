@@ -49,7 +49,7 @@ import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
-import { ServiceLedger, type ServiceLedgerItem } from "@/components/marketing/service-ledger";
+import { ServiceOrbit, type ServiceOrbitItem } from "@/components/marketing/service-orbit";
 import { ICON_BADGE_COLORS } from "@/lib/constants/icon-colors";
 
 /** Small icon+label chip — a lighter cousin of FeatureBento's badge that
@@ -85,10 +85,11 @@ export const metadata: Metadata = {
   title: { absolute: `${brand.name} — Train better AI with verified human expertise` },
 };
 
-const SERVICES: ServiceLedgerItem[] = [
+const SERVICES: ServiceOrbitItem[] = [
   {
     icon: <Cpu className="size-6" />,
     title: "RLHF & preference data",
+    label: "RLHF",
     desc: "Vetted trainers rank competing model responses head-to-head using Bradley–Terry pairwise comparisons, with disagreements adjudicated before anything ships. Output lands as a reward-model-ready dataset your training pipeline can ingest directly, no reformatting on your end.",
     tag: "Reward modeling",
     chips: ["Pairwise ranking", "Reward-model export", "Inter-rater agreement"],
@@ -96,6 +97,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Terminal className="size-6" />,
     title: "Supervised fine-tuning",
+    label: "Fine-tuning",
     desc: "Subject-matter experts write ideal responses and prompts by hand, not templated filler, and every example carries a full revision history so you can audit exactly who wrote what and when it changed.",
     tag: "SFT",
     chips: ["Ideal responses", "Prompt authoring", "Revision history"],
@@ -103,6 +105,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Workflow className="size-6" />,
     title: "Model evaluations",
+    label: "Evaluations",
     desc: "We score your model against the rubric you define, inside your own evaluation harness, and return a per-category breakdown instead of one opaque number, so you can see exactly where quality is slipping.",
     tag: "Eval harness",
     chips: ["Rubric scoring", "Per-category report", "Harness-native"],
@@ -110,6 +113,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Binary className="size-6" />,
     title: "Red teaming",
+    label: "Red teaming",
     desc: "Adversarial probes mapped to the OWASP LLM Top 10 — prompt injection, jailbreaks, data exfiltration, all logged and scored by qualified red-teamers, not a static scanner.",
     tag: "OWASP LLM Top 10",
     chips: ["Prompt injection", "Jailbreak probes", "Human-scored"],
@@ -117,6 +121,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Database className="size-6" />,
     title: "Expert data creation",
+    label: "Data creation",
     desc: "Original datasets built to your spec by domain experts, cleared for license end to end, and versioned from the first draft — so provenance is never a question you have to chase down later.",
     tag: "Dataset authoring",
     chips: ["License-cleared", "Domain experts", "Versioned sets"],
@@ -124,6 +129,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Globe2 className="size-6" />,
     title: "Multilingual evaluation",
+    label: "Multilingual",
     desc: "Native-fluency reviewers across 30+ languages catch what machine translation checks miss — idiom, tone, and cultural nuance — so your model reads naturally to a real speaker, not just correctly to a parser.",
     tag: "i18n / L10n",
     chips: ["Native fluency", "30+ languages", "Cultural nuance"],
@@ -131,6 +137,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Code2 className="size-6" />,
     title: "Code & reasoning tasks",
+    label: "Code & reasoning",
     desc: "Working engineers review generated code and multi-step reasoning chains line by line, exporting a clean pass/fail signal per step so you can trace exactly where a chain of reasoning broke down.",
     tag: "SWE-bench style",
     chips: ["Line-by-line review", "Pass/fail export", "Chain tracing"],
@@ -138,6 +145,7 @@ const SERVICES: ServiceLedgerItem[] = [
   {
     icon: <Fingerprint className="size-6" />,
     title: "Safety & policy testing",
+    label: "Safety testing",
     desc: "Trained classifiers flag policy violations and hallucinations against your own guidelines, not a generic off-the-shelf policy, with every flag reviewed by a human before it counts.",
     tag: "Trust & safety",
     chips: ["Policy classification", "Hallucination detection", "Human-reviewed"],
@@ -280,7 +288,7 @@ export default async function HomePage() {
           <div className="max-w-2xl">
             <span className="font-mono text-xs uppercase tracking-widest text-primary">01 · What we do</span>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-              Every stage of the data pipeline, covered
+              Every capability, one living network
             </h2>
             <p className="mt-3 text-muted-foreground">
               From raw prompt generation to production-ready datasets, run the full lifecycle of human-in-the-loop AI
@@ -288,7 +296,7 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="mt-10">
-            <ServiceLedger items={SERVICES} />
+            <ServiceOrbit items={SERVICES} />
           </div>
         </div>
       </section>
