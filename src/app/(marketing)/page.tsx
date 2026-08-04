@@ -49,6 +49,7 @@ import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { WorldNetworkMap } from "@/components/shared/world-network-map";
 import { RegistrationSteps } from "@/components/marketing/registration-steps";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
+import { ServiceLedger, type ServiceLedgerItem } from "@/components/marketing/service-ledger";
 import { ICON_BADGE_COLORS } from "@/lib/constants/icon-colors";
 
 /** Small icon+label chip — a lighter cousin of FeatureBento's badge that
@@ -84,15 +85,63 @@ export const metadata: Metadata = {
   title: { absolute: `${brand.name} — Train better AI with verified human expertise` },
 };
 
-const SERVICES: FeatureBentoItem[] = [
-  { icon: <Cpu className="size-6" />, title: "RLHF & preference data", desc: "Bradley–Terry pairwise ranking, reward-model-ready export.", tag: "Reward modeling" },
-  { icon: <Terminal className="size-6" />, title: "Supervised fine-tuning", desc: "Ideal-response and prompt authoring, versioned per revision.", tag: "SFT" },
-  { icon: <Workflow className="size-6" />, title: "Model evaluations", desc: "Rubric-scored evals against your harness, per-category breakdown.", tag: "Eval harness" },
-  { icon: <Binary className="size-6" />, title: "Red teaming", desc: "Adversarial probes mapped to the OWASP LLM Top 10.", tag: "OWASP LLM Top 10" },
-  { icon: <Database className="size-6" />, title: "Expert data creation", desc: "Original datasets, license-cleared and versioned.", tag: "Dataset authoring" },
-  { icon: <Globe2 className="size-6" />, title: "Multilingual evaluation", desc: "Native-fluency review across 30+ languages.", tag: "i18n / L10n" },
-  { icon: <Code2 className="size-6" />, title: "Code & reasoning tasks", desc: "Code review and multi-step reasoning checks, pass/fail exported.", tag: "SWE-bench style" },
-  { icon: <Fingerprint className="size-6" />, title: "Safety & policy testing", desc: "Safety and policy classification, hallucination detection.", tag: "Trust & safety" },
+const SERVICES: ServiceLedgerItem[] = [
+  {
+    icon: <Cpu className="size-6" />,
+    title: "RLHF & preference data",
+    desc: "Vetted trainers rank competing model responses head-to-head using Bradley–Terry pairwise comparisons, with disagreements adjudicated before anything ships. Output lands as a reward-model-ready dataset your training pipeline can ingest directly, no reformatting on your end.",
+    tag: "Reward modeling",
+    chips: ["Pairwise ranking", "Reward-model export", "Inter-rater agreement"],
+  },
+  {
+    icon: <Terminal className="size-6" />,
+    title: "Supervised fine-tuning",
+    desc: "Subject-matter experts write ideal responses and prompts by hand, not templated filler, and every example carries a full revision history so you can audit exactly who wrote what and when it changed.",
+    tag: "SFT",
+    chips: ["Ideal responses", "Prompt authoring", "Revision history"],
+  },
+  {
+    icon: <Workflow className="size-6" />,
+    title: "Model evaluations",
+    desc: "We score your model against the rubric you define, inside your own evaluation harness, and return a per-category breakdown instead of one opaque number, so you can see exactly where quality is slipping.",
+    tag: "Eval harness",
+    chips: ["Rubric scoring", "Per-category report", "Harness-native"],
+  },
+  {
+    icon: <Binary className="size-6" />,
+    title: "Red teaming",
+    desc: "Adversarial probes mapped to the OWASP LLM Top 10 — prompt injection, jailbreaks, data exfiltration, all logged and scored by qualified red-teamers, not a static scanner.",
+    tag: "OWASP LLM Top 10",
+    chips: ["Prompt injection", "Jailbreak probes", "Human-scored"],
+  },
+  {
+    icon: <Database className="size-6" />,
+    title: "Expert data creation",
+    desc: "Original datasets built to your spec by domain experts, cleared for license end to end, and versioned from the first draft — so provenance is never a question you have to chase down later.",
+    tag: "Dataset authoring",
+    chips: ["License-cleared", "Domain experts", "Versioned sets"],
+  },
+  {
+    icon: <Globe2 className="size-6" />,
+    title: "Multilingual evaluation",
+    desc: "Native-fluency reviewers across 30+ languages catch what machine translation checks miss — idiom, tone, and cultural nuance — so your model reads naturally to a real speaker, not just correctly to a parser.",
+    tag: "i18n / L10n",
+    chips: ["Native fluency", "30+ languages", "Cultural nuance"],
+  },
+  {
+    icon: <Code2 className="size-6" />,
+    title: "Code & reasoning tasks",
+    desc: "Working engineers review generated code and multi-step reasoning chains line by line, exporting a clean pass/fail signal per step so you can trace exactly where a chain of reasoning broke down.",
+    tag: "SWE-bench style",
+    chips: ["Line-by-line review", "Pass/fail export", "Chain tracing"],
+  },
+  {
+    icon: <Fingerprint className="size-6" />,
+    title: "Safety & policy testing",
+    desc: "Trained classifiers flag policy violations and hallucinations against your own guidelines, not a generic off-the-shelf policy, with every flag reviewed by a human before it counts.",
+    tag: "Trust & safety",
+    chips: ["Policy classification", "Hallucination detection", "Human-reviewed"],
+  },
 ];
 
 const EXPERT_CATEGORIES = [
@@ -239,7 +288,7 @@ export default async function HomePage() {
             </p>
           </div>
           <div className="mt-10">
-            <FeatureBento items={SERVICES} />
+            <ServiceLedger items={SERVICES} />
           </div>
         </div>
       </section>
