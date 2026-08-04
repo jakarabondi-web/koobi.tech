@@ -205,6 +205,24 @@ export function ServiceOrbit({ items }: { items: ServiceOrbitItem[] }) {
     touchTimerRef.current = setTimeout(arm, TOUCH_RESUME_MS);
   }, [arm, pause]);
 
+  // swipe left/right on the detail card moves to the next/previous service
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
+  const onSwipeStart = useCallback((e: React.TouchEvent) => {
+    swipeStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  }, []);
+  const onSwipeEnd = useCallback(
+    (e: React.TouchEvent) => {
+      const start = swipeStart.current;
+      swipeStart.current = null;
+      if (!start) return;
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 2) return;
+      setActive((a) => (a + (dx < 0 ? 1 : count - 1)) % count);
+    },
+    [count]
+  );
+
   const it = items[active];
 
   return (
@@ -308,8 +326,8 @@ export function ServiceOrbit({ items }: { items: ServiceOrbitItem[] }) {
           })}
         </div>
 
-        {/* detail card */}
-        <div>
+        {/* detail card — horizontal swipe moves to the next/previous service */}
+        <div onTouchStart={onSwipeStart} onTouchEnd={onSwipeEnd} className="touch-pan-y">
           <div key={it.title} className="flex min-h-[16rem] animate-[orbit-pop_.3s_ease] flex-col justify-center md:min-h-0">
             <span className="mb-2 block font-mono text-[11px] tracking-[.1em] text-white/50 uppercase">{it.tag}</span>
             <h3 className="text-2xl font-bold tracking-tight text-white">{it.title}</h3>
