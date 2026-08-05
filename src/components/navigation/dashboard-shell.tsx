@@ -69,10 +69,10 @@ export function DashboardShell({
           navy, so the mesh needs to sit further back now. */}
       <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.5} />
 
-      <div className="relative z-10 flex h-24 items-center gap-3 border-b border-sidebar-border/60 px-5">
-        <LogoMark size={52} priority />
+      <div className="relative z-10 flex h-48 items-center gap-4 border-b border-sidebar-border/60 px-5">
+        <LogoMark size={104} priority />
         <div className="min-w-0 leading-tight">
-          <p className="text-xl font-extrabold">{brand.name}</p>
+          <p className="text-4xl font-extrabold">{brand.name}</p>
           <div className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/60">
             <span className="relative flex size-1.5 shrink-0">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
@@ -154,7 +154,7 @@ export function DashboardShell({
 
   return (
     <div className="flex min-h-screen">
-      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border lg:block">{sidebar}</aside>
+      <aside className="hidden w-80 shrink-0 border-r border-sidebar-border lg:block">{sidebar}</aside>
 
       {mobileOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
@@ -163,7 +163,7 @@ export function DashboardShell({
             aria-label="Close menu"
             onClick={() => setMobileOpen(false)}
           />
-          <div className="relative h-full w-64">{sidebar}</div>
+          <div className="relative h-full w-80">{sidebar}</div>
         </div>
       ) : null}
 
