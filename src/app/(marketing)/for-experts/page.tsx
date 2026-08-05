@@ -6,7 +6,11 @@ import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
-export const metadata: Metadata = { title: "For experts" };
+export const metadata: Metadata = {
+  title: "For experts",
+  description:
+    "Join Traivr as a verified AI trainer. Apply your domain expertise to RLHF, evaluations, and data creation work, paid per task with quality bonuses.",
+};
 
 const BENEFITS: FeatureBentoItem[] = [
   {

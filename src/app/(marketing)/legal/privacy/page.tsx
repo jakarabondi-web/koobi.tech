@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { brand } from "@/config/brand";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 
-export const metadata: Metadata = { title: "Privacy policy" };
+export const metadata: Metadata = {
+  title: "Privacy policy",
+  description:
+    "Traivr's privacy policy — how we collect, use, and protect the personal data of trainers, clients, and platform users.",
+};
 
 export default function PrivacyPage() {
   return (

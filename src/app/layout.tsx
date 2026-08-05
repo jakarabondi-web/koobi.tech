@@ -49,6 +49,31 @@ export const metadata: Metadata = {
   },
 };
 
+// Organization + WebSite structured data — lets search engines show the
+// brand name, logo, and (once enough pages exist) a sitelinks search box
+// directly in results, instead of just a bare blue link. Sits once at the
+// root rather than per-page since it describes the site, not a page.
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `https://${brand.domain}/#organization`,
+      name: brand.name,
+      url: `https://${brand.domain}`,
+      logo: `https://${brand.domain}/opengraph-image`,
+      sameAs: [brand.social.linkedin, brand.social.twitter],
+    },
+    {
+      "@type": "WebSite",
+      "@id": `https://${brand.domain}/#website`,
+      name: brand.name,
+      url: `https://${brand.domain}`,
+      publisher: { "@id": `https://${brand.domain}/#organization` },
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,6 +86,7 @@ export default function RootLayout({
       className={`${sans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
         <ThemeProvider>
           <AuthSessionProvider>
             <QueryProvider>
