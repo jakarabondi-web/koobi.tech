@@ -69,10 +69,10 @@ export function DashboardShell({
           navy, so the mesh needs to sit further back now. */}
       <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.5} />
 
-      <div className="relative z-10 flex h-16 items-center gap-2 px-5">
-        <LogoMark size={32} priority />
+      <div className="relative z-10 flex h-16 items-center gap-2.5 px-5">
+        <LogoMark size={40} priority />
         <div className="min-w-0 leading-tight">
-          <p className="text-sm font-semibold">{brand.name}</p>
+          <p className="text-base font-bold">{brand.name}</p>
           <div className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/60">
             <span className="relative flex size-1.5 shrink-0">
               <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
