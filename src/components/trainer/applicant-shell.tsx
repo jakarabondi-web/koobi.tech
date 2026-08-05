@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Sparkles, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
+import { LogoMark } from "@/components/shared/logo-mark";
 
 /**
  * The shell an applicant sees before approval.
@@ -33,9 +34,7 @@ export function ApplicantShell({
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4 sm:px-6">
           <Link href="/trainer/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
-              <Sparkles className="size-4" />
-            </span>
+            <LogoMark size={32} priority />
             {brand.name}
           </Link>
 

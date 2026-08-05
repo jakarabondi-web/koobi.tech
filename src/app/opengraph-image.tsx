@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
 import { ImageResponse } from "next/og";
 
 import { brand } from "@/config/brand";
@@ -76,6 +79,13 @@ function buildMapSvg(): string {
 }
 
 const MAP_SVG = buildMapSvg();
+
+// The real brand mark (see public/branding/) — reads the same file the app
+// serves at /branding/favicon/traivr-favicon-256.png and inlines it as a
+// data URI, since Satori can't fetch a relative path at render time.
+const MARK_PNG = `data:image/png;base64,${readFileSync(
+  path.join(process.cwd(), "public/branding/favicon/traivr-favicon-256.png")
+).toString("base64")}`;
 
 const TAGS = [
   { label: "RLHF", color: "#93b4ff" },
@@ -157,23 +167,8 @@ export default async function OpengraphImage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", width: "100%" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 58,
-                height: 58,
-                borderRadius: 15,
-                backgroundImage: "linear-gradient(135deg, #4d7fe8, #8f7ff0)",
-                boxShadow: "0 10px 28px rgba(143,127,240,.55)",
-              }}
-            >
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
-                <path d="M12 2l1.9 5.7L20 9.5l-5.2 3.4L16.5 19 12 15.6 7.5 19l1.7-6.1L4 9.5l6.1-1.8z" />
-              </svg>
-            </div>
-            <div style={{ display: "flex", marginLeft: 16, color: "white", fontSize: 38, fontWeight: 800, fontFamily: heading }}>
+            <img src={MARK_PNG} width={52} height={52} alt="" />
+            <div style={{ display: "flex", marginLeft: 14, color: "white", fontSize: 38, fontWeight: 800, fontFamily: heading }}>
               {brand.name}
             </div>
             <div

@@ -1,8 +1,8 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
+import { LogoMark } from "@/components/shared/logo-mark";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,9 +16,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
       <header className="relative border-b border-border">
         <div className="mx-auto flex h-16 max-w-7xl items-center px-4 sm:px-6 lg:px-8">
           <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight text-foreground">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-brand text-white shadow-glow-brand">
-              <Sparkles className="size-4" />
-            </span>
+            <LogoMark size={32} priority />
             {brand.name}
           </Link>
         </div>
