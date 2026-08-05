@@ -4,7 +4,11 @@ import { BookOpen, FileText, Newspaper } from "lucide-react";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
-export const metadata: Metadata = { title: "Resources" };
+export const metadata: Metadata = {
+  title: "Resources",
+  description:
+    "Guides and resources on human-in-the-loop AI training — RLHF, model evaluation, red teaming, and building high-quality training datasets with Traivr.",
+};
 
 const RESOURCES: FeatureBentoItem[] = [
   {

@@ -3,7 +3,11 @@ import type { Metadata } from "next";
 import { brand } from "@/config/brand";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 
-export const metadata: Metadata = { title: "About" };
+export const metadata: Metadata = {
+  title: "About",
+  description:
+    "Traivr connects AI companies with a verified global network of subject-matter experts for RLHF, evaluations, red teaming, and data creation.",
+};
 
 export default function AboutPage() {
   return (

@@ -4,7 +4,11 @@ import { Lock, KeyRound, FileClock, Building2, ShieldCheck, ServerCog, EyeOff, C
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
-export const metadata: Metadata = { title: "Security" };
+export const metadata: Metadata = {
+  title: "Security",
+  description:
+    "How Traivr secures AI training data: role-based access, field-level encryption, audit logging, tenant isolation, and SOC 2-aligned controls.",
+};
 
 const CONTROLS: FeatureBentoItem[] = [
   {

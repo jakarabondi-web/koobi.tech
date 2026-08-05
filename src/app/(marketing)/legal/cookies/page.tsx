@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { brand } from "@/config/brand";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 
-export const metadata: Metadata = { title: "Cookie preferences" };
+export const metadata: Metadata = {
+  title: "Cookie preferences",
+  description: "How Traivr uses cookies, and how to manage your cookie preferences on traivr.com.",
+};
 
 export default function CookiesPage() {
   return (

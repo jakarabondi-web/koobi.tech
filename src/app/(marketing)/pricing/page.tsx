@@ -6,7 +6,11 @@ import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils/cn";
 
-export const metadata: Metadata = { title: "Pricing" };
+export const metadata: Metadata = {
+  title: "Pricing",
+  description:
+    "Traivr pricing for AI training data services — RLHF, evaluations, red teaming, and expert data creation, scaled from pilot projects to production volume.",
+};
 
 const TIERS = [
   {

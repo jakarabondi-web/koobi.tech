@@ -5,7 +5,11 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
 
-export const metadata: Metadata = { title: "Apply to join" };
+export const metadata: Metadata = {
+  title: "Apply to join",
+  description:
+    "Apply to join Traivr's verified trainer network. RLHF, evaluations, red teaming, and expert data work for AI companies — open to specialists and generalists.",
+};
 
 const STEPS = [
   "Create your account and verify your email",

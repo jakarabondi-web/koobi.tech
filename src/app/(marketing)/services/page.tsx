@@ -4,7 +4,11 @@ import { Cpu, Workflow, Binary, Terminal, Database, Globe2, Code2, Fingerprint }
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
-export const metadata: Metadata = { title: "Services" };
+export const metadata: Metadata = {
+  title: "Services",
+  description:
+    "Explore Traivr's AI training services — RLHF, supervised fine-tuning, model evaluations, red teaming, and expert data creation, run by verified specialists.",
+};
 
 const SERVICES: FeatureBentoItem[] = [
   {

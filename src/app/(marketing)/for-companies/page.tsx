@@ -6,7 +6,11 @@ import { MarketingPageHero } from "@/components/marketing/page-hero";
 import { Button } from "@/components/ui/button";
 import { FeatureBento, type FeatureBentoItem } from "@/components/marketing/feature-bento";
 
-export const metadata: Metadata = { title: "For AI companies" };
+export const metadata: Metadata = {
+  title: "For AI companies",
+  description:
+    "Traivr gives AI companies on-demand access to verified human trainers for RLHF, evaluations, red teaming, and expert data — matched, reviewed, and export-ready.",
+};
 
 const USE_CASES: FeatureBentoItem[] = [
   {

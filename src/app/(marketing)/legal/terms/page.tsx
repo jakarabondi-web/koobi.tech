@@ -3,7 +3,10 @@ import type { Metadata } from "next";
 import { brand } from "@/config/brand";
 import { MarketingPageHero } from "@/components/marketing/page-hero";
 
-export const metadata: Metadata = { title: "Terms of service" };
+export const metadata: Metadata = {
+  title: "Terms of service",
+  description: "Traivr's terms of service — the terms governing use of the Traivr platform by AI companies and trainers.",
+};
 
 export default function TermsPage() {
   return (
