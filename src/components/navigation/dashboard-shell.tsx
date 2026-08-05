@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { AmbientGrid } from "@/components/shared/ambient-grid";
-import { LogoMark } from "@/components/shared/logo-mark";
+import { LogoLockup } from "@/components/shared/logo-lockup";
 
 export type NavItem = {
   href: string;
@@ -69,17 +69,14 @@ export function DashboardShell({
           navy, so the mesh needs to sit further back now. */}
       <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.5} />
 
-      <div className="relative z-10 flex h-28 items-center gap-3 border-b border-sidebar-border/60 px-5 lg:h-48 lg:gap-4">
-        <LogoMark size={104} priority className="size-16 lg:size-[104px]" />
-        <div className="min-w-0 leading-tight">
-          <p className="text-2xl font-extrabold lg:text-4xl">{brand.name}</p>
-          <div className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/60">
-            <span className="relative flex size-1.5 shrink-0">
-              <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
-              <span className="relative inline-flex size-1.5 rounded-full bg-success" />
-            </span>
-            <span className="truncate font-mono">{surfaceLabel}</span>
-          </div>
+      <div className="relative z-10 flex h-32 flex-col items-start justify-center gap-1.5 border-b border-sidebar-border/60 px-5 lg:h-40">
+        <LogoLockup tone="reversed" priority className="h-16 w-auto lg:h-20" />
+        <div className="flex items-center gap-1.5 pl-1 text-[11px] text-sidebar-foreground/60">
+          <span className="relative flex size-1.5 shrink-0">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-success opacity-75" />
+            <span className="relative inline-flex size-1.5 rounded-full bg-success" />
+          </span>
+          <span className="truncate font-mono">{surfaceLabel}</span>
         </div>
       </div>
       <nav className="relative z-10 flex-1 space-y-4 overflow-y-auto px-3 py-3">

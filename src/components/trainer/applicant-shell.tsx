@@ -6,7 +6,7 @@ import { LogOut } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
-import { LogoMark } from "@/components/shared/logo-mark";
+import { LogoLockup } from "@/components/shared/logo-lockup";
 
 /**
  * The shell an applicant sees before approval.
@@ -33,9 +33,8 @@ export function ApplicantShell({
     <div className="flex min-h-screen flex-col bg-surface">
       <header className="border-b border-border bg-background">
         <div className="mx-auto flex h-16 max-w-3xl items-center gap-3 px-4 sm:px-6">
-          <Link href="/trainer/dashboard" className="flex items-center gap-2 font-semibold tracking-tight">
-            <LogoMark size={32} priority />
-            {brand.name}
+          <Link href="/trainer/dashboard" aria-label={brand.name} className="flex items-center">
+            <LogoLockup priority className="h-14 w-auto" />
           </Link>
 
           <div className="ml-auto flex items-center gap-3">

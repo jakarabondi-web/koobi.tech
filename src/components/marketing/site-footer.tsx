@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { brand } from "@/config/brand";
-import { LogoMark } from "@/components/shared/logo-mark";
+import { LogoLockup } from "@/components/shared/logo-lockup";
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string }> }> = [
   {
@@ -44,9 +44,8 @@ export function SiteFooter() {
       <div className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-8 md:grid-cols-6">
           <div className="col-span-2">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <LogoMark size={28} />
-              {brand.name}
+            <Link href="/" aria-label={brand.name} className="inline-flex items-center">
+              <LogoLockup className="h-12 w-auto" />
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">{brand.tagline}</p>
           </div>
