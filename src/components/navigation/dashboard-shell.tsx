@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Sparkles, LogOut, Menu, Search, Bell } from "lucide-react";
+import { LogOut, Menu, Search, Bell } from "lucide-react";
 import { useState, type ComponentType } from "react";
 
 import { cn } from "@/lib/utils/cn";
@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { NeuralMesh } from "@/components/shared/neural-mesh";
 import { AmbientGrid } from "@/components/shared/ambient-grid";
+import { LogoMark } from "@/components/shared/logo-mark";
 
 export type NavItem = {
   href: string;
@@ -69,9 +70,7 @@ export function DashboardShell({
       <NeuralMesh fade="up" density={0.00022} maxNodes={40} linkDistance={78} opacity={0.5} />
 
       <div className="relative z-10 flex h-16 items-center gap-2 px-5">
-        <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
-          <Sparkles className="size-4" />
-        </span>
+        <LogoMark size={32} priority />
         <div className="min-w-0 leading-tight">
           <p className="text-sm font-semibold">{brand.name}</p>
           <div className="flex items-center gap-1.5 text-[11px] text-sidebar-foreground/60">

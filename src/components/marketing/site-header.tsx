@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { brand } from "@/config/brand";
 import { Button } from "@/components/ui/button";
+import { LogoMark } from "@/components/shared/logo-mark";
 import { cn } from "@/lib/utils/cn";
 
 const NAV_LINKS = [
@@ -23,9 +24,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-40 border-b border-border/70 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
-            <Sparkles className="size-4" />
-          </span>
+          <LogoMark size={32} priority />
           {brand.name}
         </Link>
 

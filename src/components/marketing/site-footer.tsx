@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Sparkles } from "lucide-react";
 
 import { brand } from "@/config/brand";
+import { LogoMark } from "@/components/shared/logo-mark";
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string }> }> = [
   {
@@ -45,9 +45,7 @@ export function SiteFooter() {
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 sm:gap-8 md:grid-cols-6">
           <div className="col-span-2">
             <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-accent-violet text-white">
-                <Sparkles className="size-3.5" />
-              </span>
+              <LogoMark size={28} />
               {brand.name}
             </Link>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">{brand.tagline}</p>
